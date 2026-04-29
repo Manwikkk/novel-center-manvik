@@ -1,0 +1,39 @@
+import { Manrope, Newsreader } from 'next/font/google';
+import './globals.css';
+import AppProviders from '@/components/layout/AppProviders';
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-manrope',
+  weight: ['400','500','600','700'],
+});
+
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-newsreader',
+  weight: ['300','400','500','600'],
+  style: ['normal','italic'],
+});
+
+export const metadata = {
+  title: 'Novel Center',
+  description: 'A quiet, editorial home for long-form reading.',
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={`${newsreader.variable} ${manrope.variable}`} data-reader-theme="cream">
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+        />
+      </head>
+      <body className="bg-background text-on-background antialiased selection:bg-tertiary-fixed selection:text-on-tertiary-fixed">
+        <AppProviders>{children}</AppProviders>
+      </body>
+    </html>
+  );
+}

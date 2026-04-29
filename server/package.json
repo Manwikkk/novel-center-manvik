@@ -1,0 +1,39 @@
+{
+  "name": "novel-center-server",
+  "version": "1.0.0",
+  "description": "Novel Center API: Express + raw MySQL, JWT auth, role-based.",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "db:migrate": "node src/db/runSql.js src/db/migrations/001_init.sql",
+    "db:migrate:library": "node src/db/runSql.js src/db/migrations/002_library.sql",
+    "db:migrate:reading": "node src/db/runSql.js src/db/migrations/003_reader_progress.sql",
+    "db:seed": "node src/db/runSql.js src/db/seed.sql"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
+    "bcrypt": "^5.1.1",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.11.0",
+    "sanitize-html": "^2.13.0",
+    "slugify": "^1.6.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

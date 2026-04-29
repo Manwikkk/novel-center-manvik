@@ -1,0 +1,19 @@
+'use client';
+
+import AuthorSidebar, { AUTHOR_NAV } from './AuthorSidebar';
+import AdminSidebar, { ADMIN_NAV } from './AdminSidebar';
+import MobileNavStrip from './MobileNavStrip';
+
+export default function DashboardShell({ kind = 'author', children }) {
+  const Sidebar = kind === 'admin' ? AdminSidebar : AuthorSidebar;
+  const items = kind === 'admin' ? ADMIN_NAV : AUTHOR_NAV;
+  return (
+    <div className="flex">
+      <Sidebar />
+      <div className="flex-1 min-w-0">
+        <MobileNavStrip items={items} />
+        {children}
+      </div>
+    </div>
+  );
+}

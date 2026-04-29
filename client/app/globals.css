@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Reader theme variables. The Reading Interface flips these via
+ * data-reader-theme="cream|sepia|dark" on <html>, so the rest of the
+ * app keeps the Stitch editorial palette while only the reading column
+ * responds to the user's reader preferences.
+ */
+:root {
+  --reader-bg:        #fff8f1;
+  --reader-fg:        #1e1b15;
+  --reader-muted:     #6B665E;
+  --reader-rule:      #c4c7c7;
+  --reader-accent:    #C2A878;
+
+  --reader-font-size: 20px;
+  --reader-font-family: var(--font-newsreader), 'Newsreader', Georgia, serif;
+}
+
+[data-reader-theme='sepia'] {
+  --reader-bg:    #f6ecd8;
+  --reader-fg:    #2a2316;
+  --reader-muted: #6b5e44;
+  --reader-rule:  #c9b88f;
+}
+[data-reader-theme='dark'] {
+  --reader-bg:    #14110d;
+  --reader-fg:    #ece4d6;
+  --reader-muted: #a89f8e;
+  --reader-rule:  #2c2820;
+}
+
+html, body {
+  background: theme('colors.cream.100');
+  color: theme('colors.ink.700');
+  font-family: theme('fontFamily.sans');
+}
+
+/* Material Symbols Outlined — Stitch screens lean on it heavily.
+ * The variable axes below match the rendering used in the source HTML
+ * (FILL=0, weight 400, optical size 24).  Add `.fill` to flip the FILL
+ * axis when an icon should appear filled. */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: 400;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.material-symbols-outlined.fill {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+@layer base {
+  h1, h2, h3, h4, .font-serif { font-family: theme('fontFamily.serif'); }
+
+  input, textarea, button, select {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+@layer components {
+  /* Editorial body for reader chapter HTML */
+  .prose-reader {
+    font-family: var(--reader-font-family);
+    font-size: var(--reader-font-size);
+    color: var(--reader-fg);
+    line-height: 1.7;
+  }
+  .prose-reader p { margin: 0 0 1em; }
+  .prose-reader h1, .prose-reader h2, .prose-reader h3, .prose-reader h4 {
+    color: var(--reader-fg);
+    margin: 1.6em 0 0.6em;
+    line-height: 1.25;
+  }
+  .prose-reader h1 { font-size: 1.6em; font-weight: 500; }
+  .prose-reader h2 { font-size: 1.35em; font-weight: 500; }
+  .prose-reader h3 { font-size: 1.15em; font-weight: 600; }
+  .prose-reader blockquote {
+    border-left: 2px solid var(--reader-accent);
+    padding-left: 1em;
+    color: var(--reader-muted);
+    font-style: italic;
+    margin: 1.4em 0;
+  }
+  .prose-reader hr {
+    border: none;
+    border-top: 1px solid var(--reader-rule);
+    margin: 2em 0;
+  }
+  .prose-reader a {
+    color: var(--reader-fg);
+    border-bottom: 1px solid var(--reader-accent);
+    text-decoration: none;
+  }
+  .prose-reader img {
+    max-width: 100%;
+    height: auto;
+    margin: 1.4em 0;
+  }
+
+  /* Stitch "ui-label" letterspacing for buttons / nav */
+  .label-lg { font-size: 16px; line-height: 1.4; letter-spacing: 0.05em; font-weight: 600; }
+  .label-sm { font-size: 12px; line-height: 1.4; letter-spacing: 0.08em; font-weight: 500; text-transform: uppercase; }
+}
+
+/*
+ * Stitch reading-interface article styling.
+ * - First paragraph gets a dropcap
+ * - Blockquotes use the tertiary-container accent rule
+ * - Headings stay in Newsreader and inherit reader colours
+ */
+.prose-stitch > p:first-of-type::first-letter {
+  font-family: var(--font-newsreader), 'Newsreader', Georgia, serif;
+  font-size: 3em;
+  line-height: 0.9;
+  font-weight: 400;
+  float: left;
+  padding-right: 0.18em;
+  padding-top: 0.05em;
+  color: inherit;
+}
+.prose-stitch blockquote {
+  padding-left: 1.5rem;
+  border-left: 2px solid #261900;
+  font-style: italic;
+  color: #444748;
+  margin: 3rem 0;
+  font-size: 1.1em;
+  line-height: 1.7;
+}
+.prose-stitch h1, .prose-stitch h2, .prose-stitch h3, .prose-stitch h4 {
+  font-family: var(--font-newsreader), 'Newsreader', Georgia, serif;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  line-height: 1.25;
+  color: inherit;
+}
+.prose-stitch h2 { font-size: 1.6em; font-weight: 500; }
+.prose-stitch h3 { font-size: 1.3em; font-weight: 500; }
+.prose-stitch a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: #dfc391;
+  text-underline-offset: 4px;
+}
+
+/* Hide native number input spinners in token inputs */
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.no-spin { -moz-appearance: textfield; }
+
+/* Horizontal scroll containers without scrollbars (mobile nav strips) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
