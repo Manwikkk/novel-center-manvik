@@ -18,8 +18,10 @@ function buildRange(current, totalPages) {
 
 const baseBtn =
   'inline-flex items-center justify-center min-w-[40px] h-10 px-3 font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded transition-colors';
-const inactiveCls = 'border border-outline-variant text-on-surface hover:bg-surface-container-low';
-const activeCls = 'bg-on-surface text-surface border border-on-surface';
+const inactiveCls =
+  'border border-outline-variant text-on-surface hover:bg-surface-container-low dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-900';
+const activeCls =
+  'bg-on-surface text-surface border border-on-surface dark:bg-neutral-100 dark:text-neutral-950 dark:border-neutral-100';
 
 /**
  * Pagination controls — supports two modes:
@@ -113,9 +115,9 @@ export default function Pagination({
       aria-label="Pagination"
       className={cn('flex items-center justify-between gap-4 flex-wrap', className)}
     >
-      <p className="font-ui-label-sm text-ui-label-sm text-on-surface-variant">
-        Page <span className="text-on-surface">{safePage}</span> of{' '}
-        <span className="text-on-surface">{totalPages}</span>
+      <p className="font-ui-label-sm text-ui-label-sm text-on-surface-variant dark:text-neutral-400">
+        Page <span className="text-on-surface dark:text-neutral-100">{safePage}</span> of{' '}
+        <span className="text-on-surface dark:text-neutral-100">{totalPages}</span>
         {total != null ? (
           <span className="hidden sm:inline">
             {' '}
@@ -145,7 +147,7 @@ export default function Pagination({
           p === '...' ? (
             <span
               key={`gap-${i}`}
-              className="font-ui-label-sm text-ui-label-sm text-on-surface-variant px-1"
+              className="font-ui-label-sm text-ui-label-sm text-on-surface-variant dark:text-neutral-400 px-1"
             >
               &hellip;
             </span>

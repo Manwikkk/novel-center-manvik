@@ -4,7 +4,7 @@ import { Skeleton, SkeletonGrid } from '@/components/ui/Skeleton';
 
 export default function LandingLoading() {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-black">
       <SiteHeader />
       <main className="flex-grow pt-[120px] pb-32">
         {/* Editorial hero + reader-home Continue Reading */}

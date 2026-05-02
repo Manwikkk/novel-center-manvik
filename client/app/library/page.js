@@ -67,19 +67,19 @@ function LibraryInner() {
   const total = data.total;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background dark:bg-black">
       <SiteHeader variant="solid" />
       <main className="flex-grow pt-[120px] pb-32 max-w-[1280px] mx-auto px-4 md:px-edge w-full">
         <header className="mb-12">
-          <p className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant">
+          <p className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant dark:text-neutral-400">
             Your library
           </p>
           <div className="mt-2 flex items-end justify-between gap-4 flex-wrap">
-            <h1 className="font-display-lg text-[40px] md:text-display-lg text-on-surface leading-tight">
+            <h1 className="font-display-lg text-[40px] md:text-display-lg text-on-surface dark:text-neutral-100 leading-tight">
               Books you&rsquo;ve saved.
             </h1>
             {!loading && (
-              <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant">
+              <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant dark:text-neutral-400">
                 {total} {total === 1 ? 'book' : 'books'}
               </span>
             )}
@@ -119,7 +119,7 @@ function LibraryInner() {
                     type="button"
                     onClick={() => handleRemove(book.id, book.title)}
                     disabled={removingId === book.id}
-                    className="absolute top-2 right-2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm border border-outline-variant text-on-surface-variant opacity-0 group-hover:opacity-100 hover:bg-error hover:text-on-error transition-all duration-200 disabled:opacity-60"
+                    className="absolute top-2 right-2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm border border-outline-variant text-on-surface-variant dark:bg-neutral-900/90 dark:border-neutral-700 dark:text-neutral-300 opacity-0 group-hover:opacity-100 hover:bg-error hover:text-on-error transition-all duration-200 disabled:opacity-60"
                     aria-label={`Remove ${book.title} from library`}
                     title="Remove from library"
                   >

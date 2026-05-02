@@ -4,7 +4,7 @@ import { Skeleton, SkeletonText } from '@/components/ui/Skeleton';
 
 export default function BookDetailLoading() {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-black">
       <SiteHeader />
       <main className="flex-grow pt-[120px] pb-32 max-w-[1280px] mx-auto px-4 md:px-edge w-full">
         <section className="grid grid-cols-1 md:grid-cols-12 gap-gutter mb-16">

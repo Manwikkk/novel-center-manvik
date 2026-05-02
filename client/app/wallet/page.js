@@ -45,12 +45,12 @@ function WalletInner() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-black">
       <SiteHeader variant="solid" />
 
       <main className="mx-auto max-w-shell w-full px-4 md:px-edge py-12 md:py-16">
-        <p className="label-sm uppercase text-ink-400">Your wallet</p>
-        <h1 className="mt-2 font-serif text-[36px] md:text-[48px] leading-[1.15] text-ink-900">Tokens for unlocking chapters.</h1>
+        <p className="label-sm uppercase text-ink-400 dark:text-neutral-500">Your wallet</p>
+        <h1 className="mt-2 font-serif text-[36px] md:text-[48px] leading-[1.15] text-ink-900 dark:text-neutral-100">Tokens for unlocking chapters.</h1>
 
         <Card className="mt-10 p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
@@ -65,7 +65,7 @@ function WalletInner() {
         </Card>
 
         <section className="mt-14">
-          <h2 className="font-serif text-[28px] text-ink-900">Top up</h2>
+          <h2 className="font-serif text-[28px] text-ink-900 dark:text-neutral-100">Top up</h2>
           <div className="mt-6 grid sm:grid-cols-3 gap-4">
             {(['small','medium','large']).map((key) => {
               const pack = packs?.[key];
@@ -89,18 +89,18 @@ function WalletInner() {
         </section>
 
         <section className="mt-14">
-          <h2 className="font-serif text-[28px] text-ink-900">Recent activity</h2>
+          <h2 className="font-serif text-[28px] text-ink-900 dark:text-neutral-100">Recent activity</h2>
           {transactions.length === 0 ? (
-            <p className="mt-4 text-ink-400">No transactions yet.</p>
+            <p className="mt-4 text-ink-400 dark:text-neutral-500">No transactions yet.</p>
           ) : (
-            <ul className="mt-6 divide-y divide-ink-200/60 border-t border-b border-ink-200/60">
+            <ul className="mt-6 divide-y divide-ink-200/60 dark:divide-neutral-800 border-t border-b border-ink-200/60 dark:border-neutral-800">
               {transactions.map((t) => (
                 <li key={t.id} className="py-4 flex items-center justify-between">
                   <div>
-                    <p className="font-serif text-[16px] text-ink-900 capitalize">{t.type.replace('_', ' ')}</p>
-                    <p className="text-[12px] text-ink-400">{formatDate(t.createdAt)}</p>
+                    <p className="font-serif text-[16px] text-ink-900 dark:text-neutral-100 capitalize">{t.type.replace('_', ' ')}</p>
+                    <p className="text-[12px] text-ink-400 dark:text-neutral-500">{formatDate(t.createdAt)}</p>
                   </div>
-                  <p className={'font-serif text-[18px] ' + (t.tokensDelta >= 0 ? 'text-ink-900' : 'text-danger')}>
+                  <p className={'font-serif text-[18px] ' + (t.tokensDelta >= 0 ? 'text-ink-900 dark:text-neutral-100' : 'text-danger')}>
                     {t.tokensDelta >= 0 ? '+' : ''}{formatTokens(t.tokensDelta)}
                   </p>
                 </li>

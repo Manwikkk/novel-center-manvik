@@ -63,24 +63,24 @@ export default async function HomePage() {
   const forYou = books.slice(3, 11);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-black">
       <SiteHeader />
 
-      <main className="flex-grow pt-[120px] pb-32">
+      <main className="flex-grow pt-24 md:pt-28 pb-32">
         <LandingHero books={books} />
 
         {/* CONTINUE READING ----------------------------------------- */}
         <ContinueReadingSection />
 
         {/* CURATED COLLECTIONS -------------------------------------- */}
-        <section className="bg-surface-container-low py-24 border-y border-surface-container-highest mb-24">
+        <section className="bg-neutral-50 dark:bg-neutral-950 py-24 border-y border-neutral-200 dark:border-neutral-800 mb-24">
           <div className="max-w-[1280px] mx-auto px-4 md:px-edge">
             <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
               <div className="max-w-2xl">
-                <h2 className="font-headline-xl text-headline-xl text-on-surface mb-4">
+                <h2 className="font-headline-xl text-headline-xl text-ink-900 dark:text-neutral-100 mb-4">
                   Curated Collections
                 </h2>
-                <p className="font-reading-body text-reading-body text-on-surface-variant">
+                <p className="font-reading-body text-reading-body text-ink-600 dark:text-neutral-400">
                   Explore hand-picked selections tailored to your reading history.
                 </p>
               </div>
@@ -92,8 +92,8 @@ export default async function HomePage() {
                     href={`/discover?category=${encodeURIComponent(c)}`}
                     className={
                       i === 1
-                        ? 'px-4 py-2 bg-primary text-on-primary rounded-full font-ui-label-sm text-ui-label-sm shadow-sm'
-                        : 'px-4 py-2 bg-surface-container-lowest border border-surface-container-high rounded-full font-ui-label-sm text-ui-label-sm text-on-surface hover:border-primary transition-colors'
+                        ? 'px-4 py-2 bg-ink-900 text-white dark:bg-white dark:text-black rounded-full font-ui-label-sm text-ui-label-sm shadow-sm'
+                        : 'px-4 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-full font-ui-label-sm text-ui-label-sm text-ink-900 dark:text-neutral-100 hover:border-ink-900 dark:hover:border-neutral-500 transition-colors'
                     }
                   >
                     {c}
@@ -114,14 +114,14 @@ export default async function HomePage() {
         <section className="max-w-[1280px] mx-auto px-4 md:px-edge">
           <div className="flex justify-between items-end mb-12">
             <div>
-              <h2 className="font-headline-md text-headline-md text-on-surface mb-2">For You</h2>
-              <p className="font-ui-label-sm text-ui-label-sm text-on-surface-variant uppercase tracking-widest">
+              <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100 mb-2">For You</h2>
+              <p className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400 uppercase tracking-widest">
                 Based on your recent reading
               </p>
             </div>
             <Link
               href="/discover"
-              className="font-ui-label-sm text-ui-label-sm text-on-surface uppercase tracking-widest border-b border-on-surface pb-1 hover:text-on-surface-variant hover:border-on-surface-variant transition-colors"
+              className="font-ui-label-sm text-ui-label-sm text-ink-900 dark:text-neutral-100 uppercase tracking-widest border-b border-ink-900 dark:border-neutral-100 pb-1 hover:text-ink-600 dark:hover:text-neutral-400 hover:border-ink-600 dark:hover:border-neutral-400 transition-colors"
             >
               View All
             </Link>
@@ -129,7 +129,7 @@ export default async function HomePage() {
 
           <div className="flex gap-8 overflow-x-auto pb-8 no-scrollbar snap-x">
             {forYou.length === 0 && (
-              <p className="text-on-surface-variant py-12">
+              <p className="text-ink-500 dark:text-neutral-500 py-12">
                 Recommendations will populate as you read.
               </p>
             )}
@@ -159,45 +159,35 @@ function LandingHero({ books }) {
   const fallback = '/stitch/book-architecture-silence.jpg';
 
   return (
-    <section className="relative mb-20 md:mb-28 overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
-        aria-hidden
-      >
-        <img
-          alt=""
-          src="/stitch/category-fantasy.jpg"
-          className="h-full w-full object-cover object-center"
-        />
-      </div>
-      <div className="relative max-w-[1280px] mx-auto px-4 md:px-edge pb-4 md:pb-8">
+    <section className="relative mb-20 md:mb-28">
+      <div className="max-w-[1280px] mx-auto px-4 md:px-edge pb-4 md:pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter lg:gap-16 items-center">
           <div className="lg:col-span-7">
-            <p className="label-sm uppercase text-ink-400">Novel Centre</p>
-            <h1 className="mt-4 font-serif text-[40px] md:text-[56px] lg:text-[64px] leading-[1.08] tracking-tightDisplay text-ink-900 max-w-[36rem]">
+            <p className="label-sm uppercase text-ink-500 dark:text-neutral-500">Novel Centre</p>
+            <h1 className="mt-4 font-serif text-[40px] md:text-[56px] lg:text-[64px] leading-[1.08] tracking-tightDisplay text-ink-900 dark:text-neutral-100 max-w-[36rem]">
               Fiction worth your slow attention.
             </h1>
-            <p className="mt-6 font-serif text-[18px] md:text-[20px] leading-[1.65] text-ink-700 max-w-xl">
+            <p className="mt-6 font-serif text-[18px] md:text-[20px] leading-[1.65] text-ink-700 dark:text-neutral-300 max-w-xl">
               Curated voices, unlockable chapters, and a quiet shelf for what you love — browse the
               catalogue, grow your library, and pick up where you left off below.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <Link
                 href="/discover"
-                className="inline-flex items-center gap-2 rounded-sm bg-ink-900 px-8 py-3 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-cream-100 shadow-sm transition-opacity hover:opacity-90"
+                className="inline-flex items-center gap-2 rounded-sm bg-ink-900 px-8 py-3 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-white dark:bg-white dark:text-black shadow-sm transition-opacity hover:opacity-90"
               >
                 Explore catalogue
                 <Icon name="arrow_forward" size={16} />
               </Link>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-2 rounded-sm border border-ink-300 bg-transparent px-8 py-3 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-900 transition-colors hover:border-ink-900 hover:bg-cream-200/40"
+                className="inline-flex items-center gap-2 rounded-sm border border-ink-300 dark:border-neutral-600 bg-transparent px-8 py-3 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-900 dark:text-neutral-100 transition-colors hover:border-ink-900 dark:hover:border-neutral-400 hover:bg-ink-900/5 dark:hover:bg-white/10"
               >
                 Your library
               </Link>
               <Link
                 href="/about"
-                className="inline-flex items-center gap-1 font-serif text-[16px] text-ink-700 underline underline-offset-4 decoration-ink-300 hover:text-ink-900"
+                className="inline-flex items-center gap-1 font-serif text-[16px] text-ink-700 dark:text-neutral-300 underline underline-offset-4 decoration-ink-300 dark:decoration-neutral-600 hover:text-ink-900 dark:hover:text-white"
               >
                 About the Centre
               </Link>
@@ -206,7 +196,7 @@ function LandingHero({ books }) {
 
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
             {deck.length === 0 ? (
-              <div className="w-full max-w-[320px] overflow-hidden rounded-lg border border-surface-container-high shadow-book lg:max-w-[420px]">
+              <div className="w-full max-w-[320px] overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 shadow-book lg:max-w-[420px]">
                 <img alt="" src={fallback} className="aspect-[2/3] w-full object-cover" />
               </div>
             ) : (
@@ -216,7 +206,7 @@ function LandingHero({ books }) {
                     <Link
                       key={b.id}
                       href={`/books/${b.slug}`}
-                      className="w-[140px] shrink-0 snap-start overflow-hidden rounded-md border border-surface-container-high bg-surface shadow-book"
+                      className="w-[140px] shrink-0 snap-start overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-book"
                     >
                       <img
                         alt={b.title}
@@ -239,7 +229,7 @@ function LandingHero({ books }) {
                         className={`absolute top-8 ${left} w-[58%] ${rotate} ${z} transition-transform duration-300 hover:z-30 hover:scale-[1.02]`}
                         style={{ marginTop: `${i * 28}px` }}
                       >
-                        <div className="overflow-hidden rounded-md border border-surface-container-high bg-surface shadow-book">
+                        <div className="overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-book">
                           <img alt={b.title} src={cover} className="aspect-[2/3] w-full object-cover" />
                         </div>
                       </Link>
@@ -250,9 +240,6 @@ function LandingHero({ books }) {
             )}
           </div>
         </div>
-      </div>
-      <div className="relative mx-auto mt-12 max-w-[1280px] px-4 md:px-edge">
-        <div className="h-px w-full bg-gradient-to-r from-transparent via-surface-container-high to-transparent" />
       </div>
     </section>
   );

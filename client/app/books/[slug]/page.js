@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import Image from 'next/image';
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
 import Icon from '@/components/ui/Icon';
@@ -55,18 +54,18 @@ export default async function BookDetailPage({ params }) {
   const pages = book.pageCount || estimatePages(initialChapters);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-black">
       <SiteHeader />
 
-      <main className="flex-grow pt-[120px] pb-32 max-w-[1280px] mx-auto px-4 md:px-edge w-full">
+      <main className="flex-grow pt-24 md:pt-28 pb-32 max-w-[1280px] mx-auto px-4 md:px-edge w-full">
         {/* HERO */}
         <section className="grid grid-cols-1 md:grid-cols-12 gap-gutter mb-16">
           <div className="md:col-span-5 lg:col-span-4">
-            <div className="relative w-full aspect-[2/3] bg-surface-container-high rounded border border-surface-variant shadow-sm overflow-hidden">
+            <div className="relative w-full aspect-[2/3] bg-neutral-100 dark:bg-neutral-900 rounded border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
               {book.coverUrl ? (
                 <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center font-serif text-on-surface-variant text-7xl">
+                <div className="w-full h-full flex items-center justify-center font-serif text-ink-500 dark:text-neutral-500 text-7xl">
                   {book.title?.[0] || 'N'}
                 </div>
               )}
@@ -81,26 +80,26 @@ export default async function BookDetailPage({ params }) {
               {book.status === 'published' && <Chip>Published</Chip>}
             </div>
 
-            <h1 className="font-display-lg text-[44px] sm:text-[56px] md:text-display-lg text-on-surface mb-2">
+            <h1 className="font-display-lg text-[44px] sm:text-[56px] md:text-display-lg text-ink-900 dark:text-neutral-100 mb-2">
               {book.title}
             </h1>
-            <p className="font-headline-md text-headline-md text-on-surface-variant italic mb-8">
+            <p className="font-headline-md text-headline-md text-ink-600 dark:text-neutral-400 italic mb-8">
               By {book.authorName}
             </p>
 
             <div className="flex items-center gap-6 mb-10 flex-wrap">
               <StarRating rating={rating} reviews={reviews} />
-              <div className="h-4 w-px bg-outline-variant" />
-              <div className="font-ui-label-sm text-ui-label-sm text-on-surface-variant">
+              <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-700" />
+              <div className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400">
                 {pages} Pages
               </div>
-              <div className="h-4 w-px bg-outline-variant" />
-              <div className="font-ui-label-sm text-ui-label-sm text-on-surface-variant uppercase tracking-widest">
+              <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-700" />
+              <div className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400 uppercase tracking-widest">
                 {initialChapters.length} Chapters
               </div>
             </div>
 
-            <p className="prose max-w-reading-max font-reading-body text-reading-body text-on-surface-variant mb-12 line-clamp-4">
+            <p className="prose max-w-reading-max font-reading-body text-reading-body text-ink-600 dark:text-neutral-400 mb-12 line-clamp-4">
               {book.synopsis}
             </p>
 
@@ -108,12 +107,12 @@ export default async function BookDetailPage({ params }) {
           </div>
         </section>
 
-        <div className="h-px w-full bg-surface-variant my-16" />
+        <div className="h-px w-full bg-neutral-200 dark:bg-neutral-800 my-16" />
 
         {/* CHAPTERS + AUTHOR SIDEBAR */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
           <div className="col-span-1 lg:col-span-8">
-            <h2 className="font-headline-xl text-headline-xl text-on-surface mb-8">
+            <h2 className="font-headline-xl text-headline-xl text-ink-900 dark:text-neutral-100 mb-8">
               Table of Contents
             </h2>
             <BookDetailClient book={book} initialChapters={initialChapters} mode="toc" />
@@ -141,7 +140,7 @@ export default async function BookDetailPage({ params }) {
 
 function Chip({ children }) {
   return (
-    <span className="px-3 py-1 bg-surface-container-lowest border border-outline-variant rounded-full font-ui-label-sm text-ui-label-sm text-on-surface uppercase tracking-widest">
+    <span className="px-3 py-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-full font-ui-label-sm text-ui-label-sm text-ink-900 dark:text-neutral-100 uppercase tracking-widest">
       {children}
     </span>
   );
@@ -161,7 +160,7 @@ function StarRating({ rating, reviews }) {
   return (
     <div className="flex items-center gap-1">
       {stars}
-      <span className="font-ui-label-sm text-ui-label-sm text-on-surface-variant ml-2">
+      <span className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400 ml-2">
         {rating.toFixed(1)} ({reviews.toLocaleString()} Reviews)
       </span>
     </div>
@@ -170,33 +169,33 @@ function StarRating({ rating, reviews }) {
 
 function AuthorCard({ name, avatarUrl, location, bio }) {
   return (
-    <div className="bg-surface-container-low p-8 border border-surface-variant rounded-lg sticky top-28">
-      <h4 className="font-ui-label-lg text-ui-label-lg text-on-surface uppercase tracking-widest mb-6">
+    <div className="bg-neutral-50 dark:bg-neutral-950 p-8 border border-neutral-200 dark:border-neutral-800 rounded-lg sticky top-28">
+      <h4 className="font-ui-label-lg text-ui-label-lg text-ink-900 dark:text-neutral-100 uppercase tracking-widest mb-6">
         About the Author
       </h4>
       <div className="flex items-center gap-4 mb-4">
-        <div className="w-16 h-16 rounded-full overflow-hidden border border-outline-variant bg-surface-variant flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full overflow-hidden border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center">
           {avatarUrl ? (
             <img alt={name} src={avatarUrl} className="w-full h-full object-cover" />
           ) : (
-            <Icon name="person" size={28} className="text-on-surface-variant" />
+            <Icon name="person" size={28} className="text-ink-500 dark:text-neutral-500" />
           )}
         </div>
         <div>
-          <div className="font-headline-md text-[20px] text-on-surface mb-1 leading-tight">
+          <div className="font-headline-md text-[20px] text-ink-900 dark:text-neutral-100 mb-1 leading-tight">
             {name || 'Anonymous'}
           </div>
-          <div className="font-ui-label-sm text-ui-label-sm text-on-surface-variant">
+          <div className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400">
             {location || 'Novel Centre'}
           </div>
         </div>
       </div>
-      <p className="font-reading-body text-[16px] leading-relaxed text-on-surface-variant mb-6">
+      <p className="font-reading-body text-[16px] leading-relaxed text-ink-600 dark:text-neutral-400 mb-6">
         {bio || `${name || 'This author'} writes for Novel Centre. Follow to be notified when new chapters land.`}
       </p>
       <button
         type="button"
-        className="w-full py-3 bg-transparent border border-outline text-on-surface font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-surface-container-high transition-colors"
+        className="w-full py-3 bg-transparent border border-neutral-400 dark:border-neutral-600 text-ink-900 dark:text-neutral-100 font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
       >
         Follow Author
       </button>

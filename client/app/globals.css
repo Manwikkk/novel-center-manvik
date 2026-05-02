@@ -32,9 +32,8 @@
   --reader-rule:  #2c2820;
 }
 
+/* Shell background/text come from <body> in app/layout.js (white / dark). */
 html, body {
-  background: theme('colors.cream.100');
-  color: theme('colors.ink.700');
   font-family: theme('fontFamily.sans');
 }
 

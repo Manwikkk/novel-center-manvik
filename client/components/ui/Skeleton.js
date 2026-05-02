@@ -5,7 +5,7 @@ export function Skeleton({ className, style, ...rest }) {
     <div
       aria-hidden="true"
       className={cn(
-        'bg-surface-container-high/60 animate-pulse rounded-sm',
+        'bg-surface-container-high/60 dark:bg-neutral-800/80 animate-pulse rounded-sm',
         className,
       )}
       style={style}

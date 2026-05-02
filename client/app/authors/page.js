@@ -28,31 +28,31 @@ export default async function AuthorsIndexPage({ searchParams }) {
   const items = data.items || [];
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background dark:bg-black">
       <SiteHeader variant="solid" />
       <main className="flex-grow pt-[120px] pb-32 max-w-[1280px] mx-auto px-4 md:px-edge w-full">
         <header className="mb-12">
-          <p className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant">
+          <p className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant dark:text-neutral-400">
             The roster
           </p>
-          <div className="mt-2 flex items-end justify-between gap-6 flex-wrap border-b border-surface-container-high pb-8">
+          <div className="mt-2 flex items-end justify-between gap-6 flex-wrap border-b border-surface-container-high dark:border-neutral-800 pb-8">
             <div>
-              <h1 className="font-display-lg text-[40px] md:text-display-lg text-on-surface leading-tight">
+              <h1 className="font-display-lg text-[40px] md:text-display-lg text-on-surface dark:text-neutral-100 leading-tight">
                 Featured Authors
               </h1>
-              <p className="mt-3 font-reading-body text-reading-body text-on-surface-variant max-w-xl">
+              <p className="mt-3 font-reading-body text-reading-body text-on-surface-variant dark:text-neutral-400 max-w-xl">
                 The voices behind the volumes. Browse profiles, read their bibliography,
                 and follow new chapters as they ship.
               </p>
             </div>
-            <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant">
+            <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant dark:text-neutral-400">
               {data.total || 0} {data.total === 1 ? 'author' : 'authors'}
             </span>
           </div>
         </header>
 
         {items.length === 0 ? (
-          <p className="text-on-surface-variant py-24 text-center">
+          <p className="text-on-surface-variant dark:text-neutral-400 py-24 text-center">
             No published authors yet. Once writers publish their first book, they appear here.
           </p>
         ) : (

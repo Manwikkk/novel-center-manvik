@@ -4,7 +4,7 @@ import { Skeleton, SkeletonGrid } from '@/components/ui/Skeleton';
 
 export default function AuthorProfileLoading() {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background dark:bg-black">
       <SiteHeader variant="solid" />
       <main className="flex-grow pt-[120px] pb-32 max-w-[1280px] mx-auto px-4 md:px-edge w-full">
         <section className="mb-16 flex flex-col md:flex-row gap-10 items-start border-b border-surface-container-high pb-12">

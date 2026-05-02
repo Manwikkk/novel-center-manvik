@@ -6,7 +6,14 @@ export default function Logo({ className, mark = true, variant = 'ink', size = 4
   return (
     <Link href="/" className={cn('inline-flex items-center gap-3', className)}>
       {mark && (
-        <span className={cn('inline-flex items-center justify-center overflow-hidden rounded-sm', variant === 'cream' && 'bg-cream-100 p-1')}>
+        <span
+          className={cn(
+            'inline-flex items-center justify-center overflow-hidden rounded-sm',
+            variant === 'cream' && 'bg-cream-100 p-1',
+            /* Dark site theme: same cream tile as login sidebar so the mark reads on black. */
+            variant !== 'cream' && 'dark:bg-cream-100 dark:p-1',
+          )}
+        >
           <Image
             src="/images/Novel_Center_Logo.png"
             alt="Novel Centre logo"
@@ -18,7 +25,12 @@ export default function Logo({ className, mark = true, variant = 'ink', size = 4
         </span>
       )}
       {label ? (
-        <span className={cn('font-serif text-[20px] leading-none tracking-tightDisplay', variant === 'cream' ? 'text-cream-100' : 'text-ink-900')}>
+        <span
+          className={cn(
+            'font-serif text-[20px] leading-none tracking-tightDisplay',
+            variant === 'cream' ? 'text-cream-100' : 'text-ink-900 dark:text-neutral-100',
+          )}
+        >
           Novel Centre
         </span>
       ) : null}

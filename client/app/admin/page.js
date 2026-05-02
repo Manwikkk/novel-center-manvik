@@ -49,10 +49,10 @@ function AdminOverview() {
         <div className="p-4 md:p-edge max-w-[1280px] mx-auto w-full">
           <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-12 gap-6">
             <div>
-              <h2 className="font-headline-xl text-headline-xl text-on-surface mb-2">
+              <h2 className="font-headline-xl text-headline-xl text-on-surface dark:text-neutral-100 mb-2">
                 System Overview
               </h2>
-              <p className="font-ui-label-lg text-ui-label-lg text-on-surface-variant">
+              <p className="font-ui-label-lg text-ui-label-lg text-on-surface-variant dark:text-neutral-400">
                 Real-time metrics and alerts for Novel Centre.
               </p>
             </div>

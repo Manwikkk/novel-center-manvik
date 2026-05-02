@@ -40,7 +40,7 @@ export default async function AuthorProfilePage({ params, searchParams }) {
   const pageSize = (data.books && data.books.pageSize) || PAGE_SIZE;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background dark:bg-black">
       <SiteHeader variant="solid" />
       <main className="flex-grow pt-[120px] pb-32">
         <section className="bg-surface-container-low border-b border-surface-container-high py-16 md:py-24 mb-16">
@@ -89,20 +89,20 @@ export default async function AuthorProfilePage({ params, searchParams }) {
         </section>
 
         <section className="max-w-[1280px] mx-auto px-4 md:px-edge">
-          <div className="flex items-end justify-between mb-12 border-b border-surface-container-high pb-6">
+          <div className="flex items-end justify-between mb-12 border-b border-surface-container-high dark:border-neutral-800 pb-6">
             <div>
-              <h2 className="font-headline-xl text-headline-xl text-on-surface mb-2">Published Books</h2>
-              <p className="font-reading-body text-reading-body text-on-surface-variant">
+              <h2 className="font-headline-xl text-headline-xl text-on-surface dark:text-neutral-100 mb-2">Published Books</h2>
+              <p className="font-reading-body text-reading-body text-on-surface-variant dark:text-neutral-400">
                 Every chapter from {author.displayName}, in publication order.
               </p>
             </div>
-            <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant">
+            <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant dark:text-neutral-400">
               {total} {total === 1 ? 'volume' : 'volumes'}
             </span>
           </div>
 
           {books.length === 0 ? (
-            <p className="text-on-surface-variant py-24 text-center">
+            <p className="text-on-surface-variant dark:text-neutral-400 py-24 text-center">
               {author.displayName} has not published any books yet.
             </p>
           ) : (

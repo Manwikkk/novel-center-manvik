@@ -116,7 +116,7 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
       <div className="flex flex-wrap items-center gap-4">
         {noChapters ? (
           <span
-            className="px-8 py-4 bg-surface-container-high text-on-surface-variant font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded flex items-center gap-2 cursor-not-allowed opacity-70"
+            className="px-8 py-4 bg-neutral-200 dark:bg-neutral-800 text-ink-600 dark:text-neutral-400 font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded flex items-center gap-2 cursor-not-allowed opacity-70"
             title="No chapters published yet"
           >
             <Icon name="menu_book" size={20} />
@@ -125,7 +125,7 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
         ) : (
           <Link
             href={user ? `/read/${firstReadable.id}` : `/auth/login?next=/books/${book.slug}`}
-            className="px-8 py-4 bg-primary text-on-primary font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:bg-on-surface-variant transition-colors flex items-center gap-2"
+            className="px-8 py-4 bg-ink-900 text-white dark:bg-white dark:text-black font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:opacity-90 transition-colors flex items-center gap-2"
           >
             <Icon name="menu_book" size={20} />
             Start Reading
@@ -138,8 +138,8 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
           aria-pressed={inLibrary}
           className={
             inLibrary
-              ? 'px-8 py-4 bg-surface-container-high text-on-surface font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:bg-surface-container-highest transition-colors flex items-center gap-2 border border-outline-variant disabled:opacity-60'
-              : 'px-8 py-4 bg-transparent border border-outline text-on-surface font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:bg-surface-container-low transition-colors flex items-center gap-2 disabled:opacity-60'
+              ? 'px-8 py-4 bg-neutral-200 dark:bg-neutral-800 text-ink-900 dark:text-neutral-100 font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-colors flex items-center gap-2 border border-neutral-300 dark:border-neutral-600 disabled:opacity-60'
+              : 'px-8 py-4 bg-transparent border border-neutral-400 dark:border-neutral-600 text-ink-900 dark:text-neutral-100 font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors flex items-center gap-2 disabled:opacity-60'
           }
         >
           <Icon name={inLibrary ? 'bookmark' : 'bookmark_add'} filled={inLibrary} size={20} />
@@ -154,9 +154,9 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
     return (
       <>
         {chapters.length === 0 ? (
-          <p className="text-on-surface-variant py-10">This book has no published chapters yet.</p>
+          <p className="text-ink-600 dark:text-neutral-400 py-10">This book has no published chapters yet.</p>
         ) : (
-          <div className="flex flex-col border border-surface-variant bg-surface-container-lowest rounded-lg overflow-hidden shadow-sm">
+          <div className="flex flex-col border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 rounded-lg overflow-hidden shadow-sm">
             {visible.map((ch, i) => (
               <ChapterRow
                 key={ch.id}
@@ -174,7 +174,7 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="font-ui-label-lg text-ui-label-lg text-on-surface hover:text-on-surface-variant underline decoration-outline-variant underline-offset-4 transition-colors"
+              className="font-ui-label-lg text-ui-label-lg text-ink-900 dark:text-neutral-100 hover:text-ink-600 dark:hover:text-neutral-400 underline decoration-neutral-400 dark:decoration-neutral-600 underline-offset-4 transition-colors"
             >
               {showAll ? 'Collapse Chapters' : `View All ${chapters.length} Chapters`}
             </button>
@@ -208,15 +208,15 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
 
   const Body = (
     <div className="flex items-center gap-6 min-w-0 flex-1">
-      <span className="font-ui-label-sm text-ui-label-sm text-on-surface-variant w-12 opacity-50 shrink-0">
+      <span className="font-ui-label-sm text-ui-label-sm text-ink-500 dark:text-neutral-500 w-12 opacity-50 shrink-0">
         {String(chapter.idx).padStart(2, '0')}
       </span>
       <div className="min-w-0">
-        <h3 className="font-ui-label-lg text-ui-label-lg text-on-surface flex items-center gap-2 truncate">
+        <h3 className="font-ui-label-lg text-ui-label-lg text-ink-900 dark:text-neutral-100 flex items-center gap-2 truncate">
           {chapter.title}
-          {locked && <Icon name="lock" size={16} className="text-on-surface-variant" />}
+          {locked && <Icon name="lock" size={16} className="text-ink-500 dark:text-neutral-500" />}
         </h3>
-        <p className="font-ui-label-sm text-ui-label-sm text-on-surface-variant mt-1 truncate">
+        <p className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400 mt-1 truncate">
           {dateLabel}
         </p>
       </div>
@@ -226,8 +226,8 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
   return (
     <div
       className={`flex items-center justify-between p-6 transition-colors gap-4 ${
-        isLast ? '' : 'border-b border-surface-variant'
-      } ${locked ? 'bg-surface opacity-90 hover:opacity-100' : 'hover:bg-surface-container-low'} group`}
+        isLast ? '' : 'border-b border-neutral-200 dark:border-neutral-800'
+      } ${locked ? 'bg-neutral-50 dark:bg-neutral-900/80 opacity-90 hover:opacity-100' : 'hover:bg-neutral-50 dark:hover:bg-neutral-900/50'} group`}
     >
       {locked ? (
         <div className="flex items-center gap-6 min-w-0 flex-1">{Body}</div>
@@ -239,7 +239,7 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
 
       <div className="flex items-center gap-4 shrink-0">
         {free && (
-          <span className="px-2 py-1 bg-surface-container-high text-on-surface-variant font-ui-label-sm uppercase rounded text-[10px]">
+          <span className="px-2 py-1 bg-neutral-200 dark:bg-neutral-800 text-ink-700 dark:text-neutral-300 font-ui-label-sm uppercase rounded text-[10px]">
             Free
           </span>
         )}
@@ -260,7 +260,7 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
               type="button"
               onClick={() => onUnlockClick?.(chapter)}
               disabled={busy}
-              className="px-4 py-2 bg-on-surface text-surface font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-surface-tint transition-colors text-[10px] disabled:opacity-60"
+              className="px-4 py-2 bg-ink-900 text-white dark:bg-white dark:text-black font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:opacity-90 transition-colors text-[10px] disabled:opacity-60"
             >
               Unlock
             </button>
@@ -269,7 +269,7 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
         {!free && chapter.isUnlocked && (
           <Link
             href={`/read/${chapter.id}`}
-            className="px-4 py-2 border border-outline text-on-surface font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-surface-container-high transition-colors text-[10px]"
+            className="px-4 py-2 border border-neutral-400 dark:border-neutral-600 text-ink-900 dark:text-neutral-100 font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors text-[10px]"
           >
             Read
           </Link>

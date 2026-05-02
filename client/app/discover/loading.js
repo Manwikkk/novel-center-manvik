@@ -4,7 +4,7 @@ import { Skeleton, SkeletonGrid } from '@/components/ui/Skeleton';
 
 export default function DiscoverLoading() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-black">
       <SiteHeader variant="solid" />
       <main className="mx-auto max-w-shell w-full px-4 md:px-edge py-12 md:py-16">
         <Skeleton className="h-3 w-24" />
