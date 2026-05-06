@@ -34,19 +34,19 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
   const pushToast = useUiStore((s) => s.pushToast);
 
   useEffect(() => {
-    if (!user) {
-      setInLibrary(false);
-      return undefined;
-    }
     let cancelled = false;
     api.get(`/books/${book.id}/chapters`)
       .then((data) => { if (!cancelled) setChapters(data.items || []); })
       .catch(() => { /* keep server-rendered list */ });
-    refreshWallet();
-    if (mode === 'cta' || mode === 'all') {
-      libraryApi.contains([book.id])
-        .then((r) => { if (!cancelled) setInLibrary(Boolean(r?.items?.[book.id])); })
-        .catch(() => { /* leave default */ });
+    if (user) {
+      refreshWallet();
+      if (mode === 'cta' || mode === 'all') {
+        libraryApi.contains([book.id])
+          .then((r) => { if (!cancelled) setInLibrary(Boolean(r?.items?.[book.id])); })
+          .catch(() => { /* leave default */ });
+      }
+    } else {
+      setInLibrary(false);
     }
     return () => { cancelled = true; };
   }, [book.id, user, refreshWallet, mode]);

@@ -14,30 +14,30 @@ export default function CommentItem({ node, currentUser, onReply, onDelete, dept
   const isHidden = node.status === 'hidden';
 
   return (
-    <div className={depth > 0 ? 'pl-6 border-l border-ink-200/60' : ''}>
+    <div className={depth > 0 ? 'pl-6 border-l border-ink-200/60 dark:border-neutral-800' : ''}>
       <div className="flex gap-3">
         <Avatar name={node.author?.displayName} src={node.author?.avatarUrl} size={36} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-serif text-[16px] text-ink-900">
+            <p className="font-serif text-[16px] text-ink-900 dark:text-neutral-100">
               {node.author?.displayName || 'Reader'}
             </p>
-            <span className="text-[12px] text-ink-400">{formatRelative(node.createdAt)}</span>
+            <span className="text-[12px] text-ink-400 dark:text-neutral-500">{formatRelative(node.createdAt)}</span>
           </div>
-          <div className="mt-2 text-[15px] text-ink-700 whitespace-pre-line">
-            {isDeleted ? <em className="text-ink-400">[comment removed]</em>
-              : isHidden ? <em className="text-ink-400">[hidden by moderator]</em>
+          <div className="mt-2 text-[15px] text-ink-700 dark:text-neutral-300 whitespace-pre-line">
+            {isDeleted ? <em className="text-ink-400 dark:text-neutral-500">[comment removed]</em>
+              : isHidden ? <em className="text-ink-400 dark:text-neutral-500">[hidden by moderator]</em>
               : node.body}
           </div>
           {!isDeleted && !isHidden && (
             <div className="mt-3 flex items-center gap-4">
               {currentUser && (
-                <button onClick={() => setReplying((v) => !v)} className="label-sm text-ink-400 hover:text-ink-900">
+                <button onClick={() => setReplying((v) => !v)} className="label-sm text-ink-400 dark:text-neutral-500 hover:text-ink-900 dark:hover:text-neutral-200">
                   {replying ? 'Cancel' : 'Reply'}
                 </button>
               )}
               {(isOwner || isAdmin) && (
-                <button onClick={() => onDelete?.(node.id)} className="label-sm text-ink-400 hover:text-danger">
+                <button onClick={() => onDelete?.(node.id)} className="label-sm text-ink-400 dark:text-neutral-500 hover:text-danger">
                   Delete
                 </button>
               )}

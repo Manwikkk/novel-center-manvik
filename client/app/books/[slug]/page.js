@@ -3,12 +3,14 @@ import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
 import Icon from '@/components/ui/Icon';
 import BookDetailClient from './BookDetailClient';
+import BookTabsClient from './BookTabsClient';
+import YouMayAlsoLikeSection from '@/components/book/YouMayAlsoLikeSection';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 async function fetchBook(slug) {
   try {
-    const r = await fetch(`${API}/api/v1/books/${slug}`, { next: { revalidate: 30 } });
+    const r = await fetch(`${API}/api/v1/books/${slug}`, { cache: 'no-store' });
     if (!r.ok) return null;
     return await r.json();
   } catch (_e) {
@@ -18,11 +20,24 @@ async function fetchBook(slug) {
 
 async function fetchChapters(bookId) {
   try {
-    const r = await fetch(`${API}/api/v1/books/${bookId}/chapters`, { next: { revalidate: 30 } });
+    const r = await fetch(`${API}/api/v1/books/${bookId}/chapters`, { cache: 'no-store' });
     if (!r.ok) return { items: [] };
     return await r.json();
   } catch (_e) {
     return { items: [] };
+  }
+}
+
+async function fetchMoreLike(slug) {
+  const params = new URLSearchParams({ pageSize: '14', status: 'published' });
+  try {
+    const r = await fetch(`${API}/api/v1/books?${params}`, { cache: 'no-store' });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const items = Array.isArray(data?.items) ? data.items : [];
+    return items.filter((b) => b?.slug && b.slug !== slug);
+  } catch (_e) {
+    return [];
   }
 }
 
@@ -46,6 +61,7 @@ export default async function BookDetailPage({ params }) {
   const book = data.book;
   const ch = await fetchChapters(book.id);
   const initialChapters = ch.items || [];
+  const moreLike = await fetchMoreLike(slug);
 
   // Naive per-book stats so the badges aren't blank if the API doesn't
   // surface them. These are visual fillers, not source-of-truth.
@@ -58,64 +74,71 @@ export default async function BookDetailPage({ params }) {
       <SiteHeader />
 
       <main className="flex-grow pt-24 md:pt-28 pb-32 max-w-[1280px] mx-auto px-4 md:px-edge w-full">
-        {/* HERO */}
-        <section className="grid grid-cols-1 md:grid-cols-12 gap-gutter mb-16">
-          <div className="md:col-span-5 lg:col-span-4">
-            <div className="relative w-full aspect-[2/3] bg-neutral-100 dark:bg-neutral-900 rounded border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+        {/* HERO (WebNovel-like compact layout) */}
+        <section className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 md:gap-10 items-start mb-14 md:mb-16">
+          <div className="w-full md:w-[240px]">
+            <div className="relative w-full aspect-[3/4] bg-neutral-100 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
               {book.coverUrl ? (
-                <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+                <img
+                  src={book.coverUrl}
+                  alt={book.title}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <div className="w-full h-full flex items-center justify-center font-serif text-ink-500 dark:text-neutral-500 text-7xl">
+                <div className="w-full h-full flex items-center justify-center font-serif text-ink-500 dark:text-neutral-500 text-6xl">
                   {book.title?.[0] || 'N'}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="md:col-span-7 lg:col-span-8 flex flex-col justify-center py-8 md:pl-8">
-            <div className="flex items-center gap-3 mb-6 flex-wrap">
-              {book.category && (
-                <Chip>{book.category}</Chip>
-              )}
-              {book.status === 'published' && <Chip>Published</Chip>}
-            </div>
-
-            <h1 className="font-display-lg text-[44px] sm:text-[56px] md:text-display-lg text-ink-900 dark:text-neutral-100 mb-2">
+          <div className="min-w-0 pt-1">
+            <h1 className="font-sans font-bold text-3xl sm:text-4xl md:text-[42px] leading-tight text-ink-900 dark:text-neutral-100">
               {book.title}
             </h1>
-            <p className="font-headline-md text-headline-md text-ink-600 dark:text-neutral-400 italic mb-8">
-              By {book.authorName}
-            </p>
 
-            <div className="flex items-center gap-6 mb-10 flex-wrap">
-              <StarRating rating={rating} reviews={reviews} />
-              <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-700" />
-              <div className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400">
-                {pages} Pages
-              </div>
-              <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-700" />
-              <div className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400 uppercase tracking-widest">
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-ink-600 dark:text-neutral-400">
+              <span className="inline-flex items-center gap-2 text-sm">
+                <Icon name="category" size={18} className="opacity-80" />
+                {book.category || 'Novel'}
+              </span>
+              <span className="inline-flex items-center gap-2 text-sm">
+                <Icon name="menu_book" size={18} className="opacity-80" />
                 {initialChapters.length} Chapters
-              </div>
+              </span>
+              <span className="inline-flex items-center gap-2 text-sm">
+                <Icon name="visibility" size={18} className="opacity-80" />
+                60.1K Views
+              </span>
             </div>
 
-            <p className="prose max-w-reading-max font-reading-body text-reading-body text-ink-600 dark:text-neutral-400 mb-12 line-clamp-4">
-              {book.synopsis}
+            <p className="mt-3 text-sm text-ink-600 dark:text-neutral-400">
+              Author:{' '}
+              <span className="text-[#2f6bff] hover:opacity-80 transition-opacity">
+                {book.authorName || 'Anonymous'}
+              </span>
             </p>
 
-            <BookDetailClient book={book} initialChapters={initialChapters} mode="cta" />
+            <div className="mt-4 flex items-center gap-3">
+              <StarRating rating={rating} reviews={reviews} />
+            </div>
+
+            <div className="mt-6">
+              <BookDetailClient book={book} initialChapters={initialChapters} mode="cta" />
+            </div>
           </div>
         </section>
 
         <div className="h-px w-full bg-neutral-200 dark:bg-neutral-800 my-16" />
 
-        {/* CHAPTERS + AUTHOR SIDEBAR */}
+        {/* ABOUT / TOC (tabs) + AUTHOR SIDEBAR */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
           <div className="col-span-1 lg:col-span-8">
-            <h2 className="font-headline-xl text-headline-xl text-ink-900 dark:text-neutral-100 mb-8">
-              Table of Contents
-            </h2>
-            <BookDetailClient book={book} initialChapters={initialChapters} mode="toc" />
+            <BookTabsClient
+              book={book}
+              toc={<BookDetailClient book={book} initialChapters={initialChapters} mode="toc" />}
+            />
           </div>
 
           <aside className="col-span-1 lg:col-span-4 mt-12 lg:mt-0">
@@ -127,6 +150,8 @@ export default async function BookDetailPage({ params }) {
             />
           </aside>
         </div>
+
+        <YouMayAlsoLikeSection items={moreLike} />
 
         <div className="mt-24">
           <BookDetailClient book={book} initialChapters={initialChapters} mode="comments" />

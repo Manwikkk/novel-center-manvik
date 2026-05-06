@@ -30,6 +30,7 @@ export default function BookCard({ book, layout = 'vertical', className, kicker 
         <img
           alt={book.title}
           src={cover}
+          referrerPolicy="no-referrer"
           className="w-12 aspect-[2/3] object-cover rounded-[2px] shadow-sm group-hover:shadow-md transition-shadow"
         />
         <div className="min-w-0">
@@ -62,6 +63,7 @@ export default function BookCard({ book, layout = 'vertical', className, kicker 
           <img
             alt={book.title}
             src={cover}
+            referrerPolicy="no-referrer"
             className="w-full aspect-[2/3] object-cover rounded shadow-book group-hover:-translate-y-2 transition-transform duration-300"
           />
           <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors rounded" />
@@ -89,6 +91,7 @@ export default function BookCard({ book, layout = 'vertical', className, kicker 
         <img
           alt={book.title}
           src={cover}
+          referrerPolicy="no-referrer"
           className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all duration-700 scale-100 group-hover:scale-105"
         />
       </div>

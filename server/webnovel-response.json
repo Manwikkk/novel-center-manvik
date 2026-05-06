@@ -1,0 +1,1184 @@
+{
+    "code": 0,
+    "data": {
+        "pageId": "5fffe5a1af867252d05d690f",
+        "bookCityName": "PC Male Lead",
+        "blockItems": [
+            {
+                "id": "6007e6b4efbaab775677cb39",
+                "title": "",
+                "subTitle": "",
+                "type": "7001",
+                "contentItems": [],
+                "subBlockNum": 2
+            },
+            {
+                "id": "66eb9b3b449c041422f0c877",
+                "title": "Weekly Featured",
+                "subTitle": "",
+                "type": "7003",
+                "contentItems": [
+                    {
+                        "id": "62e0e647fa4dd01e06658559",
+                        "title": "",
+                        "subTitle": "",
+                        "type": "2005",
+                        "background": "",
+                        "contentId": "69eb1858013ad81614e9e910",
+                        "contentItems": [
+                            {
+                                "bookType": 0,
+                                "id": "35053048700609305",
+                                "name": "I Have a Modern Weapon Gacha System in the Zombie Apocalypse",
+                                "categoryId": 70006,
+                                "categoryName": "Sci-fi",
+                                "coverUpdateTime": 1770633805368,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34963874700127505",
+                                "name": "Harem Online: My Party Is Full of Beautiful Celebrities",
+                                "categoryId": 70008,
+                                "categoryName": "Games",
+                                "coverUpdateTime": 1777606528379,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34177509400730205",
+                                "name": "Engagement Canceled: I Can Extract Prefixes",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1765441854340,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "32608793200298405",
+                                "name": "Formula 1: The GOAT",
+                                "categoryId": 70007,
+                                "categoryName": "Sports",
+                                "coverUpdateTime": 1746293014692,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "33465461500945205",
+                                "name": "Mystic Eyes: My Eyes Steal the Laws of Cultivation",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1754874920293,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34771191700870405",
+                                "name": "My Ultimate OP System: Summoning All Dragons, Gods, Heroes & Villains",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777677102071,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34801066100490105",
+                                "name": "Last Gun Alchemist",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1771964454942,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34709131300072805",
+                                "name": "I Just Wanted to Teach Cultivation, But Goddesses Keep Coming!",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1767201642276,
+                                "chapterNum": 0
+                            }
+                        ],
+                        "changeable": true,
+                        "apiType": 0,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": 0,
+                            "days": 0,
+                            "sourceType": 0
+                        },
+                        "recomBookName": "",
+                        "order": 0
+                    }
+                ],
+                "subBlockNum": 1
+            },
+            {
+                "id": "644a3e9d177ec9485fdcb92d",
+                "title": "Top Fanfic Tags",
+                "subTitle": "",
+                "type": "7007",
+                "contentItems": [
+                    {
+                        "id": "644a3df6e7ec7c06bbd95d6a",
+                        "title": "",
+                        "subTitle": "",
+                        "type": "3003",
+                        "background": "",
+                        "contentId": "644a3e0f177ec9485fdcb92c",
+                        "contentItems": [
+                            {
+                                "tagId": 41000057,
+                                "tagName": "ISEKAI",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000059,
+                                "tagName": "ANIME",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000069,
+                                "tagName": "NARUTO",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000197,
+                                "tagName": "MARVEL",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000091,
+                                "tagName": "YAOI",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41001958,
+                                "tagName": "ONE PIECE",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000413,
+                                "tagName": "HARRY POTTER",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41001289,
+                                "tagName": "YURI",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41006270,
+                                "tagName": "MY HERO ACADEMIA",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000038,
+                                "tagName": "DC",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000232,
+                                "tagName": "POKEMON",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000158,
+                                "tagName": "BNHA",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 51066151,
+                                "tagName": "GAME OF THRONES",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 51066140,
+                                "tagName": "DANMACHI",
+                                "sex": 3
+                            }
+                        ],
+                        "changeable": false,
+                        "apiType": 0,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": -1,
+                            "days": -1,
+                            "sourceType": -1
+                        },
+                        "recomBookName": "",
+                        "order": 0
+                    }
+                ],
+                "subBlockNum": 1
+            },
+            {
+                "id": "5fffded3af867252d05d68fb",
+                "title": "Potential Starlet",
+                "subTitle": "",
+                "type": "7003",
+                "contentItems": [
+                    {
+                        "id": "618b7c69f4ac042ae9230db0",
+                        "title": "",
+                        "subTitle": "",
+                        "type": "2005",
+                        "background": "",
+                        "contentId": "618b7c69f4ac042ae9230db1",
+                        "contentItems": [
+                            {
+                                "bookType": 0,
+                                "id": "35681883100567705",
+                                "name": "I Devour Souls to Level-Up Endlessly",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777072221883,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35669960800329605",
+                                "name": "Two Souls,One Life",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777268754502,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35690192908654005",
+                                "name": "Limitless Evolution: I Can Summon Villains With My SSS-Rank Talent",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777605992360,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35527001708755405",
+                                "name": "Rifts: Why Choosen Ones are my enemy?",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777706018683,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35669165708281005",
+                                "name": "My Ultimate OP System: I Can Copy ANY Talent",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777301204333,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35511276500537405",
+                                "name": "Lust Town",
+                                "categoryId": 70010,
+                                "categoryName": "Realistic",
+                                "coverUpdateTime": 1776068036051,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35735659700463805",
+                                "name": "THE SCAPEGOAT TURNED MONSTER",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777466598373,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34075873008483305",
+                                "name": "Murdering System",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777549437488,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35702777808885705",
+                                "name": "The Maid Who Came to Kill Me",
+                                "categoryId": 70001,
+                                "categoryName": "Urban",
+                                "coverUpdateTime": 1777222025388,
+                                "chapterNum": 0
+                            }
+                        ],
+                        "changeable": false,
+                        "apiType": 9,
+                        "apiParam": "{\"wordsType\":11}",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": 0,
+                            "days": 0,
+                            "sourceType": 1
+                        },
+                        "recomBookName": "",
+                        "order": 0
+                    }
+                ],
+                "subBlockNum": 1
+            },
+            {
+                "id": "5fffe4c2af867252d05d6907",
+                "title": "",
+                "subTitle": "",
+                "type": "7004",
+                "contentItems": [
+                    {
+                        "id": "634a81f13039023878674ccc",
+                        "title": "Rising Fictions",
+                        "subTitle": "",
+                        "type": "2005",
+                        "background": "",
+                        "contentId": "6863c5f989b626420e7504ca",
+                        "contentItems": [
+                            {
+                                "bookType": 0,
+                                "id": "35147273900927805",
+                                "name": "Investing in My Crippled Wife: Every Return Makes Me Stronger",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1771583719319,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "30213360806403705",
+                                "name": "Corrupted blood lord",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1776895600815,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35559784400330505",
+                                "name": "Transmigrated as the Villain: I Will Destroy Fate",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1775689936181,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35460563000367305",
+                                "name": "Infinite Evolution: Dominating The Apocalypse With My God Tier Items",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1774701080934,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35545887000096105",
+                                "name": "Ghost's Viewpoint",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777202214299,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35496895100001605",
+                                "name": "A Necromancer's Guide to Clearing a Game Like Tower",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1775057072629,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35529625308800505",
+                                "name": "The Ten Thousand Deaths : 1000x Exp System",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1776746979566,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35274301308883105",
+                                "name": "My Ultimate Summoning System: I have an Infinite Evolving Slime",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1777549226678,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35552321800222905",
+                                "name": "Living With My Yandere Professor",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1775620663034,
+                                "chapterNum": 0
+                            }
+                        ],
+                        "changeable": true,
+                        "apiType": 50,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": 0,
+                            "days": 0,
+                            "sourceType": 1
+                        },
+                        "recomBookName": "",
+                        "order": 0
+                    },
+                    {
+                        "id": "62e0e647fa4dd01e06658581",
+                        "title": "Cheering Reads",
+                        "subTitle": "",
+                        "type": "2005",
+                        "background": "",
+                        "contentId": "69eb1909d18633105b491f5e",
+                        "contentItems": [
+                            {
+                                "bookType": 0,
+                                "id": "34707796708188905",
+                                "name": "Four Of A Kind",
+                                "categoryId": 70010,
+                                "categoryName": "Realistic",
+                                "coverUpdateTime": 1776047970990,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "33465461500945205",
+                                "name": "Mystic Eyes: My Eyes Steal the Laws of Cultivation",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1754874920293,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "31110722900864905",
+                                "name": "Primordial Chaos Dragon Tower: Harem System",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1754317379381,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34992556800612605",
+                                "name": "Strongest Lord by Opening Blind Boxes",
+                                "categoryId": 70008,
+                                "categoryName": "Games",
+                                "coverUpdateTime": 1775533787398,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34390965108485505",
+                                "name": "SSS Ranked Shadow Monarch: Summoning Infinite Shadows",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1771653191046,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "35233935300292505",
+                                "name": "Rise in the Martial Chaos: Starting From a Martial Arts School",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1775546489466,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34992521700612005",
+                                "name": "Wizard: Building a Golem Legion From Zero",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1775615232270,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "34801066100490105",
+                                "name": "Last Gun Alchemist",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1771964454942,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "32620003700417905",
+                                "name": "Raising My Trash Ability into a Broken SSS+ Rank Skill",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1773412616656,
+                                "chapterNum": 0
+                            }
+                        ],
+                        "changeable": true,
+                        "apiType": 0,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": 0,
+                            "days": 0,
+                            "sourceType": 0
+                        },
+                        "recomBookName": "",
+                        "order": 1
+                    }
+                ],
+                "subBlockNum": 2
+            },
+            {
+                "id": "5fffe43eaf867252d05d6906",
+                "title": "",
+                "subTitle": "",
+                "type": "7008",
+                "contentItems": null,
+                "subBlockNum": 0
+            },
+            {
+                "id": "60056830d5f17a2da7fcdf66",
+                "title": "",
+                "subTitle": "",
+                "type": "7004",
+                "contentItems": [
+                    {
+                        "id": "61923997f4ac042ae9231030",
+                        "title": "New Arrivals",
+                        "subTitle": "",
+                        "type": "1006",
+                        "background": "",
+                        "contentId": "6486eb157edc003bf5b04f14",
+                        "contentItems": [
+                            {
+                                "bookId": "26425568806315205",
+                                "bookName": "When the Moon and Sun Collide: The Eclipse",
+                                "categoryName": "Fantasy",
+                                "categoryId": 70016,
+                                "authorName": "Jadeh_Tolentino",
+                                "score": "0.00",
+                                "description": "Legend says that when the daughter of Mayari, the Moon Goddess, meets the son of Apolaki, the god of the Sun, at the end of the world, the world shall face its rebirth. But when the Bakunawa threatens to swallow the Moon once again, Luna shall find the son of Apolaki quick. With the power of the Goddess and her friend that radiates warmth like the sun, they will travel to save the world, once and for all. The question is, will they have enough time?",
+                                "coverUpdateTime": 1684300676725,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookId": "25759691806048405",
+                                "bookName": "And Then He Became My Youth",
+                                "categoryName": "LGBT+",
+                                "categoryId": 70019,
+                                "authorName": "Riceballs_25",
+                                "score": "0.00",
+                                "description": "Crossdressing to save his sister!\r\n\r\nThe young miss is now played by the young master!\r\n\r\nDetermined to help his sister and save face, the shut-in, homeschooled twin brother returns from abroad, and changes his identify.\r\n\r\nLuó Xiang who has always lived in his sister's shadow and done everything she says finds himself in a dilemma, when the head of the Luó family asks young miss Luó to come home. \r\nBut this is her reply...\r\n\"Hey, Xiang, come trade places with me!\" \r\n\r\nAt first it was just a joke, trying on her clothes and learning how to put on makeup. Until one morning his sister ups and leaves without a trace, leaving behind a note. \r\n\r\nIt's Luó Xiang's first time in an actual school and at that he's a girl! \r\n\r\n\"You'll never believe it! Luó Xia was caught inside the boy's bathroom.\"\r\n\"That's nothing, she beat up all the delinquent boys in class C after school!\"\r\n\"Isn't she getting too cozy with the boys at school?\" \r\n\r\nLuó Xiang couldn't care less what his classmates thought about him, and just wants to graduate, so he can return to the states. \r\nBut then there's him.\r\n\r\nHan Zixuan. \r\n\"Teacher Han, I really don't want to help you after class, find somebody else.\" Luó Xia(ng) protested, already turning to leave. \r\n\r\n\"Student Luó, should I abuse my power and force you instead?\" \r\n\r\n\"How shameless can you be?!\" \r\n\r\nWhile helping with grading papers...\r\n\"How old are you now?\" Han Zixuan asks.\r\n\"Pervert.\" Luó Xia(ng) says with a flat face.\r\n\"How old?\" He insists.\r\n\"Seventeen.\" \r\n\"I'll woo you for now, in a year's time, let's date!\" \r\n\"...\" \r\nLuó Xiang had never expected that back home he would have to fight off a 'perverted' twenty four year old man, determined to make him his 'wife' no matter what! \r\n\r\nThe teacher-student love story begins, with a mysterious teacher whose real identity remains a secret. And the top scorer who has an even bigger secret!",
+                                "coverUpdateTime": 1677639204414,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookId": "26471550406457005",
+                                "bookName": "Dark Alpha's Maiden",
+                                "categoryName": "Fantasy",
+                                "categoryId": 70016,
+                                "authorName": "Golden_Butterfly1",
+                                "score": "4.59",
+                                "description": "(COMPLETED)\r\n\r\n[Warning: Mature Content] This story contains many adult themes and is not intended for readers under the age of (18)\r\n\r\n\r\n“Let me make something crystal clear for you to understand. You are here to be my play toy, my entertainment… if I no longer find you useful, it won’t take me even a second of hesitation to end your useless existence!” \r\n\r\nHis statement was a clear indication of his abusive and manipulative behavior. This was unacceptable! Everyone deserves to be treated with respect and dignity, and no one should ever feel threatened or devalued by someone else. \r\n\r\nI stared defiantly at him but remained silent as he continued, “Your life belongs to me now; you will do what I say, how I say it, when I say it and maybe….” his other hand leisurely roamed from my thighs to my chest.\r\n\r\nI bit my lip to retain the moan that wanted to escape my mouth. Despite hating how I was being treated, I couldn’t help lusting over this hot, sadistic killer Alpha.  \r\n\r\n“Maybe I will keep finding some good use for you.” He grinned at me, revealing his sharp Canines threateningly.\r\n\r\n*****\r\n\r\nLana is an orphan whose parents left her in the impoverished town of Maderva when she was still only a baby.  \r\n\r\nThe sweet old lady who raised her when no one wanted anything to do with her sadly passed away when she turned 18.\r\n\r\nThere's always been this nagging feeling in her that there's more to life than meets the eye. Even as a young girl, she stood out because she could do things that most girls her age couldn't even dream of.\r\n\r\nShe is smarter and stronger than her peers, and even their elders have trouble keeping up with her.\r\n\r\nOne day, Lana and her best friend are forced into the perils of the forest as their only means of survival. However, the forest is the last spot on Earth they should ever enter.\r\n\r\nIs Lana and her best friend really taking a chance by venturing into this hostile territory? Will she be sorry she had to make such a life-or-death decision?\r\n\r\nAdd this thrilling piece to your collection to learn more about it. \r\n\r\n****\r\n\r\nYour support through Powerstone votes, Golden Ticket contributions, and reviews is highly valued. Thank you for your support!",
+                                "coverUpdateTime": 1730020428292,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookId": "12305673305229005",
+                                "bookName": "Good Gone Bad",
+                                "categoryName": "General",
+                                "categoryId": 70005,
+                                "authorName": "ReinaRay729",
+                                "score": "4.92",
+                                "description": "Rachael was living a regular ordinary life, she thought that having her heart broken was the biggest of her worries. Until she returns to her hometown to have the biggest burdens on her shoulders, will she find the strength to fight on, or will it make her crumble in the end?",
+                                "coverUpdateTime": 1598575755907,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookId": "26455373506404305",
+                                "bookName": "The CEO'S SURROGATE BABY MAMA",
+                                "categoryName": "Urban",
+                                "categoryId": 70014,
+                                "authorName": "Pen_Saint",
+                                "score": "0.00",
+                                "description": "After a drastic accident which rid her father of his job, Rose Monroe has to go into hustling to fend for the family.\r\n Out of options, she opts as a surrogate baby man for an unknown 'rich man'\r\n Yes, she got laid. Yes she gave birth to his kids. But that was all business.\r\n Yet why is he coming for more?!",
+                                "coverUpdateTime": 1684595364112,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookId": "26405287305009005",
+                                "bookName": "The Vampire King’s little obsession",
+                                "categoryName": "Fantasy",
+                                "categoryId": 70016,
+                                "authorName": "Little_North_Star",
+                                "score": "4.81",
+                                "description": "~Even if you were are an item, you can only be mine. No one else can have you not even death can take you away from me.~\r\n\r\nHe was her sin and joy, she was his obsession.\r\n\r\nFrom the moment Devany crossed his path, she was fated to be his.\r\n\r\nSlyvian Hawthorne,Prince of the underworld, born from a demon father and Vampire Mother had set his eyes on Devany and he would anything and everything to keep her by his side.\r\n\r\n****\r\n\"Even if you were an item, you can only be mine,\" his husky voice rang out, sending shivers running down her spine.\r\n\r\n\"From the moment you came into this world your fate was sealed with me.\"\r\n\r\n\"I can decide for myself,\" Devany spat out weakly.\r\n\"You see, wife. That's where you get it wrong. Not even death can take you away from me. Your body and soul are...\" He inhaled deeply, his warm breath making the hair on her skin to stand on end.\r\n\r\n\"MINE.\"\r\n\r\nMass release \r\nTen Gt for a three chapter release\r\n100 powerstone for two chapters release\r\nJoin our official discord server \r\nhttps://discord.gg/BuPyuDJS",
+                                "coverUpdateTime": 1695214833593,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookId": "26159678706471905",
+                                "bookName": "The Devious King's Desire",
+                                "categoryName": "Fantasy",
+                                "categoryId": 70016,
+                                "authorName": "MayaKeiran",
+                                "score": "4.91",
+                                "description": "[Warning: Mature content. No rape]\n\"Across the past, present, and future, wherever you may hide from me, I will traverse every single timeline to find you and ravish you.\"\n\nPrincess Evangeline Whitlock - an alluring young woman with rare purple eyes and exceptional abilities in medicine. A life of simplicity was all she ever sought. But, unbeknownst to her, destiny had woven a tapestry of fate, gifting her with a power that could sway the very tides of her kingdom. \nHer life takes a tumultuous turn when she meets an accident and mysteriously travels back in time, only to fall into the arms of a man who soon refuses to leave her out of his sight.\nWould Eva succeed in breaking free from the clutches of the devious king, who would stop at nothing to conquer her heart, body, soul, and blood?\n\nKing Maxen Regan - a ruthless, blood-thirsty man, whose mere presence was enough to instill terror in the hearts of his enemies and make them tremble in fear. But beneath his predatory allure lay a shattered and desolate soul, impervious to any efforts of restoration. And the only person who possessed the ability to heal his broken soul was - her.\nUnfortunately, his love was believed to be a curse, and those who dared to fall for him were destined to meet a tragic end.\nCould Maxen save the love of his life from the depths of his own torment?\n________________\n\nExcerpt:\n\n\"Do you really think you can escape from me now, after what you just did?\" his tone held a hint of mocking as he watched her nervously stepping backwards. Lowering his head, he shook it in amusement and his low chuckle echoed throughout the forest, \"Where has the brave girl disappeared to?\"\n\nEva's heart lurched in her chest when she saw him closing the distance between them, slowly advancing towards her like a predator closing in on its prey, ready to pounce.\n\n\"You have the nerve to make me beg you, but you are not brave enough to face the consequences?\" his deep voice sent shivers running down her spine.\n\nShe softly gulped before jutting her chin out, attempting to put on a brave face as if she was not afraid of him. However, her heart betrayed her, and a knowing smirk appeared on his face. \n\nBut in the next moment, the smile on his face vanished, replaced by an expression of hunger. And Eva took another step backwards, only to realize that she had nowhere to escape from this devil when her back hit the bark of a tree behind her.\n\nHer purple eyes closed instinctively when she saw him raise his hand. And her breath hitched as she felt him trace his knuckles across her cheek, before slowly trailing them down the length of her neck, leaving a trail of goosebumps in their wake.\n\n\"Since you want to run away from me, I will give you a chance. You will run... and I will chase you. And if I catch you..,\" he breathed, leaning forward to whisper in her ear, \"I will devour you little by little... until there is nothing left of you.\"\n\nShe shivered, as his hand went to the nape of her neck and his fingers weaved through her midnight hair, causing a hurricane to stir inside her chest. He forced her to meet his gaze, curling his fingers in her luscious mane and tugging it enough to elicit a mewl from her lips.\n\n\"Now, run, princess. Run as fast as you can and you better pray to god that I don't find you\", a devilish smirk played on his lips as he loosened his grip on her.\n\nSomething akin to a dark desire flashed across his deep red eyes as they slowly started to turn golden yellow, causing Eva's eyes to widen in alarm. A gasp escaped her lips and with her heart hammering against her chest, she swiftly turned around and fled from him.",
+                                "coverUpdateTime": 1684224379448,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookId": "26481987306493005",
+                                "bookName": "The Dragon's Cursed Mate",
+                                "categoryName": "Fantasy",
+                                "categoryId": 70016,
+                                "authorName": "Gigi_Saga",
+                                "score": "4.71",
+                                "description": "\"How can I get rid these feelings? I hate this. I hate that I can't resist you. I hate the fact that I'm obsessed with you. You burn me with the irresistible desire. And now I want you tonight. Under me, moaning my name so I know that you are completely mine.\"\r\n\r\nSYNOPSIS:\r\nWhat would you do if your fated mate hates you just because you are human?\r\n\r\nEdna never knew her family. She was raised by the people who took advantage of her all her life. When she escaped, she stumbled upon the dragon lord who hated humans to the core. Maximilian hated her because she was human, and he hated her more because he couldn't resist her allure... because she was his mate. \r\n\r\nHer scent made him go crazy. He wanted to ravish her every night. He wanted her to scream his name whenever he pound her senseless. \r\n\r\nHowever, he hated the fact that she was human, a cursed one at that. \r\n\r\nSo, he treated her so badly. \r\n\r\nEdna tried to stay away so she wouldn't get hurt, and Maximilian tried to close his heart from softening up to this lowly human, but no matter how much they tried, their bond kept bringing them back together.\r\n\r\nWould Edna finally leave him or would Max change and accept their mate bond?",
+                                "coverUpdateTime": 1684868645601,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookId": "26333286706023605",
+                                "bookName": "Alpha Princess's Family Secret: The Battle of Royalty",
+                                "categoryName": "Fantasy",
+                                "categoryId": 70016,
+                                "authorName": "Chomicho",
+                                "score": "0.00",
+                                "description": "\"As the moon rose high in the sky, I felt my heart racing. It was time. Time to take my place as the rightful heir to the throne. The throne that had been taken from me years ago. But with my loyal companions by my side, I knew I could do it. I took a deep breath and stepped forward, ready to face whatever came my way\".\r\n\r\n**** \r\n\r\nAs far as I'm concerned, being too kind to humanity is poisonous which only brings popularity and bad luck, and that is what killed my parent, King Taylor Harris.\r\n\r\nKaty is a Shewolf in hiding, using a magical suppressant to keep her identity and rightful place on the throne a secret. But when she meets her fated mate, the charming alpha wolf shifter, Arthur Raynott, Katy's world is turned upside down. \r\n\r\nTogether with her shifter best friend Ella, Katy must confront her uncle Cooper and his nefarious plans to ally with a vampire prince and secure his grip on the kingdom. \r\n\r\nBut as Katy and Arthur investigate, they uncover a shocking family secret that threatens to tear apart everything they hold dear. \r\n\r\nWith action, romance, and high-stakes political intrigue, \"Alpha Princess's Family Secret\" is a thrilling tale of destiny, love, betrayal, and redemption.",
+                                "coverUpdateTime": 1683374537521,
+                                "powerNums": 0,
+                                "bookType": 0,
+                                "chapterNum": 0
+                            }
+                        ],
+                        "changeable": false,
+                        "apiType": 0,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": 0,
+                            "days": 0,
+                            "sourceType": 0
+                        },
+                        "recomBookName": "",
+                        "order": 0
+                    },
+                    {
+                        "id": "6194dd99f4ac042ae923124a",
+                        "title": "Editors' Choice",
+                        "subTitle": "",
+                        "type": "2005",
+                        "background": "",
+                        "contentId": "635bd4555ac50e242344caaf",
+                        "contentItems": [
+                            {
+                                "bookType": 0,
+                                "id": "24597355606372505",
+                                "name": "Demon Sword: The Strongest Samurai",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1666526815014,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "24095012106103005",
+                                "name": "Loser's redo: Transmigration in a novel",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1661160459968,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "24601617505110405",
+                                "name": "God of Lust(GoL)",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1666060509077,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "23991483605051605",
+                                "name": "Survive in the parallel world, please!",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1676447831499,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "23993317406291505",
+                                "name": "My Skill Creation System",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1708916802702,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "24248201306338105",
+                                "name": "SSS Class Summoner",
+                                "categoryId": 70008,
+                                "categoryName": "Games",
+                                "coverUpdateTime": 1662723040417,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "24172482506775305",
+                                "name": "My Life as a Villain",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1667036123001,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "24383518105043905",
+                                "name": "The Cults",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1676102572299,
+                                "chapterNum": 0
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "24604803006412305",
+                                "name": "Bloodmancer: Hero of Ruin",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1666089763672,
+                                "chapterNum": 0
+                            }
+                        ],
+                        "changeable": true,
+                        "apiType": 0,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": 0,
+                            "days": 0,
+                            "sourceType": 0
+                        },
+                        "recomBookName": "",
+                        "order": 1
+                    }
+                ],
+                "subBlockNum": 2
+            },
+            {
+                "id": "6048a93defbaab7756780615",
+                "title": "Completed Novel",
+                "subTitle": "",
+                "type": "7003",
+                "contentItems": [
+                    {
+                        "id": "6191338007df4516294c321e",
+                        "title": "",
+                        "subTitle": "",
+                        "type": "2003",
+                        "background": "",
+                        "contentId": "6191338007df4516294c321f",
+                        "contentItems": [
+                            {
+                                "bookType": 0,
+                                "id": "15653272806648205",
+                                "name": "My Vampire System: A Dragon's Revenge",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1741246882906,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"15653272806648205\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_15653272806648205\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 533
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "30598284708132105",
+                                "name": "Fantasy: Empress Wife, Cute Kids Cause Havoc in Jiuzhou",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1730450228634,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"30598284708132105\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_30598284708132105\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 545
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "29631701408613905",
+                                "name": "Sexy Seduction",
+                                "categoryId": 70001,
+                                "categoryName": "Urban",
+                                "coverUpdateTime": 1718347008568,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"29631701408613905\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_29631701408613905\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 526
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "29638803808867105",
+                                "name": "My Fairy Growth System",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1724294098678,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"29638803808867105\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_29638803808867105\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 571
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "28648289308788405",
+                                "name": "The King of Beast Trainers",
+                                "categoryId": 70001,
+                                "categoryName": "Urban",
+                                "coverUpdateTime": 1710408655098,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"28648289308788405\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_28648289308788405\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 1041
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "26961813505875405",
+                                "name": "Mythical Era: My Electric Eel Clone Can Evolve Infinitely",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1689736390649,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"26961813505875405\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_26961813505875405\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 135
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "29638803200639105",
+                                "name": "Super Zoo",
+                                "categoryId": 70001,
+                                "categoryName": "Urban",
+                                "coverUpdateTime": 1719569667433,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"29638803200639105\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_29638803200639105\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 834
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "18692461205610605",
+                                "name": "The Silver Bullet",
+                                "categoryId": 70004,
+                                "categoryName": "Horror",
+                                "coverUpdateTime": 1606966216342,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"18692461205610605\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_18692461205610605\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 34
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "18398378106668805",
+                                "name": "Long Live The Emperor!",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1611889795812,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"18398378106668805\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_18398378106668805\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 851
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "18162952206671005",
+                                "name": "Brockwing Vale",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1604759059314,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"18162952206671005\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_18162952206671005\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 320
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "16990056705045105",
+                                "name": "Sword Saints Should Go Tank",
+                                "categoryId": 70009,
+                                "categoryName": "Eastern",
+                                "coverUpdateTime": 1601460595315,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"16990056705045105\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_16990056705045105\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 610
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "19004783005905905",
+                                "name": "Another Stupid Isekai",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1662311928373,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"19004783005905905\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_19004783005905905\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 948
+                            },
+                            {
+                                "bookType": 0,
+                                "id": "30790394600378505",
+                                "name": "Reborn as the Villain in a Romance Fantasy",
+                                "categoryId": 70002,
+                                "categoryName": "Fantasy",
+                                "coverUpdateTime": 1735574679476,
+                                "statParams": "{\"V\":\"1\",\"alg\":\"181.0.1\",\"expid\":33002,\"itemid\":\"30790394600378505\",\"logid\":8297973522393891850,\"origin\":\"12058\",\"preitemid\":\"b_30790394600378505\",\"scene\":\"completed\",\"type\":\"0\",\"version\":\"0\"}",
+                                "chapterNum": 298
+                            }
+                        ],
+                        "changeable": false,
+                        "apiType": 8,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": 0,
+                            "days": 500,
+                            "sourceType": 1
+                        },
+                        "recomBookName": "",
+                        "order": 0
+                    }
+                ],
+                "subBlockNum": 1
+            },
+            {
+                "id": "5fffe50faf867252d05d6909",
+                "title": "Popular Tags",
+                "subTitle": "",
+                "type": "7007",
+                "contentItems": [
+                    {
+                        "id": "5fffe519615ee3431b09170f",
+                        "title": "",
+                        "subTitle": "",
+                        "type": "3003",
+                        "background": "",
+                        "contentId": "6449040da851036d983813e4",
+                        "contentItems": [
+                            {
+                                "tagId": 41000121,
+                                "tagName": "action",
+                                "sex": 1
+                            },
+                            {
+                                "tagId": 41000120,
+                                "tagName": "adventure",
+                                "sex": 1
+                            },
+                            {
+                                "tagId": 41000010,
+                                "tagName": "romance",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000075,
+                                "tagName": "reincarnation",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000016,
+                                "tagName": "system",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000884,
+                                "tagName": "magic",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000147,
+                                "tagName": "r18",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000074,
+                                "tagName": "weaktostrong",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000170,
+                                "tagName": "comedy",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000165,
+                                "tagName": "dark",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000066,
+                                "tagName": "mystery",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41001330,
+                                "tagName": "superpowers",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000037,
+                                "tagName": "harem",
+                                "sex": 1
+                            },
+                            {
+                                "tagId": 41000799,
+                                "tagName": "overpowered",
+                                "sex": 1
+                            },
+                            {
+                                "tagId": 41000052,
+                                "tagName": "survival",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000132,
+                                "tagName": "transmigration",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000224,
+                                "tagName": "cultivation",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41001297,
+                                "tagName": "sliceoflife",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41001702,
+                                "tagName": "villain",
+                                "sex": 3
+                            },
+                            {
+                                "tagId": 41000051,
+                                "tagName": "tragedy",
+                                "sex": 3
+                            }
+                        ],
+                        "changeable": false,
+                        "apiType": 0,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": -1,
+                            "days": -1,
+                            "sourceType": -1
+                        },
+                        "recomBookName": "",
+                        "order": 0
+                    }
+                ],
+                "subBlockNum": 1
+            },
+            {
+                "id": "5fffe532615ee3431b091710",
+                "title": "You May Also Like",
+                "subTitle": "",
+                "type": "7010",
+                "contentItems": [
+                    {
+                        "id": "5fffe535615ee3431b091711",
+                        "title": "",
+                        "subTitle": "",
+                        "type": "2011",
+                        "background": "",
+                        "contentId": "",
+                        "contentItems": [],
+                        "changeable": false,
+                        "apiType": 0,
+                        "apiParam": "",
+                        "moreType": -1,
+                        "moreParam": "",
+                        "reportInfo": {
+                            "strategy": -1,
+                            "days": -1,
+                            "sourceType": -1
+                        },
+                        "recomBookName": "",
+                        "order": 0
+                    }
+                ],
+                "subBlockNum": 1
+            }
+        ],
+        "user": {
+            "avatar": "",
+            "nickName": "",
+            "userName": "",
+            "authorName": "",
+            "penName": "",
+            "guid": 0,
+            "status": -1,
+            "role": 0,
+            "gender": 0,
+            "SS": 0,
+            "vSS": 0,
+            "vbSS": 0,
+            "bSS": 0,
+            "expiringTime": 0,
+            "grade": 0,
+            "ES": 0,
+            "totalES": 0,
+            "PS": 0,
+            "totalPS": 0,
+            "email": "",
+            "emailStatus": 0,
+            "isCheckIn": 0,
+            "UUT": 0,
+            "fastPass": 0,
+            "membershipQua": 0,
+            "membershipStatus": 0,
+            "membershipExpireTime": 0,
+            "membershipClaimStatus": false,
+            "membershipIsFree": false,
+            "membershipType": 0
+        },
+        "friendLink": [
+            {
+                "linkName": "WebNovel",
+                "linkAddress": "https://www.webnovel.com",
+                "linkContact": "",
+                "noFollow": false
+            },
+            {
+                "linkName": "Chereads",
+                "linkAddress": "https://www.chereads.com",
+                "linkContact": "",
+                "noFollow": false
+            },
+            {
+                "linkName": "Light Reader",
+                "linkAddress": "https://www.lightreader.com",
+                "linkContact": "",
+                "noFollow": false
+            }
+        ],
+        "innerLink": null,
+        "quickLink": null
+    },
+    "msg": "Success"
+}
