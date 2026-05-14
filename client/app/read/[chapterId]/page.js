@@ -16,21 +16,13 @@ import { formatTokens } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
 const WPM = 220;
+const RAIL_W = 56; // px — w-14
+const DEFAULT_COVER = '/stitch/book-architecture-silence.jpg';
 
 /**
- * Reading Interface — Stitch reader frame, wired to the global reader store
- * (theme + font-size + family) and the new /reading API.
- *
- *   • Page wrapper uses var(--reader-bg) / var(--reader-fg) so the theme
- *     pill (cream / sepia / dark) actually re-skins the article and chrome.
- *   • Article uses .prose-reader / .prose-stitch which read --reader-font-size
- *     and --reader-font-family from the same store, so A-/A+ live-resizes.
- *   • Top toolbar carries the only progress readout (small "X% · Y min"
- *     label sitting right under the 2px progress fill); the bottom bar
- *     becomes Prev / chapter title / Next so the previous "100% · 0 mins
- *     left" stack is gone.
- *   • Throttled POST /reading/progress fires on scroll, visibilitychange
- *     and unmount so the home screen's "Continue Reading" stays live.
+ * Reading page: title page (cover → © Novel Center) for chapter 1, then body.
+ * Right rail: TOC, display options (gear), jump to notes, help.
+ * Progress: text-only % and minutes (no growing bar).
  */
 export default function ReadingInterfacePage() {
   const { chapterId } = useParams();
@@ -42,6 +34,7 @@ export default function ReadingInterfacePage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [rightPanel, setRightPanel] = useState(null); // null | 'settings' | 'toc'
 
   const articleRef = useRef(null);
   const user = useAuthStore((s) => s.user);
@@ -62,10 +55,9 @@ export default function ReadingInterfacePage() {
         const ch = cRes.chapter;
         setChapter(ch);
 
-        const bks = await api.get('/books', { query: { pageSize: 50 } });
+        const bRes = await api.get(`/books/by-id/${ch.bookId}`);
         if (cancel) return;
-        const bk = (bks.items || []).find((b) => b.id === ch.bookId);
-        setBook(bk || null);
+        setBook(bRes.book || null);
 
         const sib = await api.get(`/books/${ch.bookId}/chapters`);
         if (cancel) return;
@@ -93,8 +85,6 @@ export default function ReadingInterfacePage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, [chapter]);
 
-  // Throttled progress sync. We capture the latest progress in a ref so the
-  // listeners don't get re-bound every scroll tick.
   const progressRef = useRef(0);
   useEffect(() => { progressRef.current = progress; }, [progress]);
 
@@ -160,6 +150,21 @@ export default function ReadingInterfacePage() {
     }
   }
 
+  function closePanel() {
+    setRightPanel(null);
+  }
+
+  function scrollToNotes() {
+    document.getElementById('reader-notes')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  useEffect(() => {
+    if (!rightPanel) return;
+    const onKey = (e) => { if (e.key === 'Escape') closePanel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [rightPanel]);
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--reader-bg)] text-[var(--reader-fg)]">
@@ -184,28 +189,67 @@ export default function ReadingInterfacePage() {
 
   const locked = !chapter.contentHtml;
   const isPaidLocked = chapter.isPaid && !chapter.isUnlocked;
+  const showTitlePage = chapter.idx === 1 && book;
 
   return (
-    <div className="bg-[var(--reader-bg)] text-[var(--reader-fg)] min-h-screen flex flex-col antialiased selection:bg-tertiary-fixed selection:text-on-tertiary-fixed">
+    <div className="bg-[var(--reader-bg)] text-[var(--reader-fg)] min-h-screen flex flex-col antialiased selection:bg-tertiary-fixed selection:text-on-tertiary-fixed pr-14">
       <ReaderTopToolbar
-        book={book}
         chapter={chapter}
         progress={progress}
         minutesLeft={minutesLeft}
         onBack={() => router.push(book ? `/books/${book.slug}` : '/')}
       />
 
-      <main ref={articleRef} className="flex-grow pt-32 pb-32 px-4 md:px-8 flex justify-center">
+      <ReaderRightRail
+        onToc={() => setRightPanel((p) => (p === 'toc' ? null : 'toc'))}
+        onSettings={() => setRightPanel((p) => (p === 'settings' ? null : 'settings'))}
+        onNotes={scrollToNotes}
+        tocActive={rightPanel === 'toc'}
+        settingsActive={rightPanel === 'settings'}
+      />
+
+      {rightPanel ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close panel"
+            className="fixed inset-0 z-[45] bg-black/25 md:bg-black/20"
+            style={{ right: RAIL_W }}
+            onClick={closePanel}
+          />
+          {rightPanel === 'settings' ? (
+            <DisplayOptionsPanel onClose={closePanel} railPx={RAIL_W} />
+          ) : (
+            <TocPanel
+              chapters={siblings}
+              currentId={chapter.id}
+              bookSlug={book?.slug}
+              onClose={closePanel}
+              railPx={RAIL_W}
+            />
+          )}
+        </>
+      ) : null}
+
+      <main ref={articleRef} className="flex-grow pt-[4.5rem] pb-32 px-4 md:px-8 flex justify-center">
         <article className="max-w-[720px] w-full">
-          <header className="mb-16 text-center">
-            <h2 className="font-display-lg text-[40px] md:text-display-lg mb-4 leading-tight">
-              {book?.title || chapter.title}
-            </h2>
-            <p className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest opacity-70">
-              Chapter {chapter.idx} — {chapter.title}
-              {chapter.readingMinutes ? ` · ${chapter.readingMinutes} min read` : ''}
-            </p>
-          </header>
+          {showTitlePage ? (
+            <TitlePageHero
+              book={book}
+              chapter={chapter}
+            />
+          ) : (
+            <header className="mb-12">
+              <h2 className="font-display-lg text-[28px] md:text-[34px] mb-2 leading-tight text-[var(--reader-fg)]">
+                Chapter {chapter.idx}: {chapter.title}
+              </h2>
+              {chapter.readingMinutes ? (
+                <p className="text-sm text-[var(--reader-muted)]">
+                  {chapter.readingMinutes} min read
+                </p>
+              ) : null}
+            </header>
+          )}
 
           {locked && isPaidLocked ? (
             <div className="border border-[var(--reader-rule)] rounded-lg p-8 text-center bg-[var(--reader-bg)]/60">
@@ -254,113 +298,325 @@ export default function ReadingInterfacePage() {
         bookHref={book ? `/books/${book.slug}` : '/'}
       />
 
-      <section className="bg-[var(--reader-bg)] border-t border-[var(--reader-rule)] pt-24 pb-48 px-4 md:px-8">
+      <section
+        id="reader-notes"
+        className="bg-[var(--reader-bg)] border-t border-[var(--reader-rule)] pt-24 pb-48 px-4 md:px-8"
+      >
         <div className="max-w-[720px] mx-auto">
           <div className="flex items-center justify-between mb-12">
             <h3 className="font-headline-md text-headline-md">Reader Notes</h3>
           </div>
-          <CommentThread chapterId={chapter.id} />
+          <CommentThread chapterId={chapter.id} variant="reader" />
         </div>
       </section>
     </div>
   );
 }
 
-function ReaderTopToolbar({ book, chapter, progress, minutesLeft, onBack }) {
-  const { fontSize, theme, bumpFont, setTheme } = useReaderStore();
+function formatProgressPct(p) {
+  if (p <= 0) return '0';
+  if (p < 1) return p.toFixed(2);
+  if (p < 10) return p.toFixed(1);
+  return String(Math.round(p));
+}
+
+function ReaderTopToolbar({ chapter, progress, minutesLeft, onBack }) {
+  const pct = formatProgressPct(progress);
+  const sub = minutesLeft > 0 ? `${minutesLeft} min left` : null;
 
   return (
-    <header className="fixed top-0 w-full z-40 bg-[var(--reader-bg)]/90 backdrop-blur-md border-b border-[var(--reader-rule)] transition-transform duration-300">
-      <div className="max-w-[1280px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 min-w-0">
+    <header
+      className={cn(
+        'fixed top-0 left-0 z-40 bg-[var(--reader-bg)]/95 backdrop-blur-md border-b border-[var(--reader-rule)]',
+      )}
+      style={{ right: RAIL_W }}
+    >
+      <div className="relative h-14 flex items-center px-3 md:px-6">
+        <div className="flex items-center gap-2 min-w-0 max-w-[42%]">
           <button
             type="button"
             onClick={onBack}
-            aria-label="Go Back"
-            className="p-2 hover:bg-[var(--reader-fg)]/5 rounded-full transition-colors group"
+            aria-label="Go back"
+            className="p-2 hover:bg-[var(--reader-fg)]/5 rounded-full transition-colors shrink-0"
           >
-            <Icon name="arrow_back" size={22} weight={300} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+            <Icon name="arrow_back" size={22} weight={300} className="opacity-70" />
           </button>
-          <div className="flex flex-col min-w-0">
-            <span className="font-ui-label-sm text-ui-label-sm uppercase opacity-70">
+          <div className="min-w-0">
+            <span className="block text-[10px] uppercase tracking-widest opacity-60 font-ui-label-sm truncate">
               Chapter {chapter?.idx}
             </span>
-            <h1 className="font-ui-label-lg text-ui-label-lg truncate">
+            <span className="block font-ui-label-lg text-ui-label-lg truncate">
               {chapter?.title}
-            </h1>
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden md:flex items-center bg-[var(--reader-fg)]/5 rounded-full p-1 border border-[var(--reader-rule)] mr-2">
-            <button
-              type="button"
-              aria-label="Decrease Font Size"
-              onClick={() => bumpFont(-1)}
-              className="p-1.5 rounded-full hover:bg-[var(--reader-fg)]/10 transition-colors opacity-80"
-            >
-              <Icon name="text_decrease" size={18} />
-            </button>
-            <span className="font-ui-label-sm text-ui-label-sm px-2 tabular-nums">{fontSize}</span>
-            <button
-              type="button"
-              aria-label="Increase Font Size"
-              onClick={() => bumpFont(1)}
-              className="p-1.5 rounded-full hover:bg-[var(--reader-fg)]/10 transition-colors opacity-80"
-            >
-              <Icon name="text_increase" size={18} />
-            </button>
-          </div>
-
-          <div className="flex items-center bg-[var(--reader-fg)]/5 rounded-full p-1 border border-[var(--reader-rule)]">
-            <ThemeButton active={theme === 'cream'} onClick={() => setTheme('cream')} icon="light_mode" label="Light Theme" />
-            <ThemeButton active={theme === 'sepia'} onClick={() => setTheme('sepia')} icon="auto_stories" label="Sepia Theme" />
-            <ThemeButton active={theme === 'dark'} onClick={() => setTheme('dark')} icon="dark_mode" label="Dark Theme" />
-          </div>
-        </div>
-      </div>
-
-      {/* 2px progress fill + a small "X% · Y min" label tucked under it */}
-      <div className="absolute bottom-0 left-0 w-full">
-        <div className="h-[2px] w-full bg-[var(--reader-rule)]/60">
-          <div
-            className="h-full bg-tertiary-container transition-all duration-300"
-            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-          />
-        </div>
-        <div className="flex justify-end pr-4 md:pr-8">
-          <span className="mt-0.5 inline-block text-[10px] tracking-widest uppercase opacity-60 font-ui-label-sm tabular-nums">
-            {Math.round(progress)}%
-            {minutesLeft > 0 ? ` · ${minutesLeft} min` : ''}
-          </span>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center px-2">
+          <p className="text-[11px] md:text-xs tracking-wide text-[var(--reader-muted)] tabular-nums whitespace-nowrap">
+            <span className="text-[var(--reader-fg)] font-medium">{pct}%</span>
+            {' read'}
+            {sub ? (
+              <>
+                <span className="opacity-50 mx-1">·</span>
+                <span>{sub}</span>
+              </>
+            ) : null}
+          </p>
         </div>
       </div>
     </header>
   );
 }
 
-function ThemeButton({ active, onClick, icon, label }) {
+function TitlePageHero({ book, chapter }) {
+  const cover = book.coverUrl || DEFAULT_COVER;
+
+  return (
+    <div className="mb-16 md:mb-20 text-center">
+      <div className="mx-auto w-[200px] md:w-[240px] aspect-[2/3] shadow-lg rounded-sm overflow-hidden bg-[var(--reader-rule)]/30">
+        <img
+          src={cover}
+          alt=""
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <h1 className="mt-10 font-display-lg text-[26px] md:text-[34px] leading-tight px-2 text-[var(--reader-fg)]">
+        {book.title}
+      </h1>
+      {book.authorName ? (
+        <p className="mt-4 text-base md:text-lg text-[var(--reader-fg)] font-serif">
+          Author: {book.authorName}
+        </p>
+      ) : null}
+      <p className="mt-8 text-sm text-[var(--reader-muted)] tracking-wide">
+        © Novel Center
+      </p>
+
+      <div className="mt-12 flex items-center gap-3 max-w-md mx-auto">
+        <div className="flex-1 h-px bg-[var(--reader-rule)]" />
+        <Icon name="menu_book" size={22} weight={300} className="text-[var(--reader-muted)] shrink-0" />
+        <div className="flex-1 h-px bg-[var(--reader-rule)]" />
+      </div>
+
+      <div className="mt-10 flex flex-wrap items-baseline justify-center gap-3 text-left">
+        <h2 className="font-display-lg text-[22px] md:text-[28px] leading-snug text-[var(--reader-fg)]">
+          Chapter {chapter.idx}: {chapter.title}
+        </h2>
+        <span
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-[var(--reader-rule)] text-xs text-[var(--reader-muted)] tabular-nums shrink-0"
+          aria-hidden
+        >
+          {chapter.idx}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ReaderRightRail({ onToc, onSettings, onNotes, tocActive, settingsActive }) {
+  const btn =
+    'flex items-center justify-center w-10 h-10 rounded-lg transition-colors text-white/85 hover:text-white hover:bg-white/10';
+  const active = 'bg-[#2563eb] text-white hover:bg-[#2563eb] hover:text-white';
+
+  return (
+    <aside
+      className="fixed right-0 top-0 bottom-0 z-50 w-14 flex flex-col items-center pt-4 pb-6 gap-2 bg-[#1a1b1f] border-l border-black/20 shadow-[-4px_0_24px_rgba(0,0,0,0.12)]"
+      aria-label="Reader tools"
+    >
+      <button type="button" className={cn(btn, tocActive && active)} onClick={onToc} aria-label="Table of contents">
+        <Icon name="menu" size={22} weight={300} />
+      </button>
+      <button
+        type="button"
+        className={cn(btn, settingsActive && active)}
+        onClick={onSettings}
+        aria-label="Display options"
+      >
+        <Icon name="settings" size={22} weight={300} />
+      </button>
+      <button type="button" className={btn} onClick={onNotes} aria-label="Jump to reader notes">
+        <Icon name="chat_bubble_outline" size={22} weight={300} />
+      </button>
+      <Link href="/" className={cn(btn, 'mt-auto')} aria-label="Help" title="Home">
+        <Icon name="help_outline" size={22} weight={300} />
+      </Link>
+    </aside>
+  );
+}
+
+function DisplayOptionsPanel({ onClose, railPx }) {
+  const fontSize = useReaderStore((s) => s.fontSize);
+  const fontFamily = useReaderStore((s) => s.fontFamily);
+  const theme = useReaderStore((s) => s.theme);
+  const bumpFont = useReaderStore((s) => s.bumpFont);
+  const setFontFamily = useReaderStore((s) => s.setFontFamily);
+  const setTheme = useReaderStore((s) => s.setTheme);
+
+  return (
+    <div
+      className="fixed top-0 bottom-0 z-[48] w-[min(100vw-3.5rem,20rem)] bg-[var(--reader-bg)] text-[var(--reader-fg)] shadow-2xl border-l border-[var(--reader-rule)] flex flex-col"
+      style={{ right: railPx }}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--reader-rule)]">
+        <h2 className="font-ui-label-lg text-ui-label-lg">Display Options</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 rounded-lg hover:bg-[var(--reader-fg)]/5"
+          aria-label="Close"
+        >
+          <Icon name="close" size={22} weight={300} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
+        <section>
+          <p className="text-xs uppercase tracking-wider text-[var(--reader-muted)] mb-3">Background</p>
+          <div className="flex gap-3">
+            <ThemeSwatch theme="cream" current={theme} onPick={setTheme} label="Light" />
+            <ThemeSwatch theme="sepia" current={theme} onPick={setTheme} label="Sepia" />
+            <ThemeSwatch theme="dark" current={theme} onPick={setTheme} label="Dark" moon />
+          </div>
+        </section>
+
+        <section>
+          <p className="text-xs uppercase tracking-wider text-[var(--reader-muted)] mb-3">Font</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setFontFamily('sans')}
+              className={cn(
+                'flex-1 py-2.5 px-3 rounded-lg border text-sm transition-colors',
+                fontFamily === 'sans'
+                  ? 'border-[#2563eb] ring-1 ring-[#2563eb]/30 bg-[var(--reader-fg)]/[0.04]'
+                  : 'border-[var(--reader-rule)] hover:bg-[var(--reader-fg)]/5',
+              )}
+            >
+              Sans
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontFamily('serif')}
+              className={cn(
+                'flex-1 py-2.5 px-3 rounded-lg border text-sm font-serif transition-colors',
+                fontFamily === 'serif'
+                  ? 'border-[#2563eb] ring-1 ring-[#2563eb]/30 bg-[var(--reader-fg)]/[0.04]'
+                  : 'border-[var(--reader-rule)] hover:bg-[var(--reader-fg)]/5',
+              )}
+            >
+              Serif
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <p className="text-xs uppercase tracking-wider text-[var(--reader-muted)] mb-3">Size</p>
+          <div className="flex rounded-lg border border-[var(--reader-rule)] overflow-hidden">
+            <button
+              type="button"
+              aria-label="Smaller text"
+              onClick={() => bumpFont(-1)}
+              className="flex-1 py-3 hover:bg-[var(--reader-fg)]/5 font-medium"
+            >
+              A−
+            </button>
+            <div className="w-px bg-[var(--reader-rule)]" />
+            <span className="flex-1 py-3 text-center tabular-nums font-medium">{fontSize}</span>
+            <div className="w-px bg-[var(--reader-rule)]" />
+            <button
+              type="button"
+              aria-label="Larger text"
+              onClick={() => bumpFont(1)}
+              className="flex-1 py-3 hover:bg-[var(--reader-fg)]/5 font-medium"
+            >
+              A+
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ThemeSwatch({ theme, current, onPick, label, moon }) {
+  const active = current === theme;
+  const bg =
+    theme === 'cream' ? '#fff8f1' : theme === 'sepia' ? '#f6ecd8' : '#14110d';
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => onPick(theme)}
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        'p-1.5 rounded-full transition-colors',
-        active
-          ? 'bg-[var(--reader-bg)] shadow-sm text-[var(--reader-fg)]'
-          : 'hover:bg-[var(--reader-fg)]/10 opacity-70',
+        'w-11 h-11 rounded-full border-2 flex items-center justify-center transition-shadow',
+        active ? 'border-[#2563eb] ring-2 ring-[#2563eb]/25' : 'border-[var(--reader-rule)]',
       )}
+      style={{ backgroundColor: bg }}
     >
-      <Icon name={icon} size={18} />
+      {moon ? <Icon name="dark_mode" size={18} weight={300} className="text-[#ece4d6]" /> : null}
     </button>
+  );
+}
+
+function TocPanel({ chapters, currentId, bookSlug, onClose, railPx }) {
+  return (
+    <div
+      className="fixed top-0 bottom-0 z-[48] w-[min(100vw-3.5rem,20rem)] bg-[var(--reader-bg)] text-[var(--reader-fg)] shadow-2xl border-l border-[var(--reader-rule)] flex flex-col"
+      style={{ right: railPx }}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--reader-rule)]">
+        <h2 className="font-ui-label-lg text-ui-label-lg">Contents</h2>
+        <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--reader-fg)]/5" aria-label="Close">
+          <Icon name="close" size={22} weight={300} />
+        </button>
+      </div>
+      <nav className="flex-1 overflow-y-auto py-2">
+        <ul className="space-y-0.5">
+          {chapters.map((ch) => {
+            const isCurrent = ch.id === currentId;
+            return (
+              <li key={ch.id}>
+                <Link
+                  href={`/read/${ch.id}`}
+                  onClick={onClose}
+                  className={cn(
+                    'block px-4 py-2.5 text-sm border-l-2 transition-colors',
+                    isCurrent
+                      ? 'border-[#2563eb] bg-[var(--reader-fg)]/[0.06] font-medium'
+                      : 'border-transparent hover:bg-[var(--reader-fg)]/[0.04]',
+                  )}
+                >
+                  <span className="text-[var(--reader-muted)] tabular-nums mr-2">{ch.idx}.</span>
+                  {ch.title}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        {bookSlug ? (
+          <div className="px-4 pt-4 pb-6">
+            <Link
+              href={`/books/${bookSlug}`}
+              className="text-xs uppercase tracking-widest text-[var(--reader-muted)] hover:text-[var(--reader-fg)] underline-offset-4 hover:underline"
+              onClick={onClose}
+            >
+              Book page
+            </Link>
+          </div>
+        ) : null}
+      </nav>
+    </div>
   );
 }
 
 function ReaderBottomBar({ prev, next, bookHref }) {
   return (
-    <div className="fixed bottom-0 w-full z-40 bg-[var(--reader-bg)]/95 backdrop-blur-sm border-t border-[var(--reader-rule)] shadow-reader-bar">
+    <div
+      className="fixed bottom-0 z-40 bg-[var(--reader-bg)]/95 backdrop-blur-sm border-t border-[var(--reader-rule)] shadow-reader-bar"
+      style={{ left: 0, right: RAIL_W }}
+    >
       <div className="max-w-[720px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
         {prev ? (
           <Link

@@ -7,8 +7,10 @@ import { useUiStore } from '@/stores/uiStore';
 import CommentItem from './CommentItem';
 import CommentForm from './CommentForm';
 import Icon from '@/components/ui/Icon';
+import { cn } from '@/lib/cn';
 
-export default function CommentThread({ bookId, chapterId }) {
+export default function CommentThread({ bookId, chapterId, variant = 'default' }) {
+  const reader = variant === 'reader';
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const user = useAuthStore((s) => s.user);
@@ -44,42 +46,57 @@ export default function CommentThread({ bookId, chapterId }) {
     }
   }
 
+  const hx = reader ? 'text-[var(--reader-fg)]' : 'text-ink-900 dark:text-neutral-100';
+  const muted = reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500';
+  const reviewShell = reader
+    ? 'border border-[var(--reader-rule)] bg-[var(--reader-bg)] shadow-sm'
+    : 'border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950';
+  const reviewDivide = reader
+    ? 'border-[var(--reader-rule)]'
+    : 'border-neutral-200 dark:border-neutral-800';
+
   return (
     <section className="mt-20 max-w-reading">
-      <h2 className="font-serif text-[28px] text-ink-900 dark:text-neutral-100">Discussion</h2>
+      <h2 className={cn('font-serif text-[28px]', hx)}>Discussion</h2>
 
       {/* Reviews (dummy for now) */}
-      <div className="mt-8 border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 rounded-xl overflow-hidden">
+      <div className={cn('mt-8 rounded-xl overflow-hidden', reviewShell)}>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr]">
           <div className="p-6 md:p-8">
             <div className="flex items-center gap-4">
-              <p className="text-[22px] font-semibold text-ink-900 dark:text-neutral-100">
+              <p className={cn('text-[22px] font-semibold', hx)}>
                 6,703Reviews
               </p>
               <div className="flex items-center gap-2">
                 <Stars value={4.72} />
-                <span className="text-[18px] font-semibold text-ink-900 dark:text-neutral-100 tabular-nums">
+                <span className={cn('text-[18px] font-semibold tabular-nums', hx)}>
                   4.72
                 </span>
               </div>
             </div>
 
             <div className="mt-6 space-y-3">
-              <ReviewRow label="Writing Quality" value={4} />
-              <ReviewRow label="Stability of Updates" value={4} />
-              <ReviewRow label="Story Development" value={4} />
-              <ReviewRow label="Character Design" value={4} />
-              <ReviewRow label="World Background" value={4} />
+              <ReviewRow label="Writing Quality" value={4} reader={reader} />
+              <ReviewRow label="Stability of Updates" value={4} reader={reader} />
+              <ReviewRow label="Story Development" value={4} reader={reader} />
+              <ReviewRow label="Character Design" value={4} reader={reader} />
+              <ReviewRow label="World Background" value={4} reader={reader} />
             </div>
           </div>
 
-          <div className="p-6 md:p-8 border-t md:border-t-0 md:border-l border-neutral-200 dark:border-neutral-800 flex flex-col items-center justify-center text-center">
-            <p className="text-sm text-ink-500 dark:text-neutral-400">
+          <div
+            className={cn(
+              'p-6 md:p-8 border-t md:border-t-0 md:border-l flex flex-col items-center justify-center text-center',
+              reviewDivide,
+              reader && 'bg-[var(--reader-fg)]/[0.04]',
+            )}
+          >
+            <p className={cn('text-sm', reader ? 'text-[var(--reader-muted)]' : 'text-ink-500 dark:text-neutral-400')}>
               Share your thoughts with others
             </p>
             <button
               type="button"
-              className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-[#2f6bff] text-white px-6 py-3 text-[12px] font-semibold uppercase tracking-widest hover:opacity-90 transition-opacity"
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-[#2563eb] text-white px-6 py-3 text-[12px] font-semibold uppercase tracking-widest hover:bg-[#1d4ed8] transition-colors"
             >
               <Icon name="rate_review" size={18} />
               Write a review
@@ -89,31 +106,42 @@ export default function CommentThread({ bookId, chapterId }) {
       </div>
 
       {/* Comments */}
-      <p className="mt-10 text-[14px] text-ink-400 dark:text-neutral-500">
+      <p className={cn('mt-10 text-[14px] font-medium', reader ? 'text-[var(--reader-fg)]' : muted)}>
         {items.length} {items.length === 1 ? 'comment' : 'comments'}
       </p>
       {user ? (
         <div className="mt-6">
-          <CommentForm onSubmit={postComment} />
+          <CommentForm onSubmit={postComment} reader={reader} />
         </div>
       ) : (
-        <p className="mt-6 text-[14px] text-ink-400 dark:text-neutral-500">
-          <a href="/auth/login" className="underline decoration-gold underline-offset-4 text-ink-900 dark:text-neutral-100">Sign in</a>{' '}
+        <p className={cn('mt-6 text-[14px]', muted)}>
+          <a
+            href="/auth/login"
+            className={cn(
+              'underline underline-offset-4',
+              reader
+                ? 'text-[var(--reader-fg)] decoration-[var(--reader-accent)]'
+                : 'decoration-gold text-ink-900 dark:text-neutral-100',
+            )}
+          >
+            Sign in
+          </a>{' '}
           to join the discussion.
         </p>
       )}
 
       <div className="mt-10 space-y-8">
         {loading ? (
-          <p className="text-ink-400 dark:text-neutral-500">Loading discussion…</p>
+          <p className={muted}>Loading discussion…</p>
         ) : tree.length === 0 ? (
-          <p className="text-ink-400 dark:text-neutral-500">Be the first to share your thoughts.</p>
+          <p className={muted}>Be the first to share your thoughts.</p>
         ) : (
           tree.map((node) => (
             <CommentItem
               key={node.id}
               node={node}
               currentUser={user}
+              reader={reader}
               onReply={(parentId, body) => postComment({ body, parentId })}
               onDelete={removeComment}
             />
@@ -134,10 +162,17 @@ function Stars({ value = 0 }) {
   return <div className="flex items-center gap-1">{out}</div>;
 }
 
-function ReviewRow({ label, value = 0 }) {
+function ReviewRow({ label, value = 0, reader = false }) {
   return (
     <div className="flex items-center justify-between gap-6">
-      <p className="text-sm text-ink-600 dark:text-neutral-400">{label}</p>
+      <p
+        className={cn(
+          'text-sm',
+          reader ? 'text-[var(--reader-muted)]' : 'text-ink-600 dark:text-neutral-400',
+        )}
+      >
+        {label}
+      </p>
       <div className="flex items-center gap-1">
         {Array.from({ length: 5 }).map((_, i) => (
           <Icon

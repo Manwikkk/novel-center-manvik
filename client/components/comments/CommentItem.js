@@ -5,39 +5,85 @@ import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
 import CommentForm from './CommentForm';
 import { formatRelative } from '@/lib/format';
+import { cn } from '@/lib/cn';
 
-export default function CommentItem({ node, currentUser, onReply, onDelete, depth = 0 }) {
+export default function CommentItem({ node, currentUser, onReply, onDelete, depth = 0, reader = false }) {
   const [replying, setReplying] = useState(false);
   const isOwner = currentUser && currentUser.id === node.author?.id;
   const isAdmin = currentUser && currentUser.role === 'admin';
   const isDeleted = node.status === 'deleted';
   const isHidden = node.status === 'hidden';
 
+  const nestBorder = reader
+    ? 'border-l border-[var(--reader-rule)]'
+    : 'border-l border-ink-200/60 dark:border-neutral-800';
+
   return (
-    <div className={depth > 0 ? 'pl-6 border-l border-ink-200/60 dark:border-neutral-800' : ''}>
+    <div className={depth > 0 ? cn('pl-6', nestBorder) : ''}>
       <div className="flex gap-3">
         <Avatar name={node.author?.displayName} src={node.author?.avatarUrl} size={36} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-serif text-[16px] text-ink-900 dark:text-neutral-100">
+            <p
+              className={cn(
+                'font-serif text-[16px]',
+                reader ? 'text-[var(--reader-fg)]' : 'text-ink-900 dark:text-neutral-100',
+              )}
+            >
               {node.author?.displayName || 'Reader'}
             </p>
-            <span className="text-[12px] text-ink-400 dark:text-neutral-500">{formatRelative(node.createdAt)}</span>
+            <span
+              className={cn(
+                'text-[12px]',
+                reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500',
+              )}
+            >
+              {formatRelative(node.createdAt)}
+            </span>
           </div>
-          <div className="mt-2 text-[15px] text-ink-700 dark:text-neutral-300 whitespace-pre-line">
-            {isDeleted ? <em className="text-ink-400 dark:text-neutral-500">[comment removed]</em>
-              : isHidden ? <em className="text-ink-400 dark:text-neutral-500">[hidden by moderator]</em>
-              : node.body}
+          <div
+            className={cn(
+              'mt-2 text-[15px] whitespace-pre-line',
+              reader ? 'text-[var(--reader-fg)]' : 'text-ink-700 dark:text-neutral-300',
+            )}
+          >
+            {isDeleted ? (
+              <em className={reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500'}>
+                [comment removed]
+              </em>
+            ) : isHidden ? (
+              <em className={reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500'}>
+                [hidden by moderator]
+              </em>
+            ) : (
+              node.body
+            )}
           </div>
           {!isDeleted && !isHidden && (
             <div className="mt-3 flex items-center gap-4">
               {currentUser && (
-                <button onClick={() => setReplying((v) => !v)} className="label-sm text-ink-400 dark:text-neutral-500 hover:text-ink-900 dark:hover:text-neutral-200">
+                <button
+                  type="button"
+                  onClick={() => setReplying((v) => !v)}
+                  className={cn(
+                    'label-sm',
+                    reader
+                      ? 'text-[var(--reader-muted)] hover:text-[var(--reader-fg)]'
+                      : 'text-ink-400 dark:text-neutral-500 hover:text-ink-900 dark:hover:text-neutral-200',
+                  )}
+                >
                   {replying ? 'Cancel' : 'Reply'}
                 </button>
               )}
               {(isOwner || isAdmin) && (
-                <button onClick={() => onDelete?.(node.id)} className="label-sm text-ink-400 dark:text-neutral-500 hover:text-danger">
+                <button
+                  type="button"
+                  onClick={() => onDelete?.(node.id)}
+                  className={cn(
+                    'label-sm hover:text-danger',
+                    reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500',
+                  )}
+                >
                   Delete
                 </button>
               )}
@@ -52,6 +98,7 @@ export default function CommentItem({ node, currentUser, onReply, onDelete, dept
                   setReplying(false);
                 }}
                 compact
+                reader={reader}
               />
             </div>
           )}
@@ -68,6 +115,7 @@ export default function CommentItem({ node, currentUser, onReply, onDelete, dept
               onReply={onReply}
               onDelete={onDelete}
               depth={depth + 1}
+              reader={reader}
             />
           ))}
         </div>
