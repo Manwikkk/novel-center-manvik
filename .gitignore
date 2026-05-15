@@ -1,8 +1,7 @@
 # dependencies
 node_modules/
 
-# env
-.env
+# env (keep machine-local overrides out of git)
 .env.local
 .env.*.local
 

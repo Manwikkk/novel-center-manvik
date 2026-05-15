@@ -1,0 +1,140 @@
+# Novel Center – deploy on push to main (or manual).
+# Frontend and backend run on different hosts; one SSH private key can be installed on both.
+#
+# GitHub Actions → Secrets and variables → Actions (repository secrets):
+#   DEPLOY_SSH_KEY          Multiline PEM (-----BEGIN ... PRIVATE KEY-----)
+#   FRONTEND_SSH_HOST       e.g. 62.72.30.96
+#   BACKEND_SSH_HOST        e.g. 69.62.78.149
+# Optional (defaults match InstaBizWeb paths below):
+#   DEPLOY_SSH_USER         default root
+#   FRONTEND_DEPLOY_PATH    default /home/instabizweb-novelcenter/htdocs/novelcenter.instabizweb.com
+#   BACKEND_DEPLOY_PATH     default /home/instabizweb-api-novel/htdocs/api-novel.instabizweb.com
+# Optional:
+#   NEXT_PUBLIC_API_URL     if set, used only for the CI frontend build; tracked client/.env is also read by Next when present
+
+name: Deploy to production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-novel-center-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '18'
+  FRONTEND_PM2_NAME: novel-center-web
+  BACKEND_PM2_NAME: novel-center-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+
+      - name: Install and build frontend (CI gate)
+        working-directory: client
+        env:
+          CI: 'true'
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        run: |
+          npm ci --no-audit
+          npm run build
+
+      - name: Install backend dependencies (CI gate)
+        working-directory: server
+        run: |
+          npm ci --omit=dev --no-audit
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          FRONTEND_SSH_HOST: ${{ secrets.FRONTEND_SSH_HOST }}
+          BACKEND_SSH_HOST: ${{ secrets.BACKEND_SSH_HOST }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          for h in "$FRONTEND_SSH_HOST" "$BACKEND_SSH_HOST"; do
+            ssh-keyscan -H "$h" >> ~/.ssh/known_hosts 2>/dev/null || true
+          done
+
+      - name: Rsync frontend to server
+        env:
+          FRONTEND_SSH_HOST: ${{ secrets.FRONTEND_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          FRONTEND_DEPLOY_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          USER="${DEPLOY_SSH_USER:-root}"
+          PATH_F="${FRONTEND_DEPLOY_PATH:-/home/instabizweb-novelcenter/htdocs/novelcenter.instabizweb.com}"
+          RSYNC_SSH='ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+          rsync -az --delete \
+            --exclude node_modules \
+            --exclude .git \
+            --exclude .next \
+            -e "$RSYNC_SSH" \
+            "client/" "${USER}@${FRONTEND_SSH_HOST}:${PATH_F}/"
+
+      - name: Rsync backend to server
+        env:
+          BACKEND_SSH_HOST: ${{ secrets.BACKEND_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          BACKEND_DEPLOY_PATH: ${{ secrets.BACKEND_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          USER="${DEPLOY_SSH_USER:-root}"
+          PATH_B="${BACKEND_DEPLOY_PATH:-/home/instabizweb-api-novel/htdocs/api-novel.instabizweb.com}"
+          RSYNC_SSH='ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+          rsync -az \
+            --exclude node_modules \
+            --exclude .git \
+            -e "$RSYNC_SSH" \
+            "server/" "${USER}@${BACKEND_SSH_HOST}:${PATH_B}/"
+
+      - name: Build and restart frontend on server
+        env:
+          FRONTEND_SSH_HOST: ${{ secrets.FRONTEND_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          FRONTEND_DEPLOY_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}
+          FRONTEND_PM2_NAME: ${{ env.FRONTEND_PM2_NAME }}
+        run: |
+          set -euo pipefail
+          USER="${DEPLOY_SSH_USER:-root}"
+          PATH_F="${FRONTEND_DEPLOY_PATH:-/home/instabizweb-novelcenter/htdocs/novelcenter.instabizweb.com}"
+          NAME="${FRONTEND_PM2_NAME}"
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
+            "${USER}@${FRONTEND_SSH_HOST}" \
+            "set -euo pipefail; cd $(printf %q "$PATH_F"); export CI=true; npm ci --no-audit; npm run build; pm2 delete $(printf %q "$NAME") 2>/dev/null || true; pm2 start npm --name $(printf %q "$NAME") -- start; pm2 save"
+
+      - name: Install and restart backend on server
+        env:
+          BACKEND_SSH_HOST: ${{ secrets.BACKEND_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          BACKEND_DEPLOY_PATH: ${{ secrets.BACKEND_DEPLOY_PATH }}
+          BACKEND_PM2_NAME: ${{ env.BACKEND_PM2_NAME }}
+        run: |
+          set -euo pipefail
+          USER="${DEPLOY_SSH_USER:-root}"
+          PATH_B="${BACKEND_DEPLOY_PATH:-/home/instabizweb-api-novel/htdocs/api-novel.instabizweb.com}"
+          NAME="${BACKEND_PM2_NAME}"
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
+            "${USER}@${BACKEND_SSH_HOST}" \
+            "set -euo pipefail; cd $(printf %q "$PATH_B"); npm ci --omit=dev --no-audit; pm2 delete $(printf %q "$NAME") 2>/dev/null || true; pm2 start npm --name $(printf %q "$NAME") -- start; pm2 save"
