@@ -47,7 +47,7 @@ function Inner() {
 
   return (
     <DashboardShell kind="admin">
-      <DashboardTopbar subtitle="Administration" title="Catalog" />
+      <DashboardTopbar subtitle="Administration" title="Books" />
       <div className="px-4 md:px-edge py-8 space-y-6">
         <div className="flex flex-wrap gap-2 items-center">
           {STATUS.map((s) => (

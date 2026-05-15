@@ -12,8 +12,12 @@
     "db:migrate:library": "node src/db/runSql.js src/db/migrations/002_library.sql",
     "db:migrate:reading": "node src/db/runSql.js src/db/migrations/003_reader_progress.sql",
     "db:migrate:books-extras": "node src/db/runSql.js src/db/migrations/004_books_extras.sql",
+    "db:migrate:page-config": "node src/db/runSql.js src/db/migrations/005_site_home_page_config.sql",
+    "db:migrate:comment-reactions": "node src/db/runSql.js src/db/migrations/006_comment_reactions_spoiler.sql",
+    "db:migrate:catalog": "node src/db/runSql.js src/db/migrations/007_catalog_taxonomy.sql",
     "db:seed": "node src/db/runSql.js src/db/seed.sql",
     "db:import:webnovel": "node scripts/import-webnovel-books.js",
+    "db:seed:webnovel": "node scripts/seed-webnovel-home.js",
     "scrape:webnovel": "node scripts/scrape-webnovel-homepage.js",
     "normalize:webnovel": "node scripts/normalize-webnovel-json.js"
   },

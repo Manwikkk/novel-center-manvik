@@ -23,4 +23,9 @@ const remove = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-module.exports = { list, create, update, remove };
+const setReaction = asyncHandler(async (req, res) => {
+  const out = await svc.setReaction(Number(req.params.id), req.user.id, req.body.reaction);
+  res.json(out);
+});
+
+module.exports = { list, create, update, remove, setReaction };

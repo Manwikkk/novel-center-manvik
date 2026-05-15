@@ -1,5 +1,9 @@
 'use strict';
 
+// Scrapes WebNovel homepage HTML into { weekly, featured, ranking, new_arrivals, completed }.
+// Save JSON (--out), then seed the app DB:
+//   npm run db:seed:webnovel -- --input ./scraped.json
+
 const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs/promises');

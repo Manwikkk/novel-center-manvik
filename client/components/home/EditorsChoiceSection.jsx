@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
+import SectionViewAllLink from '@/components/home/SectionViewAllLink';
 
 function normalizeCover(url) {
   if (!url) return url;
@@ -46,16 +47,19 @@ export default function EditorsChoiceSection({ items = [] }) {
   return (
     <div className="min-w-0">
       <div className="flex items-end justify-between gap-4 mb-6">
-        <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100">
+        <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100 min-w-0">
           Editors&apos; Choice
         </h2>
-        <button
-          type="button"
-          onClick={() => setActive((n) => (n + 1) % Math.max(1, list.length))}
-          className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-[#2f6bff] hover:opacity-80 transition-opacity"
-        >
-          Switch
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActive((n) => (n + 1) % Math.max(1, list.length))}
+            className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-[#2f6bff] hover:opacity-80 transition-opacity"
+          >
+            Switch
+          </button>
+          <SectionViewAllLink href="/sections/editors-choice" />
+        </div>
       </div>
 
       <div className="border-t border-neutral-200 dark:border-neutral-800 pt-5">

@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import SectionViewAllLink from '@/components/home/SectionViewAllLink';
 
 function normalizeCover(url) {
   if (!url) return url;
@@ -128,12 +129,7 @@ export default function RankingNovelsSection({ mostRead = [], trending = [], hig
         <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100">
           Ranking Novels
         </h2>
-        <Link
-          href="/ranking"
-          className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-700 dark:text-neutral-300 hover:text-ink-900 dark:hover:text-white"
-        >
-          More
-        </Link>
+        <SectionViewAllLink href="/sections/ranking" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">

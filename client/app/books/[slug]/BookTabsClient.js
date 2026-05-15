@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 
 const DUMMY_TAGS = [
   'ACTION',
@@ -16,11 +15,13 @@ const DUMMY_TAGS = [
   'THESTRONGACTINGWEAK',
 ];
 
+/*
 const DUMMY_FANS = [
   { name: 'James_Quinton', contributed: 23 },
   { name: 'LumenAura', contributed: 22 },
   { name: 'dynisor', contributed: 148 },
 ];
+*/
 
 export default function BookTabsClient({ book, toc }) {
   const [tab, setTab] = useState('about'); // 'about' | 'toc'
@@ -76,7 +77,8 @@ export default function BookTabsClient({ book, toc }) {
             </div>
           </div>
 
-          {/* Fans */}
+          {/*
+          Fans section (placeholder) — disabled per product request.
           <div>
             <div className="flex items-end justify-between">
               <h3 className="font-ui-label-lg text-ui-label-lg font-semibold text-ink-900 dark:text-neutral-100">
@@ -114,6 +116,7 @@ export default function BookTabsClient({ book, toc }) {
               ))}
             </div>
           </div>
+          */}
         </div>
       )}
     </section>

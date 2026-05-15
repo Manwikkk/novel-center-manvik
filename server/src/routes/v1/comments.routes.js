@@ -13,6 +13,12 @@ const idParam = Joi.object({ id: Joi.number().integer().positive().required() })
 router.get('/',         authOptional, validate(v.list),       ctrl.list);
 router.post('/',        authRequired, validate(v.create),     ctrl.create);
 router.patch('/:id',    authRequired, validate({ params: idParam, body: v.update.body }), ctrl.update);
+router.patch(
+  '/:id/reaction',
+  authRequired,
+  validate({ params: idParam, body: v.reaction.body }),
+  ctrl.setReaction,
+);
 router.delete('/:id',   authRequired, validate({ params: idParam }), ctrl.remove);
 
 module.exports = router;

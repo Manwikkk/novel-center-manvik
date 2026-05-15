@@ -13,11 +13,13 @@ import { useAuthStore } from '@/stores/authStore';
  */
 
 export const ADMIN_NAV = [
-  { href: '/admin',              label: 'Dashboard',       icon: 'dashboard',  exact: true },
-  { href: '/admin/users',        label: 'User Management', icon: 'group' },
-  { href: '/admin/comments',     label: 'Moderation',      icon: 'gavel' },
-  { href: '/admin/transactions', label: 'Transactions',    icon: 'monitoring' },
-  { href: '/admin/books',        label: 'Books',           icon: 'menu_book' },
+  { href: '/admin',                     label: 'Dashboard',          icon: 'dashboard',  exact: true },
+  { href: '/admin/page-configuration', label: 'Page Configuration', icon: 'tune' },
+  { href: '/admin/catalog',           label: 'Catalog',              icon: 'label' },
+  { href: '/admin/users',               label: 'User Management',    icon: 'group' },
+  { href: '/admin/comments',            label: 'Moderation',         icon: 'gavel' },
+  { href: '/admin/transactions',        label: 'Transactions',       icon: 'monitoring' },
+  { href: '/admin/books',               label: 'Books',              icon: 'menu_book' },
 ];
 
 export default function AdminSidebar() {

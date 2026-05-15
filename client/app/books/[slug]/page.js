@@ -103,6 +103,12 @@ export default async function BookDetailPage({ params }) {
                 <Icon name="category" size={18} className="opacity-80" />
                 {book.category || 'Novel'}
               </span>
+              {book.language && (
+                <span className="inline-flex items-center gap-2 text-sm">
+                  <Icon name="translate" size={18} className="opacity-80" />
+                  {String(book.language).toUpperCase()}
+                </span>
+              )}
               <span className="inline-flex items-center gap-2 text-sm">
                 <Icon name="menu_book" size={18} className="opacity-80" />
                 {initialChapters.length} Chapters
@@ -112,6 +118,18 @@ export default async function BookDetailPage({ params }) {
                 60.1K Views
               </span>
             </div>
+            {(book.contentTags || []).length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(book.contentTags || []).map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center rounded-full border border-ink-200/80 bg-cream-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-ink-700 dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-200"
+                  >
+                    {t.label}
+                  </span>
+                ))}
+              </div>
+            )}
 
             <p className="mt-3 text-sm text-ink-600 dark:text-neutral-400">
               Author:{' '}

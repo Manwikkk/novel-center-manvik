@@ -40,8 +40,10 @@ export default function Pagination({
   /** e.g. "/authors" — used with `pageParam` instead of `hrefBuilder` from RSC */
   pathname,
   pageParam = 'page',
-  /** When true (default), page 1 uses `pathname` with no query string. */
+  /** When true (default), page 1 omits `page` from the query string. Other params (see `extraQuery`) are kept. */
   omitFirstPageQuery = true,
+  /** Plain object merged into link-mode query strings (e.g. `{ q: 'magic' }`). Empty values skipped. */
+  extraQuery,
   className,
   disabled = false,
 }) {
@@ -55,10 +57,19 @@ export default function Pagination({
   function hrefForTargetPage(targetPage) {
     const targetClamped = Math.min(totalPages, Math.max(1, targetPage));
     if (pathname) {
-      if (omitFirstPageQuery && targetClamped <= 1) return pathname;
       const qs = new URLSearchParams();
-      qs.set(pageParam, String(targetClamped));
-      return `${pathname}?${qs.toString()}`;
+      if (extraQuery && typeof extraQuery === 'object') {
+        for (const [k, v] of Object.entries(extraQuery)) {
+          if (v === undefined || v === null || v === '') continue;
+          qs.set(k, String(v));
+        }
+      }
+      const omitPage = omitFirstPageQuery && targetClamped <= 1;
+      if (!omitPage) {
+        qs.set(pageParam, String(targetClamped));
+      }
+      const s = qs.toString();
+      return s ? `${pathname}?${s}` : pathname;
     }
     if (hrefBuilder) return hrefBuilder(targetClamped);
     return '#';

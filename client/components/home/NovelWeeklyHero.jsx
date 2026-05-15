@@ -30,8 +30,13 @@ function heroCoverSrc(url) {
     .replace('thumbnail/150', 'thumbnail/520');
 }
 
-export default function NovelWeeklyHero({ items = [] }) {
+export default function NovelWeeklyHero({ items = [], visibility = {} }) {
+  const showWeekly = visibility.weekly_book !== false;
+  const showMeet = visibility.meet_webnovel !== false;
   const slides = (Array.isArray(items) ? items : []).slice(0, 4);
+  const renderWeekly = showWeekly && slides.length > 0;
+  const renderMeet = showMeet;
+  const both = renderWeekly && renderMeet;
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -41,26 +46,41 @@ export default function NovelWeeklyHero({ items = [] }) {
     return () => clearInterval(t);
   }, [paused, slides.length]);
 
-  if (slides.length === 0) return null;
+  if (!renderWeekly && !renderMeet) return null;
+
+  const weeklyCol =
+    'flex min-h-0 w-full flex-col ' +
+    (both ? 'lg:w-[46%] lg:max-w-[46%] lg:shrink-0' : 'lg:w-full lg:max-w-none');
+  const meetCol =
+    'flex min-h-0 w-full flex-col gap-4 ' +
+    (both ? 'lg:w-[54%] lg:shrink-0' : 'lg:w-full lg:max-w-none');
+
+  const sectionLabel = both
+    ? 'Weekly featured books and Webnovel highlights'
+    : renderWeekly
+      ? 'Weekly featured books'
+      : 'Webnovel highlights';
 
   return (
     <section
       className="relative mb-16 scroll-mt-32 max-lg:scroll-mt-36 md:mb-24"
-      aria-roledescription="carousel"
-      aria-label="Weekly featured books"
+      aria-roledescription={renderWeekly ? 'carousel' : undefined}
+      aria-label={sectionLabel}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
       <div className="max-w-[1280px] mx-auto px-4 md:px-edge">
         <div className="flex flex-col lg:flex-row lg:items-stretch gap-8 lg:gap-10">
           {/* Weekly Book — slider */}
-          <div className="flex min-h-0 w-full flex-col lg:w-[46%] lg:max-w-[46%] lg:shrink-0">
+          {renderWeekly ? (
+          <div className={weeklyCol}>
             <h2 className="mb-4 font-ui-label-sm text-ui-label-sm font-bold uppercase tracking-widest text-ink-900 dark:text-neutral-100">
               Weekly Book
             </h2>
-            <div className="relative flex min-h-[300px] flex-1 overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-neutral-800 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.45)] sm:min-h-[308px] md:min-h-[316px] lg:min-h-0">
+            <div className="relative flex min-h-[300px] flex-1 overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-neutral-800 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.45)] sm:min-h-[308px] md:min-h-[316px] lg:min-h-[360px] xl:min-h-[380px]">
               {slides.map((slide, i) => {
                 const show = i === active;
+                const heroSizes = both ? '(max-width: 1024px) 100vw, 46vw' : '(max-width: 1024px) 100vw, 100vw';
                 const coverSrc = heroCoverSrc(slide?.coverUrl);
                 const slideTitle = slide?.title || 'Untitled';
                 const slideHref = slide?.slug ? `/books/${slide.slug}` : '/discover';
@@ -84,7 +104,7 @@ export default function NovelWeeklyHero({ items = [] }) {
                             fill
                             referrerPolicy="no-referrer"
                             className="object-cover scale-110 blur-2xl opacity-70 dark:opacity-50"
-                            sizes="(max-width: 1024px) 100vw, 46vw"
+                            sizes={heroSizes}
                             priority={i === 0}
                             unoptimized
                           />
@@ -97,7 +117,7 @@ export default function NovelWeeklyHero({ items = [] }) {
                     />
                     <Link
                       href={slideHref}
-                      className="relative z-[2] flex h-full min-h-[300px] flex-col items-center justify-center gap-4 p-5 pb-[5.25rem] max-sm:pb-[5.75rem] sm:min-h-[308px] sm:gap-6 sm:p-6 sm:pb-14 md:min-h-[316px] md:p-7 md:pb-14 lg:min-h-0 lg:pb-12 sm:flex-row sm:items-center sm:justify-start"
+                      className="relative z-[2] flex h-full min-h-[300px] flex-col items-center justify-center gap-4 p-5 pb-[5.25rem] max-sm:pb-[5.75rem] sm:min-h-[308px] sm:gap-6 sm:p-6 sm:pb-14 md:min-h-[316px] md:p-7 md:pb-14 lg:min-h-full lg:pb-12 sm:flex-row sm:items-center sm:justify-start"
                     >
                       <div className="relative h-[180px] w-[120px] shrink-0 overflow-hidden rounded-lg bg-black/25 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/10 sm:h-[196px] sm:w-[131px] md:h-[210px] md:w-[140px] lg:h-[218px] lg:w-[146px]">
                         {coverSrc ? (
@@ -152,9 +172,11 @@ export default function NovelWeeklyHero({ items = [] }) {
               </div>
             </div>
           </div>
+          ) : null}
 
           {/* Meet Webnovel — sidebar */}
-          <div className="flex min-h-0 w-full flex-col gap-4 lg:w-[54%] lg:shrink-0">
+          {renderMeet ? (
+          <div className={meetCol}>
             <h2 className="font-ui-label-sm text-ui-label-sm font-bold uppercase tracking-widest text-ink-900 dark:text-neutral-100">
               Meet Webnovel
             </h2>
@@ -188,6 +210,7 @@ export default function NovelWeeklyHero({ items = [] }) {
               ))}
             </div>
           </div>
+          ) : null}
         </div>
       </div>
     </section>

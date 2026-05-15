@@ -5,6 +5,7 @@
 // page can drive every section from one round trip.
 
 const pool = require('../db/pool');
+const pageSectionsSvc = require('./pageSections.service');
 
 const SECTION_TAGS = [
   'weekly_featured',
@@ -57,7 +58,13 @@ async function getHomeSections() {
     result[tag].push(rowToCard(row));
   }
 
-  return result;
+  let pageSections;
+  try {
+    pageSections = await pageSectionsSvc.getPageSections();
+  } catch (_e) {
+    pageSections = { ...pageSectionsSvc.DEFAULT_SECTIONS };
+  }
+  return { ...result, pageSections };
 }
 
 module.exports = { getHomeSections, SECTION_TAGS };

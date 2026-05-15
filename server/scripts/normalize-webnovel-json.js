@@ -1,5 +1,10 @@
 'use strict';
 
+// Normalizes WebNovel `pcbookcity/page` JSON (data.blockItems) into section-keyed book arrays.
+// Feed the result into the DB with:
+//   npm run db:seed:webnovel -- --input ./webnovel-books.json
+// (or keep the default server/webnovel-books.json after writing this file there).
+
 const fs = require('fs/promises');
 
 function sectionKey(title) {

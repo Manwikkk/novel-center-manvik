@@ -65,4 +65,17 @@ module.exports = {
       status: Joi.string().valid('visible', 'hidden', 'deleted').required(),
     }),
   },
+  patchPageSections: {
+    body: Joi.object({
+      weekly_book: Joi.boolean(),
+      meet_webnovel: Joi.boolean(),
+      recommended: Joi.boolean(),
+      new_arrivals: Joi.boolean(),
+      ranking_novels: Joi.boolean(),
+      updated_today: Joi.boolean(),
+      completed_novels: Joi.boolean(),
+      editors_choice: Joi.boolean(),
+      gs_originals: Joi.boolean(),
+    }).min(1),
+  },
 };

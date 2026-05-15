@@ -3,6 +3,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const adminSvc = require('../services/admin.service');
 const commentsSvc = require('../services/comments.service');
+const pageSectionsSvc = require('../services/pageSections.service');
 
 const listUsers = asyncHandler(async (req, res) => {
   res.json(await adminSvc.listUsers(req.query));
@@ -42,8 +43,17 @@ const stats = asyncHandler(async (_req, res) => {
   res.json(await adminSvc.stats());
 });
 
+const getPageSections = asyncHandler(async (_req, res) => {
+  res.json({ pageSections: await pageSectionsSvc.getPageSections() });
+});
+
+const patchPageSections = asyncHandler(async (req, res) => {
+  const pageSections = await pageSectionsSvc.updatePageSections(req.body);
+  res.json({ pageSections });
+});
+
 module.exports = {
   listUsers, updateUser, listBooks, listTransactions,
   listComments, commentsByBook, commentsByChapter, moderateComment,
-  stats,
+  stats, getPageSections, patchPageSections,
 };

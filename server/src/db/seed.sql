@@ -12,6 +12,8 @@ DELETE FROM comments;
 DELETE FROM transactions;
 DELETE FROM chapter_unlocks;
 DELETE FROM chapters;
+DELETE FROM book_content_tags;
+DELETE FROM book_tags;
 DELETE FROM books;
 DELETE FROM wallets;
 DELETE FROM users;
@@ -133,6 +135,74 @@ INSERT INTO books (id, slug, author_id, title, synopsis, cover_url, category, la
    'Working title — a draft Eleanor is keeping close, mostly notes and a single chapter.',
    NULL,
    'Historical Fiction', 'en', 'draft');
+
+-- Link books to catalog FKs when migration 007 has been applied.
+UPDATE books SET language_id = (SELECT id FROM catalog_languages WHERE code = 'en' LIMIT 1)
+ WHERE EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'books' AND COLUMN_NAME = 'language_id')
+   AND language_id IS NULL;
+UPDATE books b
+ INNER JOIN catalog_categories c ON c.label = b.category
+   SET b.category_id = c.id
+ WHERE EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'books' AND COLUMN_NAME = 'category_id')
+   AND b.category IS NOT NULL AND b.category <> '';
+
+-- =====================================================================
+-- Home page shelves: `book_tags` drives /api/v1/home (weekly_featured,
+-- new_arrivals, …).  Without these rows every section is empty.
+-- =====================================================================
+INSERT INTO book_tags (book_id, tag) VALUES
+  -- Weekly hero + “New Arrivals” strip (page maps weekly_featured → New Arrivals UI)
+  (1, 'weekly_featured'),
+  (2, 'weekly_featured'),
+  (10, 'weekly_featured'),
+  (11, 'weekly_featured'),
+  -- “Recommended” strip (page maps new_arrivals → Recommended UI)
+  (3, 'new_arrivals'),
+  (4, 'new_arrivals'),
+  (5, 'new_arrivals'),
+  (6, 'new_arrivals'),
+  (12, 'new_arrivals'),
+  -- Ranking Novels — three rails
+  (1, 'potential_starlet'),
+  (7, 'potential_starlet'),
+  (8, 'potential_starlet'),
+  (2, 'rising_fictions'),
+  (9, 'rising_fictions'),
+  (12, 'rising_fictions'),
+  -- Updated Today
+  (3, 'cheering_reads'),
+  (4, 'cheering_reads'),
+  (5, 'cheering_reads'),
+  (6, 'cheering_reads'),
+  -- Editors’ Choice + Completed row
+  (7, 'editors_choice'),
+  (8, 'editors_choice'),
+  (9, 'editors_choice'),
+  (11, 'completed_novel'),
+  (12, 'completed_novel');
+
+-- Star ratings for ranking “Highly rated” rail (pickTopRated needs score > 0).
+UPDATE books SET score = CASE id
+  WHEN 1  THEN 4.92 WHEN 2  THEN 4.90 WHEN 3  THEN 4.76 WHEN 4  THEN 4.84
+  WHEN 5  THEN 4.68 WHEN 6  THEN 4.79 WHEN 7  THEN 4.72 WHEN 8  THEN 4.87
+  WHEN 9  THEN 4.74 WHEN 10 THEN 4.91 WHEN 11 THEN 4.69 WHEN 12 THEN 4.96
+  ELSE score
+END
+WHERE id BETWEEN 1 AND 12;
+
+-- Ensure home layout toggles are on after seed (table from migration 005).
+INSERT INTO site_home_page_config (id, weekly_book, meet_webnovel, recommended, new_arrivals, ranking_novels, updated_today, completed_novels, editors_choice, gs_originals)
+VALUES (1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+ON DUPLICATE KEY UPDATE
+  weekly_book = VALUES(weekly_book),
+  meet_webnovel = VALUES(meet_webnovel),
+  recommended = VALUES(recommended),
+  new_arrivals = VALUES(new_arrivals),
+  ranking_novels = VALUES(ranking_novels),
+  updated_today = VALUES(updated_today),
+  completed_novels = VALUES(completed_novels),
+  editors_choice = VALUES(editors_choice),
+  gs_originals = VALUES(gs_originals);
 
 -- =====================================================================
 -- Chapters — Book 1 (The Silent Tide) gets the full ToC the Stitch

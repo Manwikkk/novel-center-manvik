@@ -4,8 +4,15 @@ import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 
-export default function CommentForm({ onSubmit, placeholder = 'Share your thoughts…', compact = false, reader = false }) {
+export default function CommentForm({
+  onSubmit,
+  placeholder = 'Share your thoughts…',
+  compact = false,
+  reader = false,
+  showSpoilerOption = true,
+}) {
   const [body, setBody] = useState('');
+  const [isSpoiler, setIsSpoiler] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e) {
@@ -14,8 +21,9 @@ export default function CommentForm({ onSubmit, placeholder = 'Share your though
     if (!trimmed) return;
     setBusy(true);
     try {
-      await onSubmit?.({ body: trimmed });
+      await onSubmit?.({ body: trimmed, isSpoiler: showSpoilerOption ? isSpoiler : false });
       setBody('');
+      setIsSpoiler(false);
     } finally {
       setBusy(false);
     }
@@ -35,6 +43,9 @@ export default function CommentForm({ onSubmit, placeholder = 'Share your though
       );
 
   const meta = reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500';
+  const chk = reader
+    ? 'accent-[var(--reader-accent)] border-[var(--reader-rule)] text-[var(--reader-fg)]'
+    : 'accent-ink-900 dark:accent-neutral-300 border-ink-300 dark:border-neutral-600';
 
   return (
     <form onSubmit={handleSubmit} className={cn('w-full')}>
@@ -45,6 +56,22 @@ export default function CommentForm({ onSubmit, placeholder = 'Share your though
         placeholder={placeholder}
         className={ta}
       />
+      {showSpoilerOption && (
+        <label
+          className={cn(
+            'mt-3 flex cursor-pointer items-start gap-3 text-[13px] leading-snug',
+            reader ? 'text-[var(--reader-muted)]' : 'text-ink-600 dark:text-neutral-400',
+          )}
+        >
+          <input
+            type="checkbox"
+            checked={isSpoiler}
+            onChange={(e) => setIsSpoiler(e.target.checked)}
+            className={cn('mt-0.5 h-4 w-4 shrink-0 rounded border', chk)}
+          />
+          <span>This comment reveals plot spoilers (hidden until readers choose to show it).</span>
+        </label>
+      )}
       <div className="mt-3 flex items-center justify-end gap-3">
         <span className={cn('text-[12px]', meta)}>{2000 - body.length} characters left</span>
         <Button

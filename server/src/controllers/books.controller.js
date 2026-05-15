@@ -19,7 +19,7 @@ const getById = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  const book = await svc.create(req.body, req.user.id);
+  const book = await svc.create(req.body, req.user.id, req.user);
   res.status(201).json({ book });
 });
 

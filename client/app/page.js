@@ -16,6 +16,18 @@ export const revalidate = 30;
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+const DEFAULT_PAGE_SECTIONS = {
+  weekly_book: true,
+  meet_webnovel: true,
+  recommended: true,
+  new_arrivals: true,
+  ranking_novels: true,
+  updated_today: true,
+  completed_novels: true,
+  editors_choice: true,
+  gs_originals: true,
+};
+
 const EMPTY_HOME = {
   weekly_featured: [],
   new_arrivals: [],
@@ -24,6 +36,7 @@ const EMPTY_HOME = {
   cheering_reads: [],
   editors_choice: [],
   completed_novel: [],
+  pageSections: { ...DEFAULT_PAGE_SECTIONS },
 };
 
 async function fetchHome() {
@@ -31,7 +44,14 @@ async function fetchHome() {
     const r = await fetch(`${API_BASE}/api/v1/home`, { next: { revalidate: 30 } });
     if (!r.ok) return EMPTY_HOME;
     const data = await r.json();
-    return { ...EMPTY_HOME, ...data };
+    return {
+      ...EMPTY_HOME,
+      ...data,
+      pageSections: {
+        ...DEFAULT_PAGE_SECTIONS,
+        ...(data.pageSections && typeof data.pageSections === 'object' ? data.pageSections : {}),
+      },
+    };
   } catch (_e) {
     return EMPTY_HOME;
   }
@@ -80,28 +100,47 @@ export default async function HomePage() {
   const home = await fetchHome();
 
   const highlyRated = pickTopRated(home.new_arrivals, home.completed_novel);
+  const ps =
+    home.pageSections && typeof home.pageSections === 'object'
+      ? { ...DEFAULT_PAGE_SECTIONS, ...home.pageSections }
+      : { ...DEFAULT_PAGE_SECTIONS };
+  const show = (key) => ps[key] !== false;
 
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-black">
       <SiteHeader />
 
       <main className="flex-grow pt-32 max-lg:pt-[8.5rem] lg:pt-28">
-        <NovelWeeklyHero items={home.weekly_featured} />
-        <RecommendedSection items={home.new_arrivals} />
-        <NewArrivalsSection items={home.weekly_featured} />
-        <RankingNovelsSection
-          mostRead={home.potential_starlet}
-          trending={home.rising_fictions}
-          highlyRated={highlyRated}
+        <NovelWeeklyHero
+          items={home.weekly_featured}
+          visibility={{
+            weekly_book: show('weekly_book'),
+            meet_webnovel: show('meet_webnovel'),
+          }}
         />
-        <UpdatedTodaySection items={home.cheering_reads} />
+        {show('recommended') ? <RecommendedSection items={home.new_arrivals} /> : null}
+        {show('new_arrivals') ? <NewArrivalsSection items={home.weekly_featured} /> : null}
+        {show('ranking_novels') ? (
+          <RankingNovelsSection
+            mostRead={home.potential_starlet}
+            trending={home.rising_fictions}
+            highlyRated={highlyRated}
+          />
+        ) : null}
+        {show('updated_today') ? <UpdatedTodaySection items={home.cheering_reads} /> : null}
         <CompletedAndEditorsRow
           completed={home.completed_novel}
           editors={home.editors_choice}
+          visibility={{
+            completed_novels: show('completed_novels'),
+            editors_choice: show('editors_choice'),
+          }}
         />
-        <GSOriginalsSection
-          items={home.rising_fictions.length ? home.rising_fictions : home.editors_choice}
-        />
+        {show('gs_originals') ? (
+          <GSOriginalsSection
+            items={home.rising_fictions.length ? home.rising_fictions : home.editors_choice}
+          />
+        ) : null}
         <BecomeAuthorCTA />
 
         {/* CONTINUE READING (disabled for now; kept as reference) ----

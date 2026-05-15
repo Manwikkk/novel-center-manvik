@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import SectionViewAllLink from '@/components/home/SectionViewAllLink';
 
 function normalizeCover(url) {
   if (!url) return url;
@@ -15,9 +16,12 @@ export default function RecommendedSection({ items = [] }) {
 
   return (
     <section className="max-w-[1280px] mx-auto px-4 md:px-edge mt-14 md:mt-16">
-      <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100 mb-6">
-        Recommended
-      </h2>
+      <div className="flex items-end justify-between gap-4 mb-6">
+        <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100">
+          Recommended
+        </h2>
+        <SectionViewAllLink href="/sections/recommended" />
+      </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-x-6 gap-y-8">
         {visible.map((b) => {
