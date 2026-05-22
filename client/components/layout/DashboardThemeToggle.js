@@ -7,7 +7,7 @@ import { useSiteThemeStore } from '@/stores/siteThemeStore';
 /**
  * Theme control for author/admin dashboard chrome (uses nc.siteTheme + .dark on <html>).
  */
-export function DashboardThemeToggleSidebar({ className }) {
+export function DashboardThemeToggleSidebar({ className, collapsed = false }) {
   const siteTheme = useSiteThemeStore((s) => s.siteTheme);
   const toggleSiteTheme = useSiteThemeStore((s) => s.toggleSiteTheme);
   const isDark = siteTheme === 'dark';
@@ -17,15 +17,20 @@ export function DashboardThemeToggleSidebar({ className }) {
       type="button"
       onClick={() => toggleSiteTheme()}
       className={cn(
-        'w-full px-6 py-4 flex items-center gap-3 text-on-surface-variant',
-        'hover:bg-surface-container transition-all duration-200 ease-in-out',
-        'text-[11px] uppercase tracking-widest',
+        'flex items-center gap-3 text-on-surface-variant',
+        'hover:bg-surface-container transition-colors rounded-lg',
+        collapsed ? 'p-2 justify-center w-full' : 'w-full px-3 py-2',
         className,
       )}
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+      title={isDark ? 'Light theme' : 'Dark theme'}
     >
-      <Icon name={isDark ? 'light_mode' : 'dark_mode'} size={20} />
-      {isDark ? 'Light theme' : 'Dark theme'}
+      <Icon name={isDark ? 'light_mode' : 'dark_mode'} size={18} />
+      {!collapsed && (
+        <span className="text-[13px] normal-case tracking-normal font-medium">
+          {isDark ? 'Light theme' : 'Dark theme'}
+        </span>
+      )}
     </button>
   );
 }

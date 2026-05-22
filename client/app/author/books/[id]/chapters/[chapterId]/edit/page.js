@@ -7,7 +7,6 @@ import AuthGuard from '@/components/layout/AuthGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import TextInput from '@/components/ui/TextInput';
-import Button from '@/components/ui/Button';
 import ChapterEditor from '@/components/author/ChapterEditor';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
@@ -35,16 +34,16 @@ function SaveStatus({ state, lastSavedAt }) {
 
   if (state === 'idle') return null;
   if (state === 'dirty') {
-    return <span className="text-[12px] tracking-labelTight uppercase text-ink-400">Unsaved changes</span>;
+    return <span className="text-[12px] tracking-labelTight uppercase text-on-surface-variant">Unsaved changes</span>;
   }
   if (state === 'saving') {
-    return <span className="text-[12px] tracking-labelTight uppercase text-ink-400">Saving…</span>;
+    return <span className="text-[12px] tracking-labelTight uppercase text-on-surface-variant">Saving…</span>;
   }
   if (state === 'error') {
-    return <span className="text-[12px] tracking-labelTight uppercase text-danger">Save failed · retrying</span>;
+    return <span className="text-[12px] tracking-labelTight uppercase text-error">Save failed · retrying</span>;
   }
   return (
-    <span className="text-[12px] tracking-labelTight uppercase text-ink-400">
+    <span className="text-[12px] tracking-labelTight uppercase text-on-surface-variant">
       Saved {relativeFromNow(lastSavedAt)}
     </span>
   );
@@ -219,10 +218,20 @@ function ChapterEditInner() {
         actions={
           <>
             <SaveStatus state={saveState} lastSavedAt={lastSavedAt} />
-            <Button as={Link} href={`/author/books/${id}/edit`} variant="ghost" size="sm">Back to book</Button>
-            <Button onClick={() => persist({ manual: true })} disabled={busy || saveState === 'saving'} variant="primary" size="sm">
+            <Link
+              href={`/author/books/${id}/edit`}
+              className="text-[12px] font-bold uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              Back to book
+            </Link>
+            <button
+              type="button"
+              onClick={() => persist({ manual: true })}
+              disabled={busy || saveState === 'saving'}
+              className="px-4 py-2 rounded-lg bg-studio-accent hover:bg-studio-accent-hover text-white text-[12px] font-bold uppercase tracking-wider disabled:opacity-50 transition-colors"
+            >
               {busy || saveState === 'saving' ? 'Saving…' : 'Save chapter'}
-            </Button>
+            </button>
           </>
         }
       />
@@ -235,20 +244,20 @@ function ChapterEditInner() {
             />
             <ChapterEditor value={content} onChange={setContent} />
           </div>
-          <aside className="space-y-6">
+          <aside className="space-y-6 rounded-xl border border-surface-variant bg-surface-container-lowest p-5">
             <div>
-              <p className="label-sm uppercase text-ink-400">Order</p>
+              <p className="label-sm uppercase text-on-surface-variant">Order</p>
               <input
                 type="number"
                 min={1}
                 value={chapter.idx}
                 onChange={(e) => update('idx', Number(e.target.value))}
-                className="mt-2 w-full bg-transparent border-b border-ink-300 focus:border-ink-900 focus:outline-none py-2 text-[18px] no-spin"
+                className="mt-2 w-full bg-transparent border-b border-surface-variant focus:border-on-surface focus:outline-none py-2 text-[18px] text-on-surface no-spin"
               />
             </div>
             <div>
-              <p className="label-sm uppercase text-ink-400">Status</p>
-              <div className="mt-2 inline-flex rounded border border-ink-300 overflow-hidden">
+              <p className="label-sm uppercase text-on-surface-variant">Status</p>
+              <div className="mt-2 inline-flex rounded-md border border-surface-variant overflow-hidden">
                 {['draft','published'].map((s) => (
                   <button
                     key={s}
@@ -256,7 +265,9 @@ function ChapterEditInner() {
                     onClick={() => update('status', s)}
                     className={
                       'px-3 py-1.5 text-[12px] tracking-labelTight uppercase ' +
-                      (chapter.status === s ? 'bg-ink-900 text-cream-100' : 'text-ink-700 hover:text-ink-900')
+                      (chapter.status === s
+                        ? 'bg-primary text-on-primary'
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface')
                     }
                   >
                     {s}
@@ -265,19 +276,29 @@ function ChapterEditInner() {
               </div>
             </div>
             <div>
-              <p className="label-sm uppercase text-ink-400">Access</p>
-              <div className="mt-2 inline-flex rounded border border-ink-300 overflow-hidden">
+              <p className="label-sm uppercase text-on-surface-variant">Access</p>
+              <div className="mt-2 inline-flex rounded-md border border-surface-variant overflow-hidden">
                 <button
                   type="button"
                   onClick={() => update('isPaid', false)}
-                  className={'px-3 py-1.5 text-[12px] tracking-labelTight uppercase ' + (!chapter.isPaid ? 'bg-ink-900 text-cream-100' : 'text-ink-700')}
+                  className={
+                    'px-3 py-1.5 text-[12px] tracking-labelTight uppercase ' +
+                    (!chapter.isPaid
+                      ? 'bg-primary text-on-primary'
+                      : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface')
+                  }
                 >
                   Free
                 </button>
                 <button
                   type="button"
                   onClick={() => update('isPaid', true)}
-                  className={'px-3 py-1.5 text-[12px] tracking-labelTight uppercase ' + (chapter.isPaid ? 'bg-ink-900 text-cream-100' : 'text-ink-700')}
+                  className={
+                    'px-3 py-1.5 text-[12px] tracking-labelTight uppercase ' +
+                    (chapter.isPaid
+                      ? 'bg-primary text-on-primary'
+                      : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface')
+                  }
                 >
                   Paid
                 </button>

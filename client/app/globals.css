@@ -83,6 +83,10 @@
   --nc-on-error: #ffffff;
   --nc-error-container: #ffdad6;
   --nc-on-error-container: #93000a;
+
+  --studio-accent: #2563eb;
+  --studio-accent-hover: #1d4ed8;
+  --studio-highlight: #dc2626;
 }
 
 .dark {
@@ -129,6 +133,10 @@
   --nc-on-error: #0a0a0a;
   --nc-error-container: #450a0a;
   --nc-on-error-container: #fecaca;
+
+  --studio-accent: #3b82f6;
+  --studio-accent-hover: #2563eb;
+  --studio-highlight: #ef4444;
 }
 
 /* Shell background/text come from <body> in app/layout.js (white / dark). */
@@ -209,6 +217,42 @@ html, body {
     margin: 1.4em 0;
   }
 
+  /* Author chapter editor (TipTap) — site theme, not reader theme */
+  .chapter-editor-prose {
+    color: var(--nc-on-surface);
+    font-family: var(--font-newsreader), 'Newsreader', Georgia, serif;
+    font-size: 20px;
+    line-height: 1.7;
+    min-height: 100%;
+  }
+  .chapter-editor-prose p { margin: 0 0 1em; }
+  .chapter-editor-prose h2 { font-size: 1.35em; font-weight: 500; margin: 1.4em 0 0.5em; color: var(--nc-on-surface); }
+  .chapter-editor-prose h3 { font-size: 1.15em; font-weight: 600; margin: 1.2em 0 0.4em; color: var(--nc-on-surface); }
+  .chapter-editor-prose h4 { font-size: 1.05em; font-weight: 600; margin: 1em 0 0.4em; color: var(--nc-on-surface); }
+  .chapter-editor-prose blockquote {
+    border-left: 2px solid var(--studio-accent, #3b82f6);
+    padding-left: 1em;
+    color: var(--nc-on-surface-variant);
+    font-style: italic;
+    margin: 1.2em 0;
+  }
+  .chapter-editor-prose a {
+    color: var(--studio-accent, #3b82f6);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .chapter-editor-prose ul,
+  .chapter-editor-prose ol { padding-left: 1.5em; margin: 0 0 1em; }
+  .chapter-editor-prose li { margin: 0.25em 0; }
+  .chapter-editor-prose p.is-editor-empty:first-child::before {
+    color: var(--nc-on-surface-variant);
+    opacity: 1;
+  }
+  .chapter-editor-prose:focus { outline: none; }
+  .chapter-editor-prose strong,
+  .chapter-editor-prose em,
+  .chapter-editor-prose s { color: inherit; }
+
   /* Stitch "ui-label" letterspacing for buttons / nav */
   .label-lg { font-size: 16px; line-height: 1.4; letter-spacing: 0.05em; font-weight: 600; }
   .label-sm { font-size: 12px; line-height: 1.4; letter-spacing: 0.08em; font-weight: 500; text-transform: uppercase; }
@@ -263,3 +307,16 @@ html, body {
 /* Horizontal scroll containers without scrollbars (mobile nav strips) */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+/* Author studio promo carousel dots */
+.studio-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--nc-outline-variant);
+  transition: background 0.2s, width 0.2s;
+}
+.studio-dot-active {
+  width: 18px;
+  background: var(--studio-accent, #3b82f6);
+}

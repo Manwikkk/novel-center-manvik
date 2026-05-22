@@ -45,8 +45,8 @@ export default function TextInput({
         onBlur={(e) => { setFocused(false); onBlur?.(e); }}
         className={cn(
           'peer block w-full bg-transparent border-0 border-b py-3 px-0',
-          'border-ink-300 focus:border-ink-900 focus:outline-none',
-          'placeholder-transparent text-ink-900',
+          'border-surface-variant focus:border-on-surface focus:outline-none',
+          'placeholder-transparent text-on-surface caret-studio-accent',
           error && 'border-danger',
           inputClassName,
         )}
@@ -59,7 +59,7 @@ export default function TextInput({
           htmlFor={id}
           className={cn(
             'absolute left-0 transition-all pointer-events-none label-sm',
-            isFloating ? 'top-0 text-[11px] tracking-labelTight text-ink-400' : 'top-3 text-[14px] tracking-normal text-ink-400 normal-case',
+            isFloating ? 'top-0 text-[11px] tracking-labelTight text-on-surface-variant' : 'top-3 text-[14px] tracking-normal text-on-surface-variant normal-case',
           )}
         >
           {label}
@@ -67,7 +67,7 @@ export default function TextInput({
         </label>
       )}
       {(error || hint) && (
-        <p className={cn('mt-1 text-[12px]', error ? 'text-danger' : 'text-ink-400')}>
+        <p className={cn('mt-1 text-[12px]', error ? 'text-danger' : 'text-on-surface-variant')}>
           {error || hint}
         </p>
       )}

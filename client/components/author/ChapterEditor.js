@@ -30,7 +30,7 @@ export default function ChapterEditor({ value, onChange }) {
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: 'prose-reader w-full focus:outline-none px-6 py-8 min-h-full',
+        class: 'chapter-editor-prose w-full focus:outline-none px-6 py-8 min-h-full',
       },
     },
     onUpdate: ({ editor: e }) => onChange?.(e.getHTML()),

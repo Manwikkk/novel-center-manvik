@@ -108,6 +108,12 @@ module.exports = {
         'on-error': 'var(--nc-on-error)',
         'error-container': 'var(--nc-error-container)',
         'on-error-container': 'var(--nc-on-error-container)',
+
+        studio: {
+          accent: 'var(--studio-accent, #3b82f6)',
+          'accent-hover': 'var(--studio-accent-hover, #2563eb)',
+          highlight: 'var(--studio-highlight, #ef4444)',
+        },
       },
       fontFamily: {
         serif: ['var(--font-newsreader)', 'Newsreader', 'Georgia', 'serif'],

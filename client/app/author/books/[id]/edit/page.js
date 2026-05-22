@@ -1,25 +1,36 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthGuard from '@/components/layout/AuthGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import BookEditorForm from '@/components/author/BookEditorForm';
+import BookPublishBar from '@/components/author/BookPublishBar';
 import CoverUploader from '@/components/author/CoverUploader';
-import Button from '@/components/ui/Button';
+import { FormSection } from '@/components/author/BookFormFields';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
 import { formatDate } from '@/lib/format';
-
 function BookEditInner() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
   const pushToast = useUiStore((s) => s.pushToast);
   const [book, setBook] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [creatingChapter, setCreatingChapter] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('created') !== '1') return;
+    pushToast({
+      type: 'success',
+      title: 'Book created',
+      message: 'Save any edits and add your first chapter below.',
+    });
+    window.history.replaceState(null, '', `/author/books/${id}/edit`);
+  }, [searchParams, id, pushToast]);
 
   useEffect(() => {
     let cancel = false;
@@ -83,51 +94,94 @@ function BookEditInner() {
       <DashboardTopbar
         subtitle="Author studio"
         title={book.title}
-        actions={<Button href={`/books/${book.slug}`} variant="ghost" size="sm">View public page</Button>}
+        actions={
+          book.status === 'published' ? (
+            <Link
+              href={`/books/${book.slug}`}
+              className="text-[12px] font-bold uppercase tracking-wider text-studio-accent hover:underline"
+            >
+              View public page
+            </Link>
+          ) : null
+        }
       />
-      <div className="px-4 md:px-edge py-8 grid lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 space-y-10">
-          <BookEditorForm book={book} onSaved={(b) => setBook(b)} />
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-serif text-[24px] text-ink-900">Chapters</h2>
-              <Button onClick={addChapter} variant="secondary" size="sm" disabled={creatingChapter}>
-                <Plus size={14} className="mr-2" /> New chapter
-              </Button>
-            </div>
-            {chapters.length === 0 ? (
-              <p className="text-ink-400">No chapters yet.</p>
-            ) : (
-              <ul className="border border-ink-200/60 rounded-md divide-y divide-ink-200/60">
-                {chapters.map((c) => (
-                  <li key={c.id} className="px-4 py-3 flex items-center gap-4">
-                    <span className="label-sm tabular-nums w-10 text-ink-400">{String(c.idx).padStart(2,'0')}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-serif text-[16px] text-ink-900 truncate">{c.title}</p>
-                      <p className="text-[12px] text-ink-400">
-                        {c.isPaid && c.tokenPrice > 0 ? `Paid · ${c.tokenPrice} tokens` : 'Free'} · {c.status} · {formatDate(c.updatedAt)}
-                      </p>
-                    </div>
-                    <Link href={`/author/books/${book.id}/chapters/${c.id}/edit`} className="p-2 text-ink-400 hover:text-ink-900" title="Edit">
-                      <Pencil size={16} />
-                    </Link>
-                    <button onClick={() => deleteChapter(c)} className="p-2 text-ink-400 hover:text-danger" title="Delete">
-                      <Trash2 size={16} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+      <div className="px-4 md:px-8 py-6 md:py-8 max-w-6xl mx-auto w-full space-y-8">
+        <BookPublishBar book={book} onUpdated={setBook} />
+
+        <div className="grid xl:grid-cols-[1fr_280px] gap-6 items-start">
+          <BookEditorForm book={book} onSaved={setBook} />
+          <FormSection title="Cover" className="xl:sticky xl:top-6">
+            <CoverUploader book={book} onUpdated={setBook} />
+          </FormSection>
         </div>
-        <div>
-          <CoverUploader book={book} onUpdated={(b) => setBook(b)} />
-        </div>
+
+        <section className="rounded-xl border border-surface-variant bg-surface-container-lowest p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-5 pb-4 border-b border-surface-variant">
+            <h2 className="text-[13px] font-bold uppercase tracking-wider text-on-surface">Chapters</h2>
+            <button
+              type="button"
+              onClick={addChapter}
+              disabled={creatingChapter}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-studio-accent hover:bg-studio-accent-hover text-white text-[12px] font-bold uppercase tracking-wider disabled:opacity-50 transition-colors"
+            >
+              <Plus size={14} />
+              {creatingChapter ? 'Adding…' : 'New chapter'}
+            </button>
+          </div>
+
+          {chapters.length === 0 ? (
+            <p className="text-[14px] text-on-surface-variant py-6 text-center">
+              No chapters yet. Click <span className="text-on-surface font-semibold">New chapter</span> to start writing.
+            </p>
+          ) : (
+            <ul className="divide-y divide-surface-variant border border-surface-variant rounded-lg overflow-hidden">
+              {chapters.map((c) => (
+                <li
+                  key={c.id}
+                  className="px-4 py-3 flex items-center gap-4 bg-surface-container-lowest hover:bg-surface-container/50 transition-colors"
+                >
+                  <span className="label-sm tabular-nums w-10 text-on-surface-variant shrink-0">
+                    {String(c.idx).padStart(2, '0')}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[15px] text-on-surface truncate">{c.title}</p>
+                    <p className="text-[12px] text-on-surface-variant mt-0.5">
+                      {c.isPaid && c.tokenPrice > 0 ? `Paid · ${c.tokenPrice} tokens` : 'Free'}
+                      {' · '}
+                      <span className="capitalize">{c.status}</span>
+                      {' · '}
+                      {formatDate(c.updatedAt)}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/author/books/${book.id}/chapters/${c.id}/edit`}
+                    className="p-2 text-on-surface-variant hover:text-studio-accent transition-colors"
+                    title="Edit"
+                  >
+                    <Pencil size={16} />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => deleteChapter(c)}
+                    className="p-2 text-on-surface-variant hover:text-error transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </DashboardShell>
   );
 }
 
 export default function BookEditPage() {
-  return <AuthGuard roles={['author','admin']}><BookEditInner /></AuthGuard>;
+  return (
+    <AuthGuard roles={['author', 'admin']}>
+      <BookEditInner />
+    </AuthGuard>
+  );
 }

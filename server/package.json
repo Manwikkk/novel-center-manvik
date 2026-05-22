@@ -16,6 +16,7 @@
     "db:migrate:comment-reactions": "node src/db/runSql.js src/db/migrations/006_comment_reactions_spoiler.sql",
     "db:migrate:catalog": "node src/db/runSql.js src/db/migrations/007_catalog_taxonomy.sql",
     "db:migrate:review-ratings": "node src/db/runSql.js src/db/migrations/008_comment_review_ratings.sql",
+    "db:migrate:book-metadata": "node src/db/runSql.js src/db/migrations/009_book_metadata.sql",
     "db:seed": "node src/db/runSql.js src/db/seed.sql",
     "db:import:webnovel": "node scripts/import-webnovel-books.js",
     "db:seed:webnovel": "node scripts/seed-webnovel-home.js",

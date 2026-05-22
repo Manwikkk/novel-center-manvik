@@ -6,6 +6,7 @@ const { errors } = require('../utils/HttpError');
 const storage = require('../storage');
 const { clampPagination } = require('../utils/pagination');
 const catalog = require('./catalog.service');
+const bookMeta = require('../constants/bookMetadata');
 
 function rowToBook(row, opts = {}) {
   if (!row) return null;
@@ -21,6 +22,12 @@ function rowToBook(row, opts = {}) {
     category: row.category,
     language: row.language,
     status: row.status,
+    bookType: row.book_type || 'novel',
+    leadingGender: row.leading_gender || 'male',
+    genre: row.genre || null,
+    abbreviation: row.abbreviation || null,
+    bookLength: row.book_length || null,
+    warningNotice: row.warning_notice || null,
     score: row.score == null ? null : Number(row.score),
     chapterNum: row.chapter_num != null ? Number(row.chapter_num) : 0,
     externalLink: row.external_link || null,
@@ -188,6 +195,20 @@ async function getByIdForViewer(id, viewer) {
   return rowToBook(row, { contentTags: tags });
 }
 
+function validateBookMetadata(body, { requireSynopsis } = {}) {
+  const leadingGender = body.leadingGender || 'male';
+  if (body.genre) {
+    try {
+      bookMeta.assertGenreForGender(body.genre, leadingGender);
+    } catch {
+      throw errors.badRequest('Invalid genre for selected leading gender');
+    }
+  }
+  if (requireSynopsis && (!body.synopsis || !String(body.synopsis).trim())) {
+    throw errors.badRequest('Synopsis is required');
+  }
+}
+
 async function create(body, authorId, user) {
   const {
     title,
@@ -199,7 +220,15 @@ async function create(body, authorId, user) {
     contentTagIds,
     category,
     language,
+    bookType,
+    leadingGender,
+    genre,
+    abbreviation,
+    bookLength,
+    warningNotice,
   } = body;
+
+  validateBookMetadata(body, { requireSynopsis: true });
 
   let langId = languageId != null ? Number(languageId) : null;
   if (langId == null) langId = await defaultLanguageId();
@@ -210,13 +239,21 @@ async function create(body, authorId, user) {
 
   const slug = await uniqueSlug(title);
   const [r] = await pool.execute(
-    `INSERT INTO books (slug, author_id, title, synopsis, cover_url, category, language, category_id, language_id, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO books (
+       slug, author_id, title, book_type, leading_gender, genre, abbreviation, book_length, warning_notice,
+       synopsis, cover_url, category, language, category_id, language_id, status
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       slug,
       authorId,
       title,
-      synopsis || null,
+      bookType || 'novel',
+      leadingGender || 'male',
+      genre || null,
+      abbreviation || null,
+      bookLength || null,
+      warningNotice || null,
+      synopsis ? String(synopsis).trim() : null,
       coverUrl || null,
       category || null,
       language || 'en',
@@ -243,6 +280,16 @@ async function update(id, patch, user) {
   const book = await getById(id);
   assertOwnerOrAdmin(book, user);
 
+  const leadingGender = patch.leadingGender !== undefined ? patch.leadingGender : book.leadingGender;
+  const genre = patch.genre !== undefined ? patch.genre : book.genre;
+  if (patch.genre !== undefined || patch.leadingGender !== undefined) {
+    try {
+      bookMeta.assertGenreForGender(genre, leadingGender);
+    } catch {
+      throw errors.badRequest('Invalid genre for selected leading gender');
+    }
+  }
+
   const fields = [];
   const params = [];
   const map = {
@@ -250,6 +297,12 @@ async function update(id, patch, user) {
     synopsis: 'synopsis',
     coverUrl: 'cover_url',
     status: 'status',
+    bookType: 'book_type',
+    leadingGender: 'leading_gender',
+    genre: 'genre',
+    abbreviation: 'abbreviation',
+    bookLength: 'book_length',
+    warningNotice: 'warning_notice',
   };
   for (const [k, col] of Object.entries(map)) {
     if (Object.prototype.hasOwnProperty.call(patch, k)) {

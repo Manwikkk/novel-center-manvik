@@ -11,11 +11,11 @@ export default function MobileNavStrip({ items }) {
     <nav className="lg:hidden border-b border-surface-variant bg-surface-container-low">
       <div className="flex items-center gap-1 px-3 py-2">
         <div className="flex flex-1 overflow-x-auto no-scrollbar gap-1 min-w-0">
-        {items.map((it) => {
+        {items.filter((it) => !it.disabled && it.href !== '#').map((it) => {
           const active = it.exact ? pathname === it.href : pathname?.startsWith(it.href);
           return (
             <Link
-              key={it.href}
+              key={`${it.href}-${it.label}`}
               href={it.href}
               className={cn(
                 'shrink-0 px-3 py-1.5 rounded label-sm uppercase whitespace-nowrap',

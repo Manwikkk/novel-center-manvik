@@ -2,7 +2,6 @@
 
 import { LogOut, Menu } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
-import Button from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { useRouter } from 'next/navigation';
 
@@ -32,9 +31,13 @@ export default function DashboardTopbar({ title, subtitle, actions, onMenu }) {
         <div className="flex items-center gap-3">
           {actions}
           {user && (
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut size={14} className="mr-2" /> Sign out
-            </Button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-[12px] font-bold uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              <LogOut size={14} /> Sign out
+            </button>
           )}
         </div>
       </div>

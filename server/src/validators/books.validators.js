@@ -1,12 +1,20 @@
 'use strict';
 
 const Joi = require('joi');
+const meta = require('../constants/bookMetadata');
 
-const title = Joi.string().trim().min(1).max(220);
-const synopsis = Joi.string().trim().max(5000).allow('', null);
+const title = Joi.string().trim().min(1).max(70);
+const synopsis = Joi.string().trim().min(1).max(5000);
+const synopsisOptional = Joi.string().trim().max(5000).allow('', null);
 const category = Joi.string().trim().max(80).allow('', null);
 const language = Joi.string().trim().max(20);
 const status = Joi.string().valid('draft', 'published', 'archived');
+const bookType = Joi.string().valid(...meta.BOOK_TYPES);
+const leadingGender = Joi.string().valid(...meta.LEADING_GENDERS);
+const genre = Joi.string().valid(...meta.GENRE_SLUGS).allow(null);
+const abbreviation = Joi.string().trim().max(15).allow('', null);
+const bookLength = Joi.string().valid(...meta.BOOK_LENGTHS).allow(null);
+const warningNotice = Joi.string().valid(...meta.WARNING_NOTICES).allow(null);
 
 const homeBrowseTag = Joi.string().valid(
   'new_arrivals',
@@ -37,11 +45,17 @@ module.exports = {
   create: {
     body: Joi.object({
       title: title.required(),
-      synopsis,
+      synopsis: synopsis.required(),
+      bookType: bookType.default('novel'),
+      leadingGender: leadingGender.default('male'),
+      genre: genre.required(),
+      abbreviation,
+      bookLength: bookLength.required(),
+      warningNotice: warningNotice.required(),
       category,
       language: language.default('en'),
       categoryId,
-      languageId,
+      languageId: languageId.required(),
       contentTagIds,
       coverUrl: Joi.string().uri().max(500).allow('', null),
       status: status.default('draft'),
@@ -50,7 +64,13 @@ module.exports = {
   update: {
     body: Joi.object({
       title,
-      synopsis,
+      synopsis: synopsisOptional,
+      bookType,
+      leadingGender,
+      genre,
+      abbreviation,
+      bookLength,
+      warningNotice,
       category,
       language,
       categoryId,
