@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import Button from '@/components/ui/Button';
+import SpoilerToggle from './SpoilerToggle';
 import { cn } from '@/lib/cn';
 
+/**
+ * Inline comment composer: bordered textarea with footer row (spoiler toggle + post).
+ */
 export default function CommentForm({
   onSubmit,
   placeholder = 'Share your thoughts…',
@@ -29,66 +32,59 @@ export default function CommentForm({
     }
   }
 
+  const box = reader
+    ? 'rounded-lg border border-[var(--reader-rule)] bg-[var(--reader-fg)]/[0.03] overflow-hidden'
+    : 'rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 overflow-hidden';
+
   const ta = reader
     ? cn(
-        'w-full rounded p-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-[var(--reader-accent)]/40',
-        'bg-[var(--reader-fg)]/[0.06] border border-[var(--reader-rule)]',
+        'w-full resize-y bg-transparent px-4 py-3 text-[15px] focus:outline-none',
         'text-[var(--reader-fg)] placeholder:text-[var(--reader-muted)]',
-        'focus:border-[var(--reader-accent)]',
       )
     : cn(
-        'w-full rounded p-3 text-[15px] focus:outline-none',
-        'bg-cream-200/60 border border-ink-200/60 text-ink-900 placeholder-ink-400 focus:border-ink-900',
-        'dark:bg-neutral-900/60 dark:border-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-500 dark:focus:border-neutral-300',
+        'w-full resize-y bg-transparent px-4 py-3 text-[15px] focus:outline-none',
+        'text-ink-900 placeholder:text-ink-400 dark:text-neutral-100 dark:placeholder:text-neutral-500',
       );
 
+  const footer = reader
+    ? 'border-t border-[var(--reader-rule)] bg-[var(--reader-fg)]/[0.02]'
+    : 'border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-900/40';
+
   const meta = reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500';
-  const chk = reader
-    ? 'accent-[var(--reader-accent)] border-[var(--reader-rule)] text-[var(--reader-fg)]'
-    : 'accent-ink-900 dark:accent-neutral-300 border-ink-300 dark:border-neutral-600';
+
+  const postBtn = cn(
+    'rounded-md px-5 py-2 text-[12px] font-semibold uppercase tracking-widest transition-colors',
+    'disabled:opacity-50 disabled:cursor-not-allowed',
+    reader
+      ? 'bg-[var(--reader-fg)] text-[var(--reader-bg)] hover:opacity-90'
+      : 'bg-ink-900 text-white hover:opacity-90 dark:bg-white dark:text-black',
+  );
 
   return (
-    <form onSubmit={handleSubmit} className={cn('w-full')}>
-      <textarea
-        rows={compact ? 3 : 4}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder={placeholder}
-        className={ta}
-      />
-      {showSpoilerOption && (
-        <label
-          className={cn(
-            'mt-3 flex cursor-pointer items-start gap-3 text-[13px] leading-snug',
-            reader ? 'text-[var(--reader-muted)]' : 'text-ink-600 dark:text-neutral-400',
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className={box}>
+        <textarea
+          rows={compact ? 3 : 4}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder={placeholder}
+          className={ta}
+        />
+        <div className={cn('flex flex-wrap items-center justify-between gap-3 px-4 py-3', footer)}>
+          {showSpoilerOption ? (
+            <SpoilerToggle checked={isSpoiler} onChange={setIsSpoiler} reader={reader} />
+          ) : (
+            <span />
           )}
-        >
-          <input
-            type="checkbox"
-            checked={isSpoiler}
-            onChange={(e) => setIsSpoiler(e.target.checked)}
-            className={cn('mt-0.5 h-4 w-4 shrink-0 rounded border', chk)}
-          />
-          <span>This comment reveals plot spoilers (hidden until readers choose to show it).</span>
-        </label>
-      )}
-      <div className="mt-3 flex items-center justify-end gap-3">
-        <span className={cn('text-[12px]', meta)}>{2000 - body.length} characters left</span>
-        <Button
-          type="submit"
-          size="sm"
-          disabled={busy || !body.trim()}
-          className={
-            reader
-              ? cn(
-                  '!bg-[var(--reader-fg)] !text-[var(--reader-bg)] border-0',
-                  'hover:opacity-90 focus-visible:ring-[var(--reader-accent)]',
-                )
-              : undefined
-          }
-        >
-          {busy ? 'Posting…' : 'Post'}
-        </Button>
+          <div className="flex items-center gap-3 ml-auto">
+            <span className={cn('text-[12px] tabular-nums', meta)}>
+              {2000 - body.length} characters left
+            </span>
+            <button type="submit" disabled={busy || !body.trim()} className={postBtn}>
+              {busy ? 'Posting…' : 'Post'}
+            </button>
+          </div>
+        </div>
       </div>
     </form>
   );

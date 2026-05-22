@@ -8,11 +8,12 @@
  * app keeps the Stitch editorial palette while only the reading column
  * responds to the user's reader preferences.
  */
-:root {
-  --reader-bg:        #fff8f1;
+:root,
+[data-reader-theme='cream'] {
+  --reader-bg:        #ffffff;
   --reader-fg:        #1e1b15;
   --reader-muted:     #6B665E;
-  --reader-rule:      #c4c7c7;
+  --reader-rule:      #e0e0e0;
   --reader-accent:    #C2A878;
 
   --reader-font-size: 20px;

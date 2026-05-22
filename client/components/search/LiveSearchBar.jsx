@@ -70,7 +70,7 @@ function Inner({ basePath, placeholder, className }) {
   return (
     <div className={className}>
       <label htmlFor="live-search-q" className="sr-only">
-        Search books
+        Search books by title or author
       </label>
       <div className="relative min-w-0 flex-1">
         <svg
@@ -118,7 +118,7 @@ function Fallback({ className }) {
 export default function LiveSearchBar({
   /** Listing route, e.g. `/discover` or `/sections/recommended` — used for router.replace targets */
   basePath,
-  placeholder = 'Search title or synopsis…',
+  placeholder = 'Search titles or authors…',
   className = 'mt-8 flex w-full max-w-md flex-wrap items-center gap-3',
 }) {
   return (

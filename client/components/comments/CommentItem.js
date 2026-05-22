@@ -6,6 +6,7 @@ import CommentForm from './CommentForm';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import Icon from '@/components/ui/Icon';
+import { StarRatingDisplay, averageRating } from './StarRatingInput';
 
 export default function CommentItem({
   node,
@@ -20,8 +21,11 @@ export default function CommentItem({
   const [spoilerOpen, setSpoilerOpen] = useState(false);
   const isOwner = currentUser && currentUser.id === node.author?.id;
   const isAdmin = currentUser && currentUser.role === 'admin';
-  const isDeleted = node.status === 'deleted';
   const isHidden = node.status === 'hidden';
+
+  if (node.status === 'deleted') return null;
+  const isReview = Boolean(node.reviewRatings);
+  const reviewScore = isReview ? averageRating(node.reviewRatings) : 0;
 
   const likeCount = Number(node.likeCount) || 0;
   const dislikeCount = Number(node.dislikeCount) || 0;
@@ -76,7 +80,19 @@ export default function CommentItem({
             >
               {node.author?.displayName || 'Reader'}
             </p>
-            {node.isSpoiler && !isDeleted && !isHidden && (
+            {isReview && !isHidden && (
+              <span
+                className={cn(
+                  'rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+                  reader
+                    ? 'bg-[#ff8a00]/20 text-[var(--reader-fg)]'
+                    : 'bg-[#ff8a00]/15 text-ink-800 dark:text-[#ff8a00]',
+                )}
+              >
+                Review · {reviewScore.toFixed(1)}
+              </span>
+            )}
+            {node.isSpoiler && !isHidden && (
               <span
                 className={cn(
                   'rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
@@ -98,17 +114,19 @@ export default function CommentItem({
             </span>
           </div>
 
+          {isReview && !isHidden && (node.isSpoiler ? spoilerOpen : true) && (
+            <div className="mt-2 mb-2">
+              <StarRatingDisplay value={reviewScore} size={16} />
+            </div>
+          )}
+
           <div
             className={cn(
               'mt-2 text-[15px] whitespace-pre-line',
               reader ? 'text-[var(--reader-fg)]' : 'text-ink-700 dark:text-neutral-300',
             )}
           >
-            {isDeleted ? (
-              <em className={reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500'}>
-                [comment removed]
-              </em>
-            ) : isHidden ? (
+            {isHidden ? (
               <em className={reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500'}>
                 [hidden by moderator]
               </em>
@@ -135,7 +153,7 @@ export default function CommentItem({
             )}
           </div>
 
-          {!isDeleted && !isHidden && (
+          {!isHidden && (
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex items-center gap-1 tabular-nums">
                 <button

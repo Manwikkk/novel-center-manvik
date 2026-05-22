@@ -18,7 +18,7 @@ const SECTION_CONFIG = {
   recommended: {
     tag: 'new_arrivals',
     title: 'Recommended',
-    description: 'Titles we surface in Recommended — search and page through the full tagged list.',
+    description: 'Titles we surface in Recommended — search by title or author, then page through the full tagged list.',
   },
   ranking: {
     tag: 'ranking',
@@ -29,7 +29,7 @@ const SECTION_CONFIG = {
   'updated-today': {
     tag: 'cheering_reads',
     title: 'Updated Today',
-    description: 'Books tagged for Updated Today — filter by title or synopsis, then flip pages.',
+    description: 'Books tagged for Updated Today — search by title or author, then flip pages.',
   },
   'editors-choice': {
     tag: 'editors_choice',
@@ -139,7 +139,7 @@ export default async function HomeSectionBrowsePage({ params, searchParams }) {
             </svg>
             <p className="font-ui-label-lg text-ui-label-lg text-on-surface-variant dark:text-neutral-500">
               {q
-                ? 'Try a shorter keyword, or clear search to see every title on this shelf.'
+                ? 'Try a shorter title or author name, or clear search to see every title on this shelf.'
                 : 'Nothing is tagged for this shelf yet.'}
             </p>
             <Link

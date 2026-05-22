@@ -12,6 +12,17 @@ function rowToComment(row, vote = {}) {
   const dislikeCount = vote.dislikeCount != null ? vote.dislikeCount : Number(row.dislike_count) || 0;
   const myReaction = vote.myReaction !== undefined ? vote.myReaction : row.my_reaction || null;
   const isSpoiler = Boolean(Number(row.is_spoiler ?? 0));
+  let reviewRatings = null;
+  if (row.review_ratings != null) {
+    try {
+      reviewRatings =
+        typeof row.review_ratings === 'string'
+          ? JSON.parse(row.review_ratings)
+          : row.review_ratings;
+    } catch (_) {
+      reviewRatings = null;
+    }
+  }
 
   return {
     id: row.id,
@@ -22,6 +33,7 @@ function rowToComment(row, vote = {}) {
     body: row.status === 'visible' ? row.body : row.status === 'deleted' ? null : row.body,
     status: row.status,
     isSpoiler,
+    reviewRatings,
     likeCount,
     dislikeCount,
     myReaction,
@@ -37,8 +49,8 @@ function scopeWhere(alias, bookId, chapterId) {
 }
 
 function visibilityWhere(alias, viewer) {
-  if (!viewer || viewer.role !== 'admin') return { clause: `${alias}.status <> 'hidden'`, params: [] };
-  return { clause: '1=1', params: [] };
+  if (!viewer || viewer.role !== 'admin') return { clause: `${alias}.status = 'visible'`, params: [] };
+  return { clause: `${alias}.status <> 'hidden'`, params: [] };
 }
 
 function orderClauseForRoots(sort) {
@@ -194,10 +206,14 @@ async function getById(id, viewer) {
   return rowToComment(rows[0], voteMap.get(id) || {});
 }
 
-async function create({ bookId, chapterId, parentId, body, isSpoiler }, userId) {
+async function create({ bookId, chapterId, parentId, body, isSpoiler, reviewRatings }, userId) {
   const clean = sanitizeCommentBody(body);
   if (!clean) throw errors.badRequest('Comment body is empty after sanitization');
   const spoiler = Boolean(isSpoiler);
+  if (reviewRatings && parentId) {
+    throw errors.badRequest('Reviews cannot be posted as replies');
+  }
+  const ratingsJson = reviewRatings ? JSON.stringify(reviewRatings) : null;
 
   if (chapterId) {
     const [r] = await pool.execute('SELECT book_id FROM chapters WHERE id = ? LIMIT 1', [chapterId]);
@@ -220,9 +236,9 @@ async function create({ bookId, chapterId, parentId, body, isSpoiler }, userId) 
   }
 
   const [ins] = await pool.execute(
-    `INSERT INTO comments (book_id, chapter_id, user_id, parent_id, body, is_spoiler, status)
-     VALUES (?, ?, ?, ?, ?, ?, 'visible')`,
-    [bookId, chapterId || null, userId, parentId || null, clean, spoiler ? 1 : 0],
+    `INSERT INTO comments (book_id, chapter_id, user_id, parent_id, body, is_spoiler, review_ratings, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'visible')`,
+    [bookId, chapterId || null, userId, parentId || null, clean, spoiler ? 1 : 0, ratingsJson],
   );
   return getById(ins.insertId, { id: userId });
 }

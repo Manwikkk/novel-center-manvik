@@ -96,7 +96,7 @@ export default function SiteHeader({ variant = 'translucent' }) {
           <input
             name="q"
             type="search"
-            placeholder="Search titles…"
+            placeholder="Search titles or authors…"
             className="min-w-0 flex-1 bg-transparent border-none p-0 text-sm outline-none text-ink-900 dark:text-neutral-100 placeholder:text-ink-400 dark:placeholder:text-neutral-500"
             autoComplete="off"
           />

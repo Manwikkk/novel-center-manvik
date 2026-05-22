@@ -105,9 +105,9 @@ async function list({ q, author, category, status, tag, page, pageSize }, viewer
   if (author) { where.push('b.author_id = ?'); params.push(author); }
   if (category) { where.push('b.category = ?'); params.push(category); }
   if (q) {
-    where.push('(b.title LIKE ? OR b.synopsis LIKE ?)');
+    where.push('(b.title LIKE ? OR b.synopsis LIKE ? OR u.display_name LIKE ?)');
     const like = `%${q}%`;
-    params.push(like, like);
+    params.push(like, like, like);
   }
 
   if (tag === 'ranking') {
@@ -137,7 +137,7 @@ async function list({ q, author, category, status, tag, page, pageSize }, viewer
   const [rows] = await pool.execute(sql, params);
 
   const [countRows] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM books b ${where.length ? `WHERE ${where.join(' AND ')}` : ''}`,
+    `SELECT COUNT(*) AS total FROM books b JOIN users u ON u.id = b.author_id ${where.length ? `WHERE ${where.join(' AND ')}` : ''}`,
     params,
   );
 

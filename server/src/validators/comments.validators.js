@@ -30,6 +30,13 @@ module.exports = {
       parentId: Joi.number().integer().positive().allow(null),
       body: Joi.string().trim().min(1).max(2000).required(),
       isSpoiler: Joi.boolean().default(false),
+      reviewRatings: Joi.object({
+        writingQuality: Joi.number().integer().min(1).max(5).required(),
+        stabilityOfUpdates: Joi.number().integer().min(1).max(5).required(),
+        storyDevelopment: Joi.number().integer().min(1).max(5).required(),
+        characterDesign: Joi.number().integer().min(1).max(5).required(),
+        worldBackground: Joi.number().integer().min(1).max(5).required(),
+      }),
     }).or('bookId', 'chapterId'),
   },
   reaction: {

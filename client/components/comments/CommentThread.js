@@ -1,13 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
 import CommentItem from './CommentItem';
 import CommentForm from './CommentForm';
+import WriteReviewModal from './WriteReviewModal';
 import Icon from '@/components/ui/Icon';
+import { REVIEW_CATEGORIES, StarRatingDisplay, averageRating } from './StarRatingInput';
 import { cn } from '@/lib/cn';
+import { buildCommentTree } from './commentUtils';
 
 const PAGE_SIZE = 5;
 
@@ -19,6 +23,9 @@ function mergeById(existing, incoming) {
 
 export default function CommentThread({ bookId, chapterId, variant = 'default' }) {
   const reader = variant === 'reader';
+  /** Book detail: reviews via modal only; no inline "Share your thoughts" box. */
+  const isBookDiscussion = Boolean(bookId && !chapterId);
+  const showInlineComposer = !isBookDiscussion;
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -26,6 +33,8 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [totalRoots, setTotalRoots] = useState(0);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const pushToast = useUiStore((s) => s.pushToast);
 
@@ -62,9 +71,16 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
     };
   }, [bookId, chapterId, sort, fetchPage]);
 
-  const tree = buildTree(items);
+  const tree = buildCommentTree(items);
 
-  async function postComment({ body, parentId, isSpoiler }) {
+  const reviewComments = items.filter((c) => c.reviewRatings && !c.parentId && c.status === 'visible');
+  const aggregateScore = reviewComments.length
+    ? reviewComments.reduce((sum, c) => sum + averageRating(c.reviewRatings), 0) / reviewComments.length
+    : null;
+  const displayScore = aggregateScore != null ? aggregateScore : 0;
+  const reviewCountLabel = `${reviewComments.length.toLocaleString()} Review${reviewComments.length === 1 ? '' : 's'}`;
+
+  async function postComment({ body, parentId, isSpoiler, reviewRatings }) {
     try {
       const res = await api.post('/comments', {
         body,
@@ -72,6 +88,7 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
         chapterId,
         parentId: parentId || null,
         isSpoiler: Boolean(isSpoiler),
+        ...(reviewRatings ? { reviewRatings } : {}),
       });
       if (!parentId) {
         await fetchPage(1, { append: false });
@@ -86,7 +103,7 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
   async function removeComment(id) {
     try {
       await api.delete(`/comments/${id}`);
-      setItems((prev) => prev.map((c) => (c.id === id ? { ...c, status: 'deleted', body: null } : c)));
+      setItems((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not delete comment', message: err.message });
     }
@@ -152,20 +169,18 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
       <div className={cn('mt-8 rounded-xl overflow-hidden', reviewShell)}>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr]">
           <div className="p-6 md:p-8">
-            <div className="flex items-center gap-4">
-              <p className={cn('text-[22px] font-semibold', hx)}>6,703Reviews</p>
+            <div className="flex items-center gap-4 flex-wrap">
+              <p className={cn('text-[22px] font-semibold', hx)}>{reviewCountLabel}</p>
               <div className="flex items-center gap-2">
-                <Stars value={4.72} />
-                <span className={cn('text-[18px] font-semibold tabular-nums', hx)}>4.72</span>
+                <StarRatingDisplay value={displayScore} size={18} />
+                <span className={cn('text-[18px] font-semibold tabular-nums', hx)}>
+                  {displayScore.toFixed(2)}
+                </span>
               </div>
             </div>
 
             <div className="mt-6 space-y-3">
-              <ReviewRow label="Writing Quality" value={4} reader={reader} />
-              <ReviewRow label="Stability of Updates" value={4} reader={reader} />
-              <ReviewRow label="Story Development" value={4} reader={reader} />
-              <ReviewRow label="Character Design" value={4} reader={reader} />
-              <ReviewRow label="World Background" value={4} reader={reader} />
+              <ReviewSummaryRows reviews={reviewComments} reader={reader} />
             </div>
           </div>
 
@@ -181,6 +196,13 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
             </p>
             <button
               type="button"
+              onClick={() => {
+                if (!user) {
+                  router.push('/auth/login');
+                  return;
+                }
+                setReviewOpen(true);
+              }}
               className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-[#2563eb] text-white px-6 py-3 text-[12px] font-semibold uppercase tracking-widest hover:bg-[#1d4ed8] transition-colors"
             >
               <Icon name="rate_review" size={18} />
@@ -213,14 +235,16 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
         </label>
       </div>
 
-      {user ? (
+      {showInlineComposer && user ? (
         <div className="mt-6">
           <CommentForm
             onSubmit={({ body, isSpoiler }) => postComment({ body, parentId: null, isSpoiler })}
             reader={reader}
+            placeholder="Share your thoughts…"
           />
         </div>
-      ) : (
+      ) : null}
+      {!user && (
         <p className={cn('mt-6 text-[14px]', muted)}>
           <a
             href="/auth/login"
@@ -233,7 +257,9 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
           >
             Sign in
           </a>{' '}
-          to join the discussion and react to comments.
+          {isBookDiscussion
+            ? 'to write a review and react to comments.'
+            : 'to join the discussion and react to comments.'}
         </p>
       )}
 
@@ -257,6 +283,15 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
         )}
       </div>
 
+      <WriteReviewModal
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        reader={reader}
+        onSubmit={({ body, isSpoiler, reviewRatings }) =>
+          postComment({ body, parentId: null, isSpoiler, reviewRatings })
+        }
+      />
+
       {hasMore && !loading && (
         <div className="mt-10 flex justify-center">
           <button
@@ -278,14 +313,18 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
   );
 }
 
-function Stars({ value = 0 }) {
-  const full = Math.floor(value);
-  const half = value - full >= 0.5;
-  const out = [];
-  for (let i = 0; i < full; i += 1) out.push(<Icon key={`f${i}`} name="star" filled size={18} className="text-[#ff8a00]" />);
-  if (half) out.push(<Icon key="h" name="star_half" size={18} className="text-[#ff8a00]" />);
-  while (out.length < 5) out.push(<Icon key={`e${out.length}`} name="star" size={18} className="text-[#ff8a00]/30" />);
-  return <div className="flex items-center gap-1">{out}</div>;
+function ReviewSummaryRows({ reviews, reader }) {
+  if (!reviews.length) {
+    return REVIEW_CATEGORIES.map(({ key, label }) => (
+      <ReviewRow key={key} label={label} value={4} reader={reader} />
+    ));
+  }
+
+  return REVIEW_CATEGORIES.map(({ key, label }) => {
+    const vals = reviews.map((r) => r.reviewRatings?.[key]).filter((n) => n >= 1 && n <= 5);
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 4;
+    return <ReviewRow key={key} label={label} value={avg} reader={reader} />;
+  });
 }
 
 function ReviewRow({ label, value = 0, reader = false }) {
@@ -299,33 +338,8 @@ function ReviewRow({ label, value = 0, reader = false }) {
       >
         {label}
       </p>
-      <div className="flex items-center gap-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Icon
-            key={String(i)}
-            name="star"
-            filled={i < value}
-            size={16}
-            className={i < value ? 'text-[#ff8a00]' : 'text-[#ff8a00]/25'}
-          />
-        ))}
-      </div>
+      <StarRatingDisplay value={value} size={16} />
     </div>
   );
 }
 
-function buildTree(list) {
-  const map = new Map();
-  list.forEach((c) => map.set(c.id, { ...c, children: [] }));
-  const roots = [];
-  list.forEach((c) => {
-    if (c.parentId && map.has(c.parentId)) map.get(c.parentId).children.push(map.get(c.id));
-    else roots.push(map.get(c.id));
-  });
-  const sortRec = (arr) => {
-    arr.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    arr.forEach((n) => sortRec(n.children));
-  };
-  sortRec(roots);
-  return roots;
-}

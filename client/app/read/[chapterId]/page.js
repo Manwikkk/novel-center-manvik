@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { sanitizeChapterHtml } from '@/lib/sanitize';
 import Icon from '@/components/ui/Icon';
-import CommentThread from '@/components/comments/CommentThread';
+import ChapterCommentsPanel from '@/components/comments/ChapterCommentsPanel';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUiStore } from '@/stores/uiStore';
@@ -34,7 +34,8 @@ export default function ReadingInterfacePage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [rightPanel, setRightPanel] = useState(null); // null | 'settings' | 'toc'
+  const [rightPanel, setRightPanel] = useState(null); // null | 'settings' | 'toc' | 'comments'
+  const [commentCount, setCommentCount] = useState(0);
 
   const articleRef = useRef(null);
   const user = useAuthStore((s) => s.user);
@@ -70,6 +71,18 @@ export default function ReadingInterfacePage() {
     load();
     return () => { cancel = true; };
   }, [chapterId, user, refreshWallet]);
+
+  useEffect(() => {
+    if (!chapter?.id) return;
+    let cancel = false;
+    api
+      .get('/comments', { query: { chapterId: chapter.id, pageSize: 1, page: 1 } })
+      .then((d) => {
+        if (!cancel) setCommentCount(Number(d.totalRoots) || 0);
+      })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, [chapter?.id]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -154,8 +167,8 @@ export default function ReadingInterfacePage() {
     setRightPanel(null);
   }
 
-  function scrollToNotes() {
-    document.getElementById('reader-notes')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  function toggleCommentsPanel() {
+    setRightPanel((p) => (p === 'comments' ? null : 'comments'));
   }
 
   useEffect(() => {
@@ -203,9 +216,11 @@ export default function ReadingInterfacePage() {
       <ReaderRightRail
         onToc={() => setRightPanel((p) => (p === 'toc' ? null : 'toc'))}
         onSettings={() => setRightPanel((p) => (p === 'settings' ? null : 'settings'))}
-        onNotes={scrollToNotes}
+        onComments={toggleCommentsPanel}
         tocActive={rightPanel === 'toc'}
         settingsActive={rightPanel === 'settings'}
+        commentsActive={rightPanel === 'comments'}
+        commentCount={commentCount}
       />
 
       {rightPanel ? (
@@ -219,7 +234,8 @@ export default function ReadingInterfacePage() {
           />
           {rightPanel === 'settings' ? (
             <DisplayOptionsPanel onClose={closePanel} railPx={RAIL_W} />
-          ) : (
+          ) : null}
+          {rightPanel === 'toc' ? (
             <TocPanel
               chapters={siblings}
               currentId={chapter.id}
@@ -227,17 +243,23 @@ export default function ReadingInterfacePage() {
               onClose={closePanel}
               railPx={RAIL_W}
             />
-          )}
+          ) : null}
+          {rightPanel === 'comments' && chapter?.id ? (
+            <ChapterCommentsPanel
+              chapterId={chapter.id}
+              open
+              onClose={closePanel}
+              railPx={RAIL_W}
+              onCountChange={setCommentCount}
+            />
+          ) : null}
         </>
       ) : null}
 
       <main ref={articleRef} className="flex-grow pt-[4.5rem] pb-32 px-4 md:px-8 flex justify-center">
         <article className="max-w-[720px] w-full">
           {showTitlePage ? (
-            <TitlePageHero
-              book={book}
-              chapter={chapter}
-            />
+            <TitlePageHero book={book} chapter={chapter} />
           ) : (
             <header className="mb-12">
               <h2 className="font-display-lg text-[28px] md:text-[34px] mb-2 leading-tight text-[var(--reader-fg)]">
@@ -284,10 +306,11 @@ export default function ReadingInterfacePage() {
             />
           )}
 
-          <div className="mt-24 flex items-center justify-center">
-            <span className="h-1 w-1 bg-[var(--reader-rule)] rounded-full mx-2" />
-            <span className="h-1 w-1 bg-[var(--reader-rule)] rounded-full mx-2" />
-            <span className="h-1 w-1 bg-[var(--reader-rule)] rounded-full mx-2" />
+          <div className="mt-16 flex justify-center">
+            <ChapterCommentTrigger
+              count={commentCount}
+              onClick={toggleCommentsPanel}
+            />
           </div>
         </article>
       </main>
@@ -298,17 +321,6 @@ export default function ReadingInterfacePage() {
         bookHref={book ? `/books/${book.slug}` : '/'}
       />
 
-      <section
-        id="reader-notes"
-        className="bg-[var(--reader-bg)] border-t border-[var(--reader-rule)] pt-24 pb-48 px-4 md:px-8"
-      >
-        <div className="max-w-[720px] mx-auto">
-          <div className="flex items-center justify-between mb-12">
-            <h3 className="font-headline-md text-headline-md">Reader Notes</h3>
-          </div>
-          <CommentThread chapterId={chapter.id} variant="reader" />
-        </div>
-      </section>
     </div>
   );
 }
@@ -368,6 +380,26 @@ function ReaderTopToolbar({ chapter, progress, minutesLeft, onBack }) {
   );
 }
 
+function ChapterCommentTrigger({ count, onClick }) {
+  const label = count === 1 ? '1 comment' : `${count} comments`;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-3 rounded-lg border border-[var(--reader-rule)] bg-[var(--reader-fg)]/[0.04] px-4 py-2.5 hover:bg-[var(--reader-fg)]/[0.08] transition-colors text-left"
+    >
+      <Icon name="chat_bubble_outline" size={22} className="text-[var(--reader-muted)] shrink-0" />
+      <span className="flex flex-col">
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--reader-fg)]">
+          Comment
+        </span>
+        <span className="text-[12px] text-[var(--reader-muted)]">{label}</span>
+      </span>
+    </button>
+  );
+}
+
 function TitlePageHero({ book, chapter }) {
   const cover = book.coverUrl || DEFAULT_COVER;
 
@@ -398,7 +430,7 @@ function TitlePageHero({ book, chapter }) {
         <div className="flex-1 h-px bg-[var(--reader-rule)]" />
       </div>
 
-      <div className="mt-10 flex flex-wrap items-baseline justify-center gap-3 text-left">
+      <div className="mt-4 flex flex-wrap items-baseline justify-center gap-3 text-left">
         <h2 className="font-display-lg text-[22px] md:text-[28px] leading-snug text-[var(--reader-fg)]">
           Chapter {chapter.idx}: {chapter.title}
         </h2>
@@ -413,7 +445,15 @@ function TitlePageHero({ book, chapter }) {
   );
 }
 
-function ReaderRightRail({ onToc, onSettings, onNotes, tocActive, settingsActive }) {
+function ReaderRightRail({
+  onToc,
+  onSettings,
+  onComments,
+  tocActive,
+  settingsActive,
+  commentsActive,
+  commentCount = 0,
+}) {
   const btn =
     'flex items-center justify-center w-10 h-10 rounded-lg transition-colors text-white/85 hover:text-white hover:bg-white/10';
   const active = 'bg-[#2563eb] text-white hover:bg-[#2563eb] hover:text-white';
@@ -434,8 +474,20 @@ function ReaderRightRail({ onToc, onSettings, onNotes, tocActive, settingsActive
       >
         <Icon name="settings" size={22} weight={300} />
       </button>
-      <button type="button" className={btn} onClick={onNotes} aria-label="Jump to reader notes">
-        <Icon name="chat_bubble_outline" size={22} weight={300} />
+      <button
+        type="button"
+        className={cn(btn, commentsActive && active)}
+        onClick={onComments}
+        aria-label="Chapter comments"
+      >
+        <span className="relative inline-flex">
+          <Icon name="chat_bubble_outline" size={22} weight={300} />
+          {commentCount > 0 ? (
+            <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-[#2563eb] text-[10px] font-bold leading-[18px] text-white text-center">
+              {commentCount > 99 ? '99+' : commentCount}
+            </span>
+          ) : null}
+        </span>
       </button>
       <Link href="/" className={cn(btn, 'mt-auto')} aria-label="Help" title="Home">
         <Icon name="help_outline" size={22} weight={300} />
@@ -473,7 +525,7 @@ function DisplayOptionsPanel({ onClose, railPx }) {
         <section>
           <p className="text-xs uppercase tracking-wider text-[var(--reader-muted)] mb-3">Background</p>
           <div className="flex gap-3">
-            <ThemeSwatch theme="cream" current={theme} onPick={setTheme} label="Light" />
+            <ThemeSwatch theme="cream" current={theme} onPick={setTheme} label="White" />
             <ThemeSwatch theme="sepia" current={theme} onPick={setTheme} label="Sepia" />
             <ThemeSwatch theme="dark" current={theme} onPick={setTheme} label="Dark" moon />
           </div>
@@ -541,7 +593,7 @@ function DisplayOptionsPanel({ onClose, railPx }) {
 function ThemeSwatch({ theme, current, onPick, label, moon }) {
   const active = current === theme;
   const bg =
-    theme === 'cream' ? '#fff8f1' : theme === 'sepia' ? '#f6ecd8' : '#14110d';
+    theme === 'cream' ? '#ffffff' : theme === 'sepia' ? '#f6ecd8' : '#14110d';
 
   return (
     <button
