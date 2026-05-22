@@ -96,13 +96,13 @@ function AuthorBooks() {
               {f.label}
             </Chip>
           ))}
-          <span className="ml-auto text-[12px] text-ink-400 label-sm uppercase">
+          <span className="ml-auto text-[12px] text-on-surface-variant label-sm uppercase">
             {total} {total === 1 ? 'book' : 'books'}
           </span>
         </div>
 
         {loading ? (
-          <div className="border border-ink-200/60 rounded-md p-6 space-y-4">
+          <div className="border border-surface-variant rounded-md p-6 space-y-4 bg-surface-container-lowest">
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonRow key={i} columns={4} />
             ))}

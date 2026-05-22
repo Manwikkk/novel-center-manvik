@@ -91,33 +91,33 @@ function AuthorSettings() {
       <div className="px-4 md:px-edge py-8 max-w-4xl space-y-10">
         <section className="grid md:grid-cols-3 gap-6">
           <div>
-            <p className="label-sm uppercase text-ink-400">Account</p>
-            <h2 className="font-serif text-[20px] text-ink-900 mt-1">Read-only</h2>
-            <p className="mt-2 text-[13px] text-ink-400">
+            <p className="label-sm uppercase text-on-surface-variant">Account</p>
+            <h2 className="font-serif text-[20px] text-primary mt-1">Read-only</h2>
+            <p className="mt-2 text-[13px] text-on-surface-variant">
               These details identify your account and can&rsquo;t be changed here.
             </p>
           </div>
-          <Card className="md:col-span-2 p-6 space-y-4">
+          <Card variant="dashboard" className="md:col-span-2 p-6 space-y-4">
             <div>
-              <p className="label-sm uppercase text-ink-400">Email</p>
-              <p className="mt-1 text-ink-900">{user?.email}</p>
+              <p className="label-sm uppercase text-on-surface-variant">Email</p>
+              <p className="mt-1 text-on-surface">{user?.email}</p>
             </div>
             <div>
-              <p className="label-sm uppercase text-ink-400">Role</p>
-              <p className="mt-1 text-ink-900 capitalize">{user?.role}</p>
+              <p className="label-sm uppercase text-on-surface-variant">Role</p>
+              <p className="mt-1 text-on-surface capitalize">{user?.role}</p>
             </div>
           </Card>
         </section>
 
         <form onSubmit={handleSubmit} className="grid md:grid-cols-3 gap-6">
           <div>
-            <p className="label-sm uppercase text-ink-400">Public profile</p>
-            <h2 className="font-serif text-[20px] text-ink-900 mt-1">How readers see you</h2>
-            <p className="mt-2 text-[13px] text-ink-400">
+            <p className="label-sm uppercase text-on-surface-variant">Public profile</p>
+            <h2 className="font-serif text-[20px] text-primary mt-1">How readers see you</h2>
+            <p className="mt-2 text-[13px] text-on-surface-variant">
               Shown on your books, comments, and the author page.
             </p>
           </div>
-          <Card className="md:col-span-2 p-6 space-y-6">
+          <Card variant="dashboard" className="md:col-span-2 p-6 space-y-6">
             <div className="flex items-center gap-4">
               <Avatar
                 name={form.displayName || user?.displayName}
@@ -125,8 +125,8 @@ function AuthorSettings() {
                 size={56}
               />
               <div className="flex-1 min-w-0">
-                <p className="label-sm uppercase text-ink-400">Preview</p>
-                <p className="font-serif text-[16px] text-ink-900 truncate">
+                <p className="label-sm uppercase text-on-surface-variant">Preview</p>
+                <p className="font-serif text-[16px] text-on-surface truncate">
                   {form.displayName || 'Your name'}
                 </p>
               </div>

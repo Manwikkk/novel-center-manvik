@@ -6,6 +6,7 @@ import Icon from '@/components/ui/Icon';
 import Logo from '@/components/ui/Logo';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
+import { DashboardThemeToggleSidebar } from '@/components/layout/DashboardThemeToggle';
 
 /**
  * Stitch "Admin" side navigation.  Same shape as the Author sidebar
@@ -77,6 +78,7 @@ export default function AdminSidebar() {
       </nav>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-surface-container-high pt-4">
+        <DashboardThemeToggleSidebar />
         <Link
           href="/about"
           className="px-6 py-4 flex items-center gap-3 text-on-surface-variant hover:bg-surface-container transition-all duration-200 ease-in-out text-[11px]"

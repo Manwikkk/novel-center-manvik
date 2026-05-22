@@ -10,7 +10,7 @@ export default function DashboardShell({ kind = 'author', children }) {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 bg-background text-on-surface min-h-screen">
         <MobileNavStrip items={items} />
         {children}
       </div>

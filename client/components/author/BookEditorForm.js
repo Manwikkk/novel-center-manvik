@@ -10,9 +10,9 @@ import { useUiStore } from '@/stores/uiStore';
 import { cn } from '@/lib/cn';
 
 const selectCls = cn(
-  'w-full rounded-md border border-ink-200/70 bg-cream-50 px-3 py-2.5 text-[14px] text-ink-900',
+  'w-full rounded-md border border-outline bg-surface-container-lowest px-3 py-2.5 text-[14px] text-on-surface',
   'dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100',
-  'focus:outline-none focus:ring-2 focus:ring-ink-900/15 dark:focus:ring-neutral-500/30',
+  'focus:outline-none focus:ring-2 focus:ring-outline/30 dark:focus:ring-neutral-500/30',
 );
 
 export default function BookEditorForm({ book, onSaved }) {

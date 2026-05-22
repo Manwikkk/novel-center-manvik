@@ -37,13 +37,13 @@ export default function CoverUploader({ book, onUpdated }) {
 
   return (
     <div>
-      <p className="label-sm uppercase text-ink-400">Cover</p>
+      <p className="label-sm uppercase text-on-surface-variant">Cover</p>
       <div className="mt-3 flex gap-4">
-        <div className="w-32 aspect-[3/4] bg-cream-300 overflow-hidden rounded-sm border border-ink-200/60 flex items-center justify-center text-ink-400">
+        <div className="w-32 aspect-[3/4] bg-surface-container overflow-hidden rounded-sm border border-surface-variant flex items-center justify-center text-outline">
           {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : <ImagePlus size={20} />}
         </div>
         <div className="flex-1">
-          <p className="text-[13px] text-ink-700">
+          <p className="text-[13px] text-on-surface-variant">
             JPG, PNG, WebP, or AVIF. Up to 5MB. Aim for 800×1200px.
           </p>
           <Button

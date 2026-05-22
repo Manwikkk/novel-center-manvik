@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
+import { DashboardThemeToggleCompact } from '@/components/layout/DashboardThemeToggle';
 
 export default function MobileNavStrip({ items }) {
   const pathname = usePathname();
   return (
-    <nav className="lg:hidden border-b border-ink-200/60 dark:border-neutral-800 bg-cream-100 dark:bg-neutral-950">
-      <div className="flex overflow-x-auto no-scrollbar gap-1 px-3 py-2">
+    <nav className="lg:hidden border-b border-surface-variant bg-surface-container-low">
+      <div className="flex items-center gap-1 px-3 py-2">
+        <div className="flex flex-1 overflow-x-auto no-scrollbar gap-1 min-w-0">
         {items.map((it) => {
           const active = it.exact ? pathname === it.href : pathname?.startsWith(it.href);
           return (
@@ -18,14 +20,16 @@ export default function MobileNavStrip({ items }) {
               className={cn(
                 'shrink-0 px-3 py-1.5 rounded label-sm uppercase whitespace-nowrap',
                 active
-                  ? 'bg-ink-900 text-cream-100 dark:bg-neutral-100 dark:text-neutral-950'
-                  : 'text-ink-700 hover:bg-cream-300 dark:text-neutral-300 dark:hover:bg-neutral-900',
+                  ? 'bg-primary text-on-primary'
+                  : 'text-on-surface-variant hover:bg-surface-container',
               )}
             >
               {it.label}
             </Link>
           );
         })}
+        </div>
+        <DashboardThemeToggleCompact />
       </div>
     </nav>
   );

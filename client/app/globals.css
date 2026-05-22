@@ -33,6 +33,104 @@
   --reader-rule:  #2c2820;
 }
 
+/*
+ * Site-wide M3 surface tokens (author/admin dashboards, sidebars).
+ * Tailwind maps `surface-*`, `on-surface`, `primary`, etc. to these vars
+ * so `.dark` on <html> re-themes panels and tables automatically.
+ */
+:root {
+  --nc-background: #ffffff;
+  --nc-surface: #ffffff;
+  --nc-surface-bright: #ffffff;
+  --nc-surface-dim: #f5f5f5;
+  --nc-surface-tint: #5f5e5e;
+  --nc-surface-variant: #e5e5e5;
+  --nc-surface-container-lowest: #ffffff;
+  --nc-surface-container-low: #ffffff;
+  --nc-surface-container: #f5f5f5;
+  --nc-surface-container-high: #f0f0f0;
+  --nc-surface-container-highest: #e5e5e5;
+
+  --nc-primary: #000000;
+  --nc-on-primary: #ffffff;
+  --nc-primary-container: #1c1b1b;
+  --nc-on-primary-container: #858383;
+
+  --nc-secondary: #5e5e5c;
+  --nc-on-secondary: #ffffff;
+  --nc-secondary-container: #e1dfdc;
+  --nc-on-secondary-container: #636360;
+
+  --nc-tertiary: #000000;
+  --nc-on-tertiary: #ffffff;
+  --nc-tertiary-container: #261900;
+  --nc-on-tertiary-container: #988154;
+  --nc-tertiary-fixed: #fcdfab;
+  --nc-tertiary-fixed-dim: #dfc391;
+  --nc-on-tertiary-fixed: #261900;
+
+  --nc-on-surface: #1e1b15;
+  --nc-on-surface-variant: #444748;
+  --nc-on-background: #1e1b15;
+  --nc-inverse-surface: #343029;
+  --nc-inverse-on-surface: #f8f0e5;
+  --nc-inverse-primary: #c9c6c5;
+
+  --nc-outline: #747878;
+  --nc-outline-variant: #c4c7c7;
+
+  --nc-error: #ba1a1a;
+  --nc-on-error: #ffffff;
+  --nc-error-container: #ffdad6;
+  --nc-on-error-container: #93000a;
+}
+
+.dark {
+  --nc-background: #0a0a0a;
+  --nc-surface: #0a0a0a;
+  --nc-surface-bright: #0a0a0a;
+  --nc-surface-dim: #1a1a1a;
+  --nc-surface-tint: #a3a3a3;
+  --nc-surface-variant: #2e2e2e;
+  --nc-surface-container-lowest: #171717;
+  --nc-surface-container-low: #141414;
+  --nc-surface-container: #1f1f1f;
+  --nc-surface-container-high: #262626;
+  --nc-surface-container-highest: #333333;
+
+  --nc-primary: #fafafa;
+  --nc-on-primary: #0a0a0a;
+  --nc-primary-container: #e5e5e5;
+  --nc-on-primary-container: #a3a3a3;
+
+  --nc-secondary: #a3a3a3;
+  --nc-on-secondary: #0a0a0a;
+  --nc-secondary-container: #262626;
+  --nc-on-secondary-container: #d4d4d4;
+
+  --nc-tertiary: #fafafa;
+  --nc-on-tertiary: #0a0a0a;
+  --nc-tertiary-container: #3d3420;
+  --nc-on-tertiary-container: #c9b88f;
+  --nc-tertiary-fixed: #4a3f28;
+  --nc-tertiary-fixed-dim: #3d3420;
+
+  --nc-on-surface: #f5f5f5;
+  --nc-on-surface-variant: #a3a3a3;
+  --nc-on-background: #f5f5f5;
+  --nc-inverse-surface: #e5e5e5;
+  --nc-inverse-on-surface: #171717;
+  --nc-inverse-primary: #404040;
+
+  --nc-outline: #737373;
+  --nc-outline-variant: #404040;
+
+  --nc-error: #f87171;
+  --nc-on-error: #0a0a0a;
+  --nc-error-container: #450a0a;
+  --nc-on-error-container: #fecaca;
+}
+
 /* Shell background/text come from <body> in app/layout.js (white / dark). */
 html, body {
   font-family: theme('fontFamily.sans');

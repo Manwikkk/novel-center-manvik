@@ -100,10 +100,10 @@ function AuthorOverview() {
         {/* HEADER */}
         <header className="flex flex-col md:flex-row md:justify-between md:items-end mb-16 gap-6">
           <div>
-            <h1 className="font-headline-xl text-headline-xl text-primary dark:text-neutral-100 mb-2">
+            <h1 className="font-headline-xl text-headline-xl text-primary mb-2">
               Dashboard
             </h1>
-            <p className="font-ui-label-lg text-ui-label-lg text-on-surface-variant dark:text-neutral-400 font-normal">
+            <p className="font-ui-label-lg text-ui-label-lg text-on-surface-variant font-normal">
               Welcome back, {user?.displayName?.split(' ')[0] || 'author'}. Here is your recent performance.
             </p>
           </div>
@@ -111,7 +111,7 @@ function AuthorOverview() {
             {headlineBookId && (
               <Link
                 href={`/author/books/${headlineBookId}/edit`}
-                className="border border-outline text-on-surface py-2 px-6 rounded uppercase font-ui-label-sm text-ui-label-sm hover:bg-surface-container-low dark:border-neutral-600 dark:text-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+                className="border border-outline text-on-surface py-2 px-6 rounded uppercase font-ui-label-sm text-ui-label-sm hover:bg-surface-container-low transition-colors"
               >
                 Edit Book
               </Link>
@@ -149,11 +149,11 @@ function AuthorOverview() {
 
         {/* RECENT CHAPTERS */}
         <section className="mb-16">
-          <div className="flex justify-between items-end mb-6 border-b border-surface-variant dark:border-neutral-800 pb-4">
-            <h2 className="font-headline-md text-headline-md text-primary dark:text-neutral-100">Recent Chapters</h2>
+          <div className="flex justify-between items-end mb-6 border-b border-surface-variant pb-4">
+            <h2 className="font-headline-md text-headline-md text-primary">Recent Chapters</h2>
             <Link
               href="/author/books"
-              className="text-primary dark:text-neutral-100 font-ui-label-sm text-ui-label-sm uppercase flex items-center gap-1 hover:opacity-80"
+              className="text-primary font-ui-label-sm text-ui-label-sm uppercase flex items-center gap-1 hover:opacity-80"
             >
               View All <Icon name="arrow_forward" size={16} />
             </Link>
@@ -163,7 +163,7 @@ function AuthorOverview() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-surface-variant bg-surface-container-low">
+                  <tr className="border-b border-surface-variant bg-surface-container-lowest">
                     <Th>Chapter</Th>
                     <Th>Status</Th>
                     <Th>Book</Th>
@@ -264,7 +264,7 @@ function ChapterRow({ chapter, isLast, onAccessChange, onTokensChange, onDelete 
       <td className="py-4 px-6">
         <Link
           href={`/books/${chapter.bookSlug}`}
-          className="font-ui-label-sm text-ui-label-sm text-on-surface-variant hover:text-primary dark:hover:text-neutral-100 truncate max-w-[200px] inline-block"
+          className="font-ui-label-sm text-ui-label-sm text-on-surface-variant hover:text-primary truncate max-w-[200px] inline-block"
           title={chapter.bookTitle}
         >
           {chapter.bookTitle}
@@ -274,7 +274,7 @@ function ChapterRow({ chapter, isLast, onAccessChange, onTokensChange, onDelete 
         <select
           value={access}
           onChange={(e) => { setAccess(e.target.value); onAccessChange?.(e.target.value); }}
-          className="bg-transparent border-0 border-b border-primary text-on-surface font-ui-label-sm text-ui-label-sm focus:ring-0 focus:border-tertiary-container cursor-pointer p-0 pb-1"
+          className="bg-surface-container-lowest border border-outline rounded px-2 py-1 text-on-surface font-ui-label-sm text-ui-label-sm focus:ring-1 focus:ring-outline focus:border-outline cursor-pointer"
         >
           <option value="paid">Paid</option>
           <option value="free">Free</option>
@@ -292,14 +292,14 @@ function ChapterRow({ chapter, isLast, onAccessChange, onTokensChange, onDelete 
               const v = Number(e.target.value);
               if (!Number.isNaN(v) && v !== chapter.tokenPrice) onTokensChange?.(v);
             }}
-            className="w-full bg-transparent border-0 border-b border-primary text-on-surface font-ui-label-sm text-ui-label-sm focus:ring-0 focus:border-tertiary-container p-0 pb-1 text-center disabled:text-outline disabled:border-outline disabled:cursor-not-allowed no-spin"
+            className="w-full bg-surface-container-lowest border border-outline rounded px-2 py-1 text-on-surface font-ui-label-sm text-ui-label-sm focus:ring-1 focus:ring-outline text-center disabled:text-outline disabled:opacity-60 disabled:cursor-not-allowed no-spin"
           />
         </div>
       </td>
       <td className="py-4 px-6 text-right">
         <Link
           href={`/author/books/${chapter.bookId}/chapters/${chapter.id}/edit`}
-          className="text-outline hover:text-primary dark:hover:text-neutral-100 transition-colors p-1 inline-flex"
+          className="text-outline hover:text-primary transition-colors p-1 inline-flex"
           aria-label="Edit"
         >
           <Icon name="edit" size={20} />

@@ -44,7 +44,7 @@ export default function ChapterEditor({ value, onChange }) {
   }, [value, editor]);
 
   if (!editor) {
-    return <div className="h-[60vh] border border-ink-200/60 rounded-md bg-cream-200/40" />;
+    return <div className="h-[60vh] border border-surface-variant rounded-md bg-surface-container-low" />;
   }
 
   function setLink() {
@@ -60,7 +60,7 @@ export default function ChapterEditor({ value, onChange }) {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-1 mb-3 p-1 bg-cream-200/60 border border-ink-200/60 rounded-md w-fit">
+      <div className="flex flex-wrap gap-1 mb-3 p-1 bg-surface-container border border-surface-variant rounded-md w-fit">
         {TOOLBAR.map(({ name, icon: Icon, run, isActive }) => (
           <button
             key={name}
@@ -68,7 +68,7 @@ export default function ChapterEditor({ value, onChange }) {
             onClick={() => run(editor)}
             className={cn(
               'h-8 w-8 inline-flex items-center justify-center rounded',
-              isActive(editor) ? 'bg-ink-900 text-cream-100' : 'text-ink-700 hover:bg-cream-300',
+              isActive(editor) ? 'bg-primary text-on-primary' : 'text-on-surface hover:bg-surface-container-high',
             )}
             aria-label={name}
             title={name}
@@ -76,18 +76,18 @@ export default function ChapterEditor({ value, onChange }) {
             <Icon size={14} />
           </button>
         ))}
-        <button type="button" onClick={setLink} className="h-8 w-8 inline-flex items-center justify-center rounded text-ink-700 hover:bg-cream-300" title="Link">
+        <button type="button" onClick={setLink} className="h-8 w-8 inline-flex items-center justify-center rounded text-on-surface hover:bg-surface-container-high" title="Link">
           <LinkIcon size={14} />
         </button>
-        <span className="mx-1 w-px bg-ink-200" />
-        <button type="button" onClick={() => editor.chain().focus().undo().run()} className="h-8 w-8 inline-flex items-center justify-center rounded text-ink-700 hover:bg-cream-300" title="Undo">
+        <span className="mx-1 w-px bg-surface-variant" />
+        <button type="button" onClick={() => editor.chain().focus().undo().run()} className="h-8 w-8 inline-flex items-center justify-center rounded text-on-surface hover:bg-surface-container-high" title="Undo">
           <Undo2 size={14} />
         </button>
-        <button type="button" onClick={() => editor.chain().focus().redo().run()} className="h-8 w-8 inline-flex items-center justify-center rounded text-ink-700 hover:bg-cream-300" title="Redo">
+        <button type="button" onClick={() => editor.chain().focus().redo().run()} className="h-8 w-8 inline-flex items-center justify-center rounded text-on-surface hover:bg-surface-container-high" title="Redo">
           <Redo2 size={14} />
         </button>
       </div>
-      <div className="border border-ink-200/60 rounded-md bg-cream-100 overflow-hidden">
+      <div className="border border-surface-variant rounded-md bg-surface-container-lowest overflow-hidden">
         <div className="h-[60vh] overflow-y-auto">
           <EditorContent editor={editor} />
         </div>

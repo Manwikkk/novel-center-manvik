@@ -6,6 +6,7 @@ import Icon from '@/components/ui/Icon';
 import Logo from '@/components/ui/Logo';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
+import { DashboardThemeToggleSidebar } from '@/components/layout/DashboardThemeToggle';
 
 /**
  * Stitch "Author Studio" side navigation.  Full-height fixed sidebar
@@ -66,6 +67,7 @@ export default function AuthorSidebar() {
       </nav>
 
       <div className="mt-auto border-t border-surface-container-high pt-4">
+        <DashboardThemeToggleSidebar />
         <Link
           href="/about"
           className="px-6 py-4 flex items-center gap-3 text-on-surface-variant hover:bg-surface-container transition-all duration-200 ease-in-out text-[11px]"

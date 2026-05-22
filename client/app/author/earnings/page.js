@@ -14,8 +14,8 @@ import { formatTokens } from '@/lib/format';
 function StatusBadge({ status }) {
   const tone =
     status === 'published' ? 'bg-gold text-ink-900'
-      : status === 'archived' ? 'bg-ink-200 text-ink-700'
-      : 'bg-cream-300 text-ink-700';
+      : status === 'archived' ? 'bg-surface-container-highest text-on-surface-variant'
+      : 'bg-surface-container text-on-surface';
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] tracking-labelTight uppercase ${tone}`}>
       {status}
@@ -26,19 +26,19 @@ function StatusBadge({ status }) {
 function EarningsTable({ rows }) {
   if (!rows || rows.length === 0) {
     return (
-      <div className="border border-dashed border-ink-200 rounded-md p-10 text-center">
-        <p className="label-sm uppercase text-ink-400">No earnings yet</p>
-        <p className="mt-2 font-serif text-[20px] text-ink-700">
+      <div className="border border-dashed border-surface-variant rounded-md p-10 text-center">
+        <p className="label-sm uppercase text-on-surface-variant">No earnings yet</p>
+        <p className="mt-2 font-serif text-[20px] text-on-surface">
           Once readers unlock your chapters, your numbers will land here.
         </p>
       </div>
     );
   }
   return (
-    <div className="overflow-x-auto border border-ink-200/60 rounded-md">
+    <div className="overflow-x-auto border border-surface-variant rounded-md bg-surface-container-lowest">
       <table className="w-full text-left text-[14px]">
-        <thead className="bg-cream-200/40 border-b border-ink-200/60">
-          <tr className="text-ink-400 label-sm uppercase">
+        <thead className="bg-surface-container-low border-b border-surface-variant">
+          <tr className="text-on-surface-variant label-sm uppercase">
             <th className="px-4 py-3 font-medium">Title</th>
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium text-right">Chapters</th>
@@ -48,20 +48,20 @@ function EarningsTable({ rows }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id} className="border-b border-ink-200/40 hover:bg-cream-200/40">
+            <tr key={r.id} className="border-b border-surface-variant hover:bg-surface-container-low/50">
               <td className="px-4 py-4">
                 <Link
                   href={`/author/books/${r.id}/edit`}
-                  className="font-serif text-[16px] text-ink-900 hover:underline"
+                  className="font-serif text-[16px] text-on-surface hover:underline"
                 >
                   {r.title}
                 </Link>
-                <p className="text-[12px] text-ink-400">/{r.slug}</p>
+                <p className="text-[12px] text-on-surface-variant">/{r.slug}</p>
               </td>
               <td className="px-4 py-4"><StatusBadge status={r.status} /></td>
-              <td className="px-4 py-4 text-ink-700 text-right">{r.chapterCount}</td>
-              <td className="px-4 py-4 text-ink-700 text-right">{formatTokens(r.unlocks)}</td>
-              <td className="px-4 py-4 text-ink-900 text-right font-serif">{formatTokens(r.tokens)}</td>
+              <td className="px-4 py-4 text-on-surface text-right">{r.chapterCount}</td>
+              <td className="px-4 py-4 text-on-surface text-right">{formatTokens(r.unlocks)}</td>
+              <td className="px-4 py-4 text-primary text-right font-serif">{formatTokens(r.tokens)}</td>
             </tr>
           ))}
         </tbody>
@@ -120,13 +120,13 @@ function AuthorEarnings() {
 
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-serif text-[24px] text-ink-900">By book</h2>
-            <p className="text-[12px] text-ink-400 label-sm uppercase">
+            <h2 className="font-serif text-[24px] text-primary">By book</h2>
+            <p className="text-[12px] text-on-surface-variant label-sm uppercase">
               Top performers first
             </p>
           </div>
           {loading ? (
-            <div className="border border-ink-200/60 rounded-md p-6 space-y-4">
+            <div className="border border-surface-variant rounded-md p-6 space-y-4 bg-surface-container-lowest">
               {Array.from({ length: 5 }).map((_, i) => (
                 <SkeletonRow key={i} columns={5} />
               ))}
