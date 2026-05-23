@@ -2,7 +2,7 @@
 
 const pool = require('../db/pool');
 const { errors } = require('../utils/HttpError');
-const { sanitizeChapterHtml } = require('../utils/htmlSanitize');
+const { sanitizeChapterHtml, sanitizeAuthorThought } = require('../utils/htmlSanitize');
 const booksService = require('./books.service');
 const { htmlToWordCount, minutesFromWords } = require('./reading.service');
 
@@ -22,6 +22,7 @@ function rowToChapter(row, { includeContent = false, isUnlocked = false } = {}) 
     isUnlocked,
     wordCount,
     readingMinutes: minutesFromWords(wordCount, 100),
+    authorThought: row.author_thought || '',
   };
   if (includeContent) out.contentHtml = row.content_html || '';
   return out;
@@ -105,10 +106,12 @@ async function createInBook(bookId, body, user) {
   const idx = body.idx != null ? body.idx : await nextIdx(bookId);
   const html = sanitizeChapterHtml(body.contentHtml || '');
 
+  const thought = sanitizeAuthorThought(body.authorThought || '');
+
   const [r] = await pool.execute(
-    `INSERT INTO chapters (book_id, idx, title, content_html, is_paid, token_price, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [bookId, idx, body.title, html, body.isPaid ? 1 : 0, body.tokenPrice || 0, body.status || 'draft'],
+    `INSERT INTO chapters (book_id, idx, title, content_html, author_thought, is_paid, token_price, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [bookId, idx, body.title, html, thought || null, body.isPaid ? 1 : 0, body.tokenPrice || 0, body.status || 'draft'],
   );
   const created = await getRawById(r.insertId);
   return rowToChapter(created, { includeContent: true, isUnlocked: true });
@@ -124,6 +127,11 @@ async function update(id, patch, user) {
   const params = [];
   if (patch.title != null)         { fields.push('title = ?');         params.push(patch.title); }
   if (patch.contentHtml != null)   { fields.push('content_html = ?');  params.push(sanitizeChapterHtml(patch.contentHtml)); }
+  if (patch.authorThought != null) {
+    const t = sanitizeAuthorThought(patch.authorThought);
+    fields.push('author_thought = ?');
+    params.push(t || null);
+  }
   if (patch.isPaid != null)        { fields.push('is_paid = ?');       params.push(patch.isPaid ? 1 : 0); }
   if (patch.tokenPrice != null)    { fields.push('token_price = ?');   params.push(patch.tokenPrice); }
   if (patch.status != null)        { fields.push('status = ?');        params.push(patch.status); }

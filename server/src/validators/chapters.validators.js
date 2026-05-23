@@ -8,12 +8,14 @@ const isPaid = Joi.boolean();
 const tokenPrice = Joi.number().integer().min(0).max(100000);
 const status = Joi.string().valid('draft', 'published');
 const idx = Joi.number().integer().min(1).max(100000);
+const authorThought = Joi.string().trim().allow('', null).max(5000);
 
 module.exports = {
   create: {
     body: Joi.object({
       title: title.required(),
       contentHtml,
+      authorThought,
       isPaid: isPaid.default(false),
       tokenPrice: tokenPrice.default(0),
       status: status.default('draft'),
@@ -24,6 +26,7 @@ module.exports = {
     body: Joi.object({
       title,
       contentHtml,
+      authorThought,
       isPaid,
       tokenPrice,
       status,

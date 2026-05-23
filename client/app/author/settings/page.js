@@ -134,6 +134,7 @@ function AuthorSettings() {
 
             <TextInput
               label="Display name"
+              variant="dashboard"
               value={form.displayName}
               onChange={(e) => update('displayName', e.target.value)}
               error={errors.displayName}
@@ -142,6 +143,7 @@ function AuthorSettings() {
 
             <TextInput
               label="Avatar URL"
+              variant="dashboard"
               value={form.avatarUrl}
               onChange={(e) => update('avatarUrl', e.target.value)}
               error={errors.avatarUrl}
@@ -151,6 +153,7 @@ function AuthorSettings() {
 
             <TextInput
               label="Bio"
+              variant="dashboard"
               value={form.bio}
               onChange={(e) => update('bio', e.target.value)}
               error={errors.bio}

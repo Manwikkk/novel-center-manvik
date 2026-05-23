@@ -143,6 +143,7 @@ function Inner() {
               {tab === 'languages' ? (
                 <TextInput
                   label="Code"
+                  variant="dashboard"
                   value={draft.code}
                   onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value }))}
                   placeholder="en"
@@ -151,6 +152,7 @@ function Inner() {
               ) : (
                 <TextInput
                   label="Slug (optional)"
+                  variant="dashboard"
                   value={draft.slug}
                   onChange={(e) => setDraft((d) => ({ ...d, slug: e.target.value }))}
                   placeholder="auto from label"
@@ -158,12 +160,14 @@ function Inner() {
               )}
               <TextInput
                 label="Label"
+                variant="dashboard"
                 value={draft.label}
                 onChange={(e) => setDraft((d) => ({ ...d, label: e.target.value }))}
                 required
               />
               <TextInput
                 label="Sort order"
+                variant="dashboard"
                 value={draft.sortOrder}
                 onChange={(e) => setDraft((d) => ({ ...d, sortOrder: e.target.value }))}
               />

@@ -15,6 +15,7 @@ function rowToBook(row, opts = {}) {
     slug: row.slug,
     authorId: row.author_id,
     authorName: row.author_name || null,
+    authorAvatarUrl: row.author_avatar_url || null,
     title: row.title,
     synopsis: row.synopsis,
     coverUrl: row.cover_url,
@@ -158,7 +159,7 @@ async function list({ q, author, category, status, tag, page, pageSize }, viewer
 
 async function getBySlug(slug, viewer) {
   const [rows] = await pool.execute(
-    `SELECT b.*, u.display_name AS author_name,
+    `SELECT b.*, u.display_name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.status = 'published') AS chapter_count
      FROM books b JOIN users u ON u.id = b.author_id
      WHERE b.slug = ? LIMIT 1`,
@@ -180,7 +181,7 @@ async function getById(id) {
 
 async function getByIdForViewer(id, viewer) {
   const [rows] = await pool.execute(
-    `SELECT b.*, u.display_name AS author_name,
+    `SELECT b.*, u.display_name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.status = 'published') AS chapter_count
      FROM books b JOIN users u ON u.id = b.author_id
      WHERE b.id = ? LIMIT 1`,

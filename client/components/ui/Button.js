@@ -6,18 +6,26 @@ import { cn } from '@/lib/cn';
 const baseClass =
   'inline-flex items-center justify-center select-none transition-colors duration-150 ' +
   'tracking-label uppercase font-semibold disabled:opacity-50 disabled:cursor-not-allowed ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gold focus-visible:ring-offset-cream-100';
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gold ' +
+  'focus-visible:ring-offset-cream-100 dark:focus-visible:ring-offset-black';
 
 const variants = {
-  primary: 'bg-ink-900 text-cream-100 hover:bg-ink-800 active:bg-black',
-  secondary: 'border border-ink-300 text-ink-900 hover:border-ink-700 bg-transparent',
-  ghost: 'text-ink-700 hover:text-ink-900 bg-transparent',
+  primary:
+    'bg-ink-900 text-cream-100 hover:bg-ink-800 active:bg-black ' +
+    'dark:bg-white dark:text-black dark:hover:bg-neutral-200 dark:active:bg-neutral-300',
+  secondary:
+    'border border-ink-300 text-ink-900 hover:border-ink-700 bg-transparent ' +
+    'dark:border-neutral-600 dark:text-neutral-100 dark:hover:border-neutral-400 dark:hover:bg-neutral-900/50',
+  ghost:
+    'text-ink-700 hover:text-ink-900 bg-transparent ' +
+    'dark:text-neutral-300 dark:hover:text-neutral-100',
   gold: 'bg-gold text-ink-900 hover:bg-gold-dim',
   danger: 'bg-danger text-white hover:bg-danger/90',
   tertiary:
     'relative bg-transparent text-ink-900 px-0 ' +
     'after:absolute after:left-0 after:right-0 after:-bottom-1 after:h-[2px] after:bg-ink-900 ' +
-    'after:scale-x-100 hover:after:bg-gold',
+    'after:scale-x-100 hover:after:bg-gold ' +
+    'dark:text-neutral-100 dark:after:bg-neutral-100',
 };
 
 const sizes = {

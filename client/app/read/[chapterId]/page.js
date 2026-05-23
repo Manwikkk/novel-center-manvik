@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { sanitizeChapterHtml } from '@/lib/sanitize';
 import Icon from '@/components/ui/Icon';
 import ChapterCommentsPanel from '@/components/comments/ChapterCommentsPanel';
+import CreatorsThoughtCard from '@/components/read/CreatorsThoughtCard';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUiStore } from '@/stores/uiStore';
@@ -305,6 +306,12 @@ export default function ReadingInterfacePage() {
               dangerouslySetInnerHTML={{ __html: cleanHtml }}
             />
           )}
+
+          <CreatorsThoughtCard
+            authorName={book?.authorName}
+            authorAvatarUrl={book?.authorAvatarUrl}
+            thought={chapter.authorThought}
+          />
 
           <div className="mt-16 flex justify-center">
             <ChapterCommentTrigger

@@ -244,15 +244,15 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
           </span>
         )}
         {chapter.isPaid && chapter.isUnlocked && (
-          <span className="px-2 py-1 bg-tertiary-fixed/40 text-tertiary-container font-ui-label-sm uppercase rounded text-[10px] inline-flex items-center gap-1">
+          <span className="px-2 py-1 bg-tertiary-fixed/40 text-on-tertiary-container font-ui-label-sm uppercase rounded text-[10px] inline-flex items-center gap-1">
             <Icon name="check_circle" filled size={14} /> Unlocked
           </span>
         )}
         {locked && (
           <>
-            <div className="hidden sm:flex items-center gap-1 bg-tertiary-fixed/20 px-3 py-1 rounded-full border border-tertiary-fixed-dim/30">
-              <Icon name="toll" filled size={14} className="text-tertiary-container" />
-              <span className="font-ui-label-sm text-ui-label-sm text-tertiary-container">
+            <div className="hidden sm:flex items-center gap-1 bg-tertiary-fixed/20 dark:bg-tertiary-container/60 px-3 py-1 rounded-full border border-tertiary-fixed-dim/30 dark:border-on-tertiary-container/40">
+              <Icon name="toll" filled size={14} className="text-on-tertiary-container" />
+              <span className="font-ui-label-sm text-ui-label-sm text-on-tertiary-container">
                 {formatTokens(chapter.tokenPrice)} Tokens
               </span>
             </div>

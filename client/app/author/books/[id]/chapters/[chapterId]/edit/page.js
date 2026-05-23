@@ -8,6 +8,7 @@ import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import TextInput from '@/components/ui/TextInput';
 import ChapterEditor from '@/components/author/ChapterEditor';
+import AuthorThoughtModal from '@/components/author/AuthorThoughtModal';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
 import { useChapterDraft } from '@/lib/useChapterDraft';
@@ -59,6 +60,7 @@ function ChapterEditInner() {
   const [busy, setBusy] = useState(false);
   const [saveState, setSaveState] = useState('idle');
   const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [thoughtModalOpen, setThoughtModalOpen] = useState(false);
 
   const hydratedRef = useRef(false);
   const serverTimerRef = useRef(null);
@@ -74,6 +76,7 @@ function ChapterEditInner() {
       isPaid: !!chapter.isPaid,
       tokenPrice: chapter.isPaid ? Number(chapter.tokenPrice) || 0 : 0,
       status: chapter.status,
+      authorThought: chapter.authorThought || '',
     };
   }, [chapter, content]);
 
@@ -97,6 +100,7 @@ function ChapterEditInner() {
           isPaid: !!serverChapter.isPaid,
           tokenPrice: serverChapter.isPaid ? Number(serverChapter.tokenPrice) || 0 : 0,
           status: serverChapter.status,
+          authorThought: serverChapter.authorThought || '',
         };
         lastSavedSnapshotRef.current = JSON.stringify(serverSnapshot);
 
@@ -108,6 +112,7 @@ function ChapterEditInner() {
             isPaid: draft.isPaid ?? serverChapter.isPaid,
             tokenPrice: draft.tokenPrice ?? serverChapter.tokenPrice,
             status: draft.status ?? serverChapter.status,
+            authorThought: draft.authorThought ?? serverChapter.authorThought ?? '',
           });
           setContent(draft.contentHtml ?? serverChapter.contentHtml ?? '');
           setSaveState('dirty');
@@ -239,10 +244,26 @@ function ChapterEditInner() {
           <div className="space-y-6 min-w-0">
             <TextInput
               label="Chapter title"
+              variant="dashboard"
               value={chapter.title}
               onChange={(e) => update('title', e.target.value)}
             />
             <ChapterEditor value={content} onChange={setContent} />
+            <div className="pt-2 border-t border-surface-variant">
+              {chapter.authorThought ? (
+                <p className="mb-3 text-[14px] leading-relaxed text-on-surface-variant line-clamp-3 italic">
+                  &ldquo;{chapter.authorThought}&rdquo;
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setThoughtModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded border border-studio-accent text-studio-accent text-[12px] font-bold uppercase tracking-wider hover:bg-studio-accent/10 transition-colors"
+              >
+                <span className="text-[16px] leading-none" aria-hidden>+</span>
+                {chapter.authorThought ? "Edit author's thought" : "Add author's thought"}
+              </button>
+            </div>
           </div>
           <aside className="space-y-6 rounded-xl border border-surface-variant bg-surface-container-lowest p-5">
             <div>
@@ -307,6 +328,7 @@ function ChapterEditInner() {
             {chapter.isPaid && (
               <TextInput
                 label="Token price"
+                variant="dashboard"
                 type="number"
                 value={chapter.tokenPrice}
                 onChange={(e) => update('tokenPrice', e.target.value)}
@@ -316,6 +338,13 @@ function ChapterEditInner() {
             )}
           </aside>
         </div>
+
+      <AuthorThoughtModal
+        open={thoughtModalOpen}
+        onClose={() => setThoughtModalOpen(false)}
+        initialValue={chapter.authorThought || ''}
+        onSubmit={(value) => update('authorThought', value)}
+      />
     </DashboardShell>
   );
 }

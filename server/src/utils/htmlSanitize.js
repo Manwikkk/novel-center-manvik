@@ -41,4 +41,8 @@ function sanitizeCommentBody(body) {
   }).trim();
 }
 
-module.exports = { sanitizeChapterHtml, sanitizeCommentBody };
+function sanitizeAuthorThought(text) {
+  return sanitizeCommentBody(text);
+}
+
+module.exports = { sanitizeChapterHtml, sanitizeCommentBody, sanitizeAuthorThought };
