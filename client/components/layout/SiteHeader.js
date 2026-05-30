@@ -11,6 +11,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useSiteThemeStore } from '@/stores/siteThemeStore';
 import { formatTokens } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { openAuthModal } from '@/lib/authModal';
 
 const navCls = (active) =>
   cn(
@@ -168,18 +169,20 @@ export default function SiteHeader({ variant = 'translucent' }) {
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-3">
-              <Link
-                href="/auth/login"
+              <button
+                type="button"
+                onClick={() => openAuthModal({ tab: 'login' })}
                 className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-700 dark:text-neutral-300 hover:text-ink-900 dark:hover:text-white"
               >
                 Login
-              </Link>
-              <Link
-                href="/auth/register"
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuthModal({ tab: 'register' })}
                 className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest bg-ink-900 text-white dark:bg-white dark:text-black px-4 py-2.5 hover:opacity-90"
               >
                 Register
-              </Link>
+              </button>
             </div>
           )}
 
@@ -258,20 +261,20 @@ export default function SiteHeader({ variant = 'translucent' }) {
               </div>
             ) : (
               <div className="flex gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-800 mt-2">
-                <Link
-                  href="/auth/login"
-                  onClick={() => setOpen(false)}
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); openAuthModal({ tab: 'login' }); }}
                   className="flex-1 text-center font-ui-label-sm text-ui-label-sm uppercase border border-ink-900 dark:border-neutral-500 text-ink-900 dark:text-neutral-100 px-4 py-3"
                 >
                   Login
-                </Link>
-                <Link
-                  href="/auth/register"
-                  onClick={() => setOpen(false)}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); openAuthModal({ tab: 'register' }); }}
                   className="flex-1 text-center font-ui-label-sm text-ui-label-sm uppercase bg-ink-900 text-white dark:bg-white dark:text-black px-4 py-3"
                 >
                   Register
-                </Link>
+                </button>
               </div>
             )}
             <div className="pt-4 flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800 mt-2">

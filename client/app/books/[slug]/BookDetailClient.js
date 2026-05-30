@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { openAuthModal } from '@/lib/authModal';
 import { api } from '@/lib/api';
 import { libraryApi } from '@/lib/library';
 import Icon from '@/components/ui/Icon';
@@ -57,7 +58,10 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
   );
 
   async function confirmUnlock(ch) {
-    if (!user) { router.push('/auth/login'); return; }
+    if (!useAuthStore.getState().user) {
+      openAuthModal({ message: 'Sign in to unlock chapters.', onSuccess: () => confirmUnlock(ch) });
+      return;
+    }
     setBusy(true);
     try {
       const res = await api.post(`/chapters/${ch.id}/unlock`);
@@ -77,7 +81,10 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
   }
 
   function handleUnlockClick(ch) {
-    if (!user) { router.push('/auth/login'); return; }
+    if (!useAuthStore.getState().user) {
+      openAuthModal({ message: 'Sign in to unlock chapters.', onSuccess: () => handleUnlockClick(ch) });
+      return;
+    }
     if (!ch.isPaid || ch.tokenPrice === 0) {
       confirmUnlock(ch);
       return;
@@ -87,8 +94,11 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
 
   async function toggleLibrary() {
     if (libraryBusy) return;
-    if (!user) {
-      router.push(`/auth/login?next=${encodeURIComponent(`/books/${book.slug}`)}`);
+    if (!useAuthStore.getState().user) {
+      openAuthModal({
+        message: 'Sign in to save books to your library.',
+        onSuccess: () => toggleLibrary(),
+      });
       return;
     }
     setLibraryBusy(true);
@@ -123,13 +133,23 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
             No chapters yet
           </span>
         ) : (
-          <Link
-            href={user ? `/read/${firstReadable.id}` : `/auth/login?next=/books/${book.slug}`}
+          <button
+            type="button"
+            onClick={() => {
+              if (!user) {
+                openAuthModal({
+                  message: 'Sign in to start reading.',
+                  onSuccess: () => router.push(`/read/${firstReadable.id}`),
+                });
+                return;
+              }
+              router.push(`/read/${firstReadable.id}`);
+            }}
             className="px-8 py-4 bg-ink-900 text-white dark:bg-white dark:text-black font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:opacity-90 transition-colors flex items-center gap-2"
           >
             <Icon name="menu_book" size={20} />
             Start Reading
-          </Link>
+          </button>
         )}
         <button
           type="button"

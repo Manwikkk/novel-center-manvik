@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { openAuthModal } from '@/lib/authModal';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
@@ -28,7 +28,6 @@ export default function ChapterCommentsPanel({
   railPx = 56,
   onCountChange,
 }) {
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const pushToast = useUiStore((s) => s.pushToast);
 
@@ -119,7 +118,10 @@ export default function ChapterCommentsPanel({
 
   function openComposer(parentId = null) {
     if (!user) {
-      router.push('/auth/login');
+      openAuthModal({
+        message: 'Sign in to join the discussion.',
+        onSuccess: () => openComposer(parentId),
+      });
       return;
     }
     setReplyParentId(parentId);

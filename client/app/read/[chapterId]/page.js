@@ -14,6 +14,7 @@ import { useUiStore } from '@/stores/uiStore';
 import { useReaderStore } from '@/stores/readerStore';
 import { readingApi } from '@/lib/reading';
 import { formatTokens } from '@/lib/format';
+import { openAuthModal } from '@/lib/authModal';
 import { cn } from '@/lib/cn';
 
 const WPM = 220;
@@ -149,7 +150,10 @@ export default function ReadingInterfacePage() {
   }, [wordCount, progress]);
 
   async function unlock() {
-    if (!user) { router.push('/auth/login'); return; }
+    if (!useAuthStore.getState().user) {
+      openAuthModal({ message: 'Sign in to unlock this chapter.', onSuccess: () => unlock() });
+      return;
+    }
     setBusy(true);
     try {
       const r = await api.post(`/chapters/${chapterId}/unlock`);

@@ -320,3 +320,49 @@ html, body {
   width: 18px;
   background: var(--studio-accent, #3b82f6);
 }
+
+/* Auth login — infinite book cover marquee */
+@keyframes auth-marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.auth-marquee-track {
+  animation: auth-marquee-scroll var(--auth-marquee-duration, 50s) linear infinite;
+  will-change: transform;
+}
+
+.auth-marquee-reverse {
+  animation-direction: reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-marquee-track {
+    animation: none;
+  }
+}
+
+/* Auth form card — always light surface, readable on site dark mode */
+.auth-form-card,
+.auth-form-card .label-sm,
+.auth-form-card h2,
+.auth-form-card p,
+.auth-form-card a,
+.auth-form-card legend {
+  color: inherit;
+}
+.auth-form-card {
+  color: #1e1b15;
+}
+.auth-form-card .text-ink-900,
+.auth-form-card h2 {
+  color: #0a0a0a !important;
+}
+.auth-form-card .text-ink-500,
+.auth-form-card .text-ink-600,
+.auth-form-card .text-ink-700 {
+  color: #444748 !important;
+}
+.auth-form-card .text-ink-400 {
+  color: #5e5e5c !important;
+}

@@ -6,6 +6,7 @@ import BookCard from '@/components/book/BookCard';
 import Icon from '@/components/ui/Icon';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuthStore } from '@/stores/authStore';
+import { openAuthModal } from '@/lib/authModal';
 import { readingApi } from '@/lib/reading';
 
 /**
@@ -214,19 +215,21 @@ function SignInCta() {
         Sign in to save your progress, build a library, and pick up exactly where you left off &mdash; on any device.
       </p>
       <div className="flex items-center justify-center gap-4 flex-wrap">
-        <Link
-          href="/auth/login?next=/"
+        <button
+          type="button"
+          onClick={() => openAuthModal({ tab: 'login' })}
           className="inline-flex items-center gap-2 rounded-sm bg-ink-900 px-6 py-3 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-white dark:bg-white dark:text-black shadow-sm transition-opacity hover:opacity-90"
         >
           Sign in
           <Icon name="arrow_forward" size={16} />
-        </Link>
-        <Link
-          href="/auth/register"
+        </button>
+        <button
+          type="button"
+          onClick={() => openAuthModal({ tab: 'register' })}
           className="inline-flex items-center gap-2 rounded-sm border border-ink-300 dark:border-neutral-600 bg-transparent px-6 py-3 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-900 dark:text-neutral-100 transition-colors hover:border-ink-900 dark:hover:border-neutral-400 hover:bg-ink-900/5 dark:hover:bg-white/10"
         >
           Create an account
-        </Link>
+        </button>
       </div>
     </div>
   );

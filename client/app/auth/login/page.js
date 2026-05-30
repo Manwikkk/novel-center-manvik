@@ -3,15 +3,15 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Logo from '@/components/ui/Logo';
 import TextInput from '@/components/ui/TextInput';
 import Button from '@/components/ui/Button';
+import AuthPageLayout from '@/components/auth/AuthPageLayout';
 import { useAuthStore } from '@/stores/authStore';
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') || '/library';
+  const next = params.get('next') || '/';
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,12 +33,13 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div role="alert" className="text-[14px] text-danger border-l-2 border-danger pl-3">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {error ? (
+        <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-[14px] text-danger">
           {error}
         </div>
-      )}
+      ) : null}
+
       <TextInput
         label="Email"
         type="email"
@@ -55,7 +56,14 @@ function LoginForm() {
         required
         autoComplete="current-password"
       />
-      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
+
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        className="w-full !tracking-widest !bg-ink-900 !text-white hover:!bg-ink-800 dark:!bg-ink-900 dark:!text-white dark:hover:!bg-ink-800"
+        disabled={busy}
+      >
         {busy ? 'Signing in…' : 'Sign in'}
       </Button>
     </form>
@@ -64,41 +72,45 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen grid md:grid-cols-2">
-      <aside className="hidden md:flex bg-ink-900 text-cream-100 px-12 py-16 flex-col justify-between">
-        <Logo variant="cream" />
-        <div className="max-w-md">
-          <p className="label-sm uppercase text-cream-300/70">Welcome back</p>
-          <h1 className="mt-4 font-serif text-[44px] leading-[1.1] tracking-tightDisplay">
-            The page you left is still warm.
-          </h1>
-          <p className="mt-6 font-serif text-[18px] text-cream-300/80 leading-[1.6]">
-            Pick up where you stopped, with the same chapters, tokens, and reading preferences.
-          </p>
-        </div>
-        <p className="label-sm uppercase text-cream-300/60">Modern editorial minimalism</p>
-      </aside>
-      <main className="px-6 sm:px-10 md:px-16 py-16 flex flex-col justify-center bg-cream-100">
-        <div className="md:hidden mb-10"><Logo /></div>
-        <div className="max-w-sm w-full mx-auto">
-          <p className="label-sm uppercase text-ink-400">Sign in</p>
-          <h1 className="mt-3 font-serif text-[36px] leading-[1.15] text-ink-900">Step back inside.</h1>
-          <p className="mt-3 text-[14px] text-ink-400">
+    <AuthPageLayout
+      eyebrow="Welcome back"
+      title="Your next chapter is waiting."
+      lead="Thousands of serialized novels, token unlocks, and a reading experience built for long nights — pick up exactly where you left off."
+      footer={
+        <>
+          <p className="text-[14px] text-ink-700">
             New here?{' '}
-            <Link href="/auth/register" className="text-ink-900 underline decoration-gold underline-offset-4">Create an account</Link>.
+            <Link
+              href="/auth/register"
+              className="font-semibold text-ink-900 underline decoration-gold decoration-2 underline-offset-4 hover:text-ink-700"
+            >
+              Create an account
+            </Link>
           </p>
-          <div className="mt-10">
-            <Suspense fallback={null}>
-              <LoginForm />
-            </Suspense>
-          </div>
-          <div className="mt-10 text-[12px] text-ink-400">
+          <p className="mt-4 text-[12px] text-ink-500">
             By signing in you agree to our{' '}
-            <Link href="/legal/terms" className="underline">Terms</Link> and{' '}
-            <Link href="/legal/privacy" className="underline">Privacy</Link>.
-          </div>
-        </div>
-      </main>
-    </div>
+            <Link href="/legal/terms" className="text-ink-700 underline hover:text-ink-900">Terms</Link>
+            {' '}and{' '}
+            <Link href="/legal/privacy" className="text-ink-700 underline hover:text-ink-900">Privacy</Link>.
+          </p>
+        </>
+      }
+    >
+      <div className="hidden lg:block">
+        <p className="label-sm uppercase tracking-[0.2em] text-ink-500">Sign in</p>
+        <h2 className="mt-2 font-serif text-[32px] leading-tight text-ink-900">
+          Continue reading
+        </h2>
+        <p className="mt-2 text-[14px] text-ink-600">
+          Access your library, tokens, and saved progress.
+        </p>
+      </div>
+
+      <div className="lg:mt-8">
+        <Suspense fallback={<p className="text-[14px] text-ink-400">Loading form…</p>}>
+          <LoginForm />
+        </Suspense>
+      </div>
+    </AuthPageLayout>
   );
 }

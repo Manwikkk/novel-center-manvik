@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { openAuthModal } from '@/lib/authModal';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
 import CommentItem from './CommentItem';
@@ -34,7 +34,6 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
   const [hasMore, setHasMore] = useState(false);
   const [totalRoots, setTotalRoots] = useState(0);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const pushToast = useUiStore((s) => s.pushToast);
 
@@ -198,7 +197,10 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
               type="button"
               onClick={() => {
                 if (!user) {
-                  router.push('/auth/login');
+                  openAuthModal({
+                    message: 'Sign in to write a review.',
+                    onSuccess: () => setReviewOpen(true),
+                  });
                   return;
                 }
                 setReviewOpen(true);
@@ -246,8 +248,9 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
       ) : null}
       {!user && (
         <p className={cn('mt-6 text-[14px]', muted)}>
-          <a
-            href="/auth/login"
+          <button
+            type="button"
+            onClick={() => openAuthModal({ message: 'Sign in to join the discussion.' })}
             className={cn(
               'underline underline-offset-4',
               reader
@@ -256,7 +259,7 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
             )}
           >
             Sign in
-          </a>{' '}
+          </button>{' '}
           {isBookDiscussion
             ? 'to write a review and react to comments.'
             : 'to join the discussion and react to comments.'}
