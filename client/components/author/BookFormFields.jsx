@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileText, HelpCircle, Upload, ImagePlus } from 'lucide-react';
-import Chip from '@/components/ui/Chip';
+import ContentTagPicker from '@/components/author/ContentTagPicker';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import {
@@ -187,7 +187,19 @@ export function useBookCatalog() {
     return () => { cancelled = true; };
   }, []);
 
-  return { catalog, loading };
+  function addContentTag(tag) {
+    setCatalog((prev) => addTagToCatalog(prev, tag));
+  }
+
+  return { catalog, loading, addContentTag, setCatalog };
+}
+
+function addTagToCatalog(catalog, tag) {
+  if (catalog.contentTags.some((t) => t.id === tag.id)) return catalog;
+  return {
+    ...catalog,
+    contentTags: [...catalog.contentTags, tag].sort((a, b) => a.label.localeCompare(b.label)),
+  };
 }
 
 export function NovelInformationFields({
@@ -323,23 +335,7 @@ export function PublishOnCreateChoice({ form, setForm }) {
   );
 }
 
-export function StoryDetailsFields({ form, setForm, catalog, catalogLoading }) {
-  const [tagQuery, setTagQuery] = useState('');
-  const filteredTags = useMemo(() => {
-    const q = tagQuery.trim().toLowerCase();
-    if (!q) return catalog.contentTags;
-    return catalog.contentTags.filter((t) => t.label.toLowerCase().includes(q));
-  }, [catalog.contentTags, tagQuery]);
-
-  function toggleContentTag(id) {
-    setForm((f) => {
-      const next = new Set(f.contentTagIds);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return { ...f, contentTagIds: next };
-    });
-  }
-
+export function StoryDetailsFields({ form, setForm, catalog, catalogLoading, onTagCreated }) {
   return (
     <div className="space-y-5">
       <CharCountInput
@@ -354,54 +350,37 @@ export function StoryDetailsFields({ form, setForm, catalog, catalogLoading }) {
       />
 
       <div>
-        <FieldLabel>Tag category and tags</FieldLabel>
-        <div className="grid sm:grid-cols-2 gap-3 mb-3">
-          <select
-            className={selectCls}
-            value={form.categoryId}
-            onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
-            disabled={catalogLoading}
-          >
-            <option value="">Select category</option>
-            {catalog.categories.map((c) => (
-              <option key={c.id} value={String(c.id)}>{c.label}</option>
-            ))}
-          </select>
-          <input
-            type="search"
-            value={tagQuery}
-            onChange={(e) => setTagQuery(e.target.value)}
-            placeholder="Search tags"
-            className={selectCls}
-          />
-        </div>
-        <p className="text-[12px] text-on-surface-variant mb-3 leading-relaxed">
-          Before selecting a tag, choose your target audience (male/female). Accurate tags may raise
-          the chances of readers finding your work.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {filteredTags.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => toggleContentTag(t.id)}
-              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-studio-accent/40 rounded-full"
-            >
-              <Chip
-                active={form.contentTagIds.has(t.id)}
-                as="span"
-                className={
-                  form.contentTagIds.has(t.id)
-                    ? 'bg-primary text-on-primary border-primary'
-                    : 'bg-surface-container text-on-surface border-surface-variant hover:border-outline'
-                }
-              >
-                {t.label}
-              </Chip>
-            </button>
+        <FieldLabel>Book category</FieldLabel>
+        <select
+          className={selectCls}
+          value={form.categoryId}
+          onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
+          disabled={catalogLoading}
+        >
+          <option value="">Select category</option>
+          {catalog.categories.map((c) => (
+            <option key={c.id} value={String(c.id)}>{c.label}</option>
           ))}
-        </div>
+        </select>
       </div>
+
+      <ContentTagPicker
+        tags={catalog.contentTags}
+        selectedIds={form.contentTagIds}
+        disabled={catalogLoading}
+        onSelectedChange={(updater) => {
+          setForm((f) => ({
+            ...f,
+            contentTagIds: typeof updater === 'function' ? updater(f.contentTagIds) : updater,
+          }));
+        }}
+        onTagCreated={onTagCreated}
+      />
+
+      <p className="text-[12px] text-on-surface-variant -mt-2 leading-relaxed">
+        Before selecting tags, choose your target audience (male/female) in the novel information
+        section. Accurate tags may raise the chances of readers finding your work.
+      </p>
 
       <CharCountInput
         label="Abbreviation"

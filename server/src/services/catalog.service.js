@@ -254,6 +254,27 @@ async function deleteLanguage(id) {
   return { ok: true };
 }
 
+async function findOrCreateContentTag({ label }) {
+  const trimmed = String(label || '').trim();
+  if (!trimmed) throw errors.badRequest('label is required');
+  const [rows] = await pool.execute(
+    `SELECT t.*,
+            (SELECT COUNT(*) FROM book_content_tags bct WHERE bct.tag_id = t.id) AS book_count
+       FROM catalog_content_tags t
+      WHERE LOWER(t.label) = LOWER(?)
+      LIMIT 1`,
+    [trimmed],
+  );
+  if (rows[0]) {
+    if (!rows[0].is_active) {
+      await pool.execute('UPDATE catalog_content_tags SET is_active = 1 WHERE id = ?', [rows[0].id]);
+      rows[0].is_active = 1;
+    }
+    return mapTagRow(rows[0]);
+  }
+  return createContentTag({ label: trimmed, isActive: true });
+}
+
 async function createContentTag({ label, slug, sortOrder, isActive }) {
   if (!label || !String(label).trim()) throw errors.badRequest('label is required');
   const finalSlug = slug && String(slug).trim() ? toSlug(slug) : await uniqueSlugIn('catalog_content_tags', label);
@@ -374,6 +395,7 @@ module.exports = {
   updateLanguage,
   deleteLanguage,
   createContentTag,
+  findOrCreateContentTag,
   updateContentTag,
   deleteContentTag,
   getContentTagsForBook,

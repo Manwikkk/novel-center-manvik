@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import AuthGuard from '@/components/layout/AuthGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
@@ -12,8 +13,18 @@ import AuthorThoughtModal from '@/components/author/AuthorThoughtModal';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
 import { useChapterDraft } from '@/lib/useChapterDraft';
+import { cn } from '@/lib/cn';
 
 const SERVER_DEBOUNCE_MS = 3000;
+const DEFAULT_CHAPTER_TITLE = 'Untitled chapter';
+
+function normalizeChapterPayload(data) {
+  if (!data) return null;
+  return {
+    ...data,
+    title: String(data.title ?? '').trim() || DEFAULT_CHAPTER_TITLE,
+  };
+}
 
 function relativeFromNow(ts) {
   if (!ts) return '';
@@ -33,31 +44,41 @@ function SaveStatus({ state, lastSavedAt }) {
     return () => clearInterval(id);
   }, [state]);
 
-  if (state === 'idle') return null;
-  if (state === 'dirty') {
-    return <span className="text-[12px] tracking-labelTight uppercase text-on-surface-variant">Unsaved changes</span>;
-  }
-  if (state === 'saving') {
-    return <span className="text-[12px] tracking-labelTight uppercase text-on-surface-variant">Saving…</span>;
-  }
-  if (state === 'error') {
-    return <span className="text-[12px] tracking-labelTight uppercase text-error">Save failed · retrying</span>;
-  }
+  let message = '';
+  if (state === 'dirty') message = 'Unsaved changes';
+  else if (state === 'saving') message = 'Saving…';
+  else if (state === 'error') message = 'Save failed';
+  else if (state === 'saved') message = `Saved ${relativeFromNow(lastSavedAt)}`;
+
   return (
-    <span className="text-[12px] tracking-labelTight uppercase text-on-surface-variant">
-      Saved {relativeFromNow(lastSavedAt)}
+    <span
+      aria-live="polite"
+      aria-atomic="true"
+      className={cn(
+        'hidden md:inline-flex items-center justify-end shrink-0 whitespace-nowrap',
+        'min-w-[9.5rem] text-[12px] font-semibold uppercase tracking-wider tabular-nums',
+        state === 'dirty' && 'text-amber-700 dark:text-amber-400',
+        state === 'saving' && 'text-on-surface-variant',
+        state === 'error' && 'text-error',
+        state === 'saved' && 'text-emerald-700 dark:text-emerald-400',
+        state === 'idle' && 'text-transparent select-none',
+      )}
+    >
+      {message || '\u00a0'}
     </span>
   );
 }
 
 function ChapterEditInner() {
   const { id, chapterId } = useParams();
+  const router = useRouter();
   const pushToast = useUiStore((s) => s.pushToast);
   const { loadDraft, saveDraftDebounced, flushDraft, clearDraft } = useChapterDraft();
 
   const [chapter, setChapter] = useState(null);
   const [content, setContent] = useState('');
   const [busy, setBusy] = useState(false);
+  const [creatingNext, setCreatingNext] = useState(false);
   const [saveState, setSaveState] = useState('idle');
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [thoughtModalOpen, setThoughtModalOpen] = useState(false);
@@ -102,7 +123,7 @@ function ChapterEditInner() {
           status: serverChapter.status,
           authorThought: serverChapter.authorThought || '',
         };
-        lastSavedSnapshotRef.current = JSON.stringify(serverSnapshot);
+        lastSavedSnapshotRef.current = JSON.stringify(normalizeChapterPayload(serverSnapshot));
 
         if (draft && Number(draft.savedAt || 0) > serverTime) {
           setChapter({
@@ -136,29 +157,76 @@ function ChapterEditInner() {
     setChapter((c) => ({ ...c, [field]: value }));
   }
 
-  const persist = useCallback(async ({ manual = false } = {}) => {
-    if (!chapter || !snapshot) return;
-    const sentSerialized = JSON.stringify(snapshot);
+  const persist = useCallback(async ({ manual = false, statusOverride } = {}) => {
+    if (!chapter || !snapshot) return false;
+    const payload = normalizeChapterPayload(
+      statusOverride ? { ...snapshot, status: statusOverride } : snapshot,
+    );
+    const sentSerialized = JSON.stringify(payload);
     if (!manual && sentSerialized === lastSavedSnapshotRef.current) {
-      return;
+      return true;
     }
     if (manual) setBusy(true);
     setSaveState('saving');
     try {
-      const r = await api.patch(`/chapters/${chapter.id}`, snapshot);
+      const r = await api.patch(`/chapters/${chapter.id}`, payload);
       lastSavedSnapshotRef.current = sentSerialized;
       setLastSavedAt(Date.now());
       setSaveState('saved');
-      setChapter((c) => (c ? { ...c, updatedAt: r.chapter.updatedAt } : c));
+      setChapter((c) => (
+        c
+          ? {
+              ...c,
+              title: r.chapter.title,
+              status: r.chapter.status,
+              updatedAt: r.chapter.updatedAt,
+            }
+          : c
+      ));
       clearDraft(chapter.id);
       if (manual) pushToast({ type: 'success', title: 'Chapter saved' });
+      return true;
     } catch (err) {
       setSaveState('error');
       if (manual) pushToast({ type: 'error', title: 'Save failed', message: err.message });
+      return false;
     } finally {
       if (manual) setBusy(false);
     }
   }, [chapter, snapshot, clearDraft, pushToast]);
+
+  const saveAndNewChapter = useCallback(async (targetStatus) => {
+    if (!chapter || !snapshot || creatingNext || busy) return;
+    if (serverTimerRef.current) {
+      clearTimeout(serverTimerRef.current);
+      serverTimerRef.current = null;
+    }
+    setCreatingNext(true);
+    setSaveState('saving');
+    try {
+      const payload = normalizeChapterPayload({ ...snapshot, status: targetStatus });
+      await api.patch(`/chapters/${chapter.id}`, payload);
+      clearDraft(chapter.id);
+      const r = await api.post(`/books/${id}/chapters`, {
+        title: DEFAULT_CHAPTER_TITLE,
+        contentHtml: '<p></p>',
+        isPaid: false,
+        tokenPrice: 0,
+        status: 'draft',
+      });
+      pushToast({
+        type: 'success',
+        title: targetStatus === 'published' ? 'Chapter published' : 'Chapter saved as draft',
+        message: 'Opening a new chapter.',
+      });
+      router.push(`/author/books/${id}/chapters/${r.chapter.id}/edit`);
+    } catch (err) {
+      setSaveState('error');
+      pushToast({ type: 'error', title: 'Could not continue', message: err.message });
+    } finally {
+      setCreatingNext(false);
+    }
+  }, [chapter, snapshot, creatingNext, busy, id, router, clearDraft, pushToast]);
 
   useEffect(() => {
     persistRef.current = persist;
@@ -167,7 +235,7 @@ function ChapterEditInner() {
   useEffect(() => {
     if (!hydratedRef.current || !chapter || !snapshot) return undefined;
 
-    const serialized = JSON.stringify(snapshot);
+    const serialized = JSON.stringify(normalizeChapterPayload(snapshot));
     if (serialized === lastSavedSnapshotRef.current) {
       setSaveState((prev) => (prev === 'dirty' || prev === 'saving' ? 'saved' : prev));
       return undefined;
@@ -219,21 +287,21 @@ function ChapterEditInner() {
     <DashboardShell kind="author">
       <DashboardTopbar
         subtitle={`Editing chapter ${chapter.idx}`}
-        title={chapter.title || 'Untitled chapter'}
+        title={chapter.title || DEFAULT_CHAPTER_TITLE}
         actions={
           <>
             <SaveStatus state={saveState} lastSavedAt={lastSavedAt} />
             <Link
               href={`/author/books/${id}/edit`}
-              className="text-[12px] font-bold uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors"
+              className="shrink-0 whitespace-nowrap text-[12px] font-bold uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors"
             >
               Back to book
             </Link>
             <button
               type="button"
               onClick={() => persist({ manual: true })}
-              disabled={busy || saveState === 'saving'}
-              className="px-4 py-2 rounded-lg bg-studio-accent hover:bg-studio-accent-hover text-white text-[12px] font-bold uppercase tracking-wider disabled:opacity-50 transition-colors"
+              disabled={busy || creatingNext || saveState === 'saving'}
+              className="shrink-0 whitespace-nowrap px-4 py-2 rounded-lg bg-studio-accent hover:bg-studio-accent-hover text-white text-[12px] font-bold uppercase tracking-wider disabled:opacity-50 transition-colors"
             >
               {busy || saveState === 'saving' ? 'Saving…' : 'Save chapter'}
             </button>
@@ -247,6 +315,11 @@ function ChapterEditInner() {
               variant="dashboard"
               value={chapter.title}
               onChange={(e) => update('title', e.target.value)}
+              hint={
+                !(chapter.title || '').trim()
+                  ? `If left empty, this chapter saves as "${DEFAULT_CHAPTER_TITLE}".`
+                  : undefined
+              }
             />
             <ChapterEditor value={content} onChange={setContent} />
             <div className="pt-2 border-t border-surface-variant">
@@ -336,6 +409,31 @@ function ChapterEditInner() {
                 inputClassName="no-spin"
               />
             )}
+
+            <div className="pt-4 border-t border-surface-variant space-y-2">
+              <p className="label-sm uppercase text-on-surface-variant">Next chapter</p>
+              <p className="text-[12px] text-on-surface-variant leading-relaxed">
+                Save this chapter, then start writing the next one.
+              </p>
+              <button
+                type="button"
+                onClick={() => saveAndNewChapter('draft')}
+                disabled={busy || creatingNext || saveState === 'saving'}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-surface-variant text-on-surface text-[11px] font-bold uppercase tracking-wider hover:bg-surface-container transition-colors disabled:opacity-50"
+              >
+                <Plus size={14} />
+                {creatingNext ? 'Working…' : 'Save draft & new chapter'}
+              </button>
+              <button
+                type="button"
+                onClick={() => saveAndNewChapter('published')}
+                disabled={busy || creatingNext || saveState === 'saving'}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-studio-accent hover:bg-studio-accent-hover text-white text-[11px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+              >
+                <Plus size={14} />
+                {creatingNext ? 'Working…' : 'Publish & new chapter'}
+              </button>
+            </div>
           </aside>
         </div>
 

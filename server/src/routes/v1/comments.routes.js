@@ -20,5 +20,11 @@ router.patch(
   ctrl.setReaction,
 );
 router.delete('/:id',   authRequired, validate({ params: idParam }), ctrl.remove);
+router.post(
+  '/:id/report',
+  authRequired,
+  validate({ params: idParam, body: v.report.body }),
+  ctrl.report,
+);
 
 module.exports = router;

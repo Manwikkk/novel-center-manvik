@@ -8,7 +8,15 @@ import { cn } from '@/lib/cn';
 
 const EMPTY_RATINGS = Object.fromEntries(REVIEW_CATEGORIES.map((c) => [c.key, 0]));
 
-export default function WriteReviewModal({ open, onClose, onSubmit, reader = false }) {
+export default function WriteReviewModal({
+  open,
+  onClose,
+  onSubmit,
+  reader = false,
+  initialReview = null,
+  title = 'Write a review',
+  submitLabel = 'Post',
+}) {
   const [ratings, setRatings] = useState(EMPTY_RATINGS);
   const [body, setBody] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
@@ -34,8 +42,19 @@ export default function WriteReviewModal({ open, onClose, onSubmit, reader = fal
       setBody('');
       setIsSpoiler(false);
       setBusy(false);
+      return;
     }
-  }, [open]);
+    if (initialReview) {
+      setRatings({ ...EMPTY_RATINGS, ...(initialReview.reviewRatings || {}) });
+      setBody(initialReview.body || '');
+      setIsSpoiler(Boolean(initialReview.isSpoiler));
+    } else {
+      setRatings(EMPTY_RATINGS);
+      setBody('');
+      setIsSpoiler(false);
+    }
+    setBusy(false);
+  }, [open, initialReview]);
 
   if (!open) return null;
 
@@ -95,7 +114,7 @@ export default function WriteReviewModal({ open, onClose, onSubmit, reader = fal
         )}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-inherit bg-inherit px-5 py-4 md:px-6">
-          <h2 className="font-serif text-[22px] md:text-[26px] leading-tight">Write a review</h2>
+          <h2 className="font-serif text-[22px] md:text-[26px] leading-tight">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -160,7 +179,7 @@ export default function WriteReviewModal({ open, onClose, onSubmit, reader = fal
                   'bg-[#2563eb] text-white hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
-                {busy ? 'Posting…' : 'Post'}
+                {busy ? 'Saving…' : submitLabel}
               </button>
             </div>
           </div>

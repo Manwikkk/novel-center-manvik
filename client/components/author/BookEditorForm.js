@@ -13,7 +13,7 @@ import {
 
 export default function BookEditorForm({ book, onSaved }) {
   const pushToast = useUiStore((s) => s.pushToast);
-  const { catalog, loading: catalogLoading } = useBookCatalog();
+  const { catalog, loading: catalogLoading, addContentTag } = useBookCatalog();
   const [form, setForm] = useState(() => emptyBookForm(book));
   const [busy, setBusy] = useState(false);
 
@@ -68,6 +68,7 @@ export default function BookEditorForm({ book, onSaved }) {
             setForm={setForm}
             catalog={catalog}
             catalogLoading={catalogLoading}
+            onTagCreated={addContentTag}
           />
         </FormSection>
       </div>

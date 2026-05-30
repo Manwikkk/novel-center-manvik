@@ -15,6 +15,7 @@ import { useReaderStore } from '@/stores/readerStore';
 import { readingApi } from '@/lib/reading';
 import { formatTokens } from '@/lib/format';
 import { openAuthModal } from '@/lib/authModal';
+import { isChapterLocked, isChapterReadable } from '@/lib/chapterAccess';
 import { cn } from '@/lib/cn';
 
 const WPM = 220;
@@ -51,6 +52,14 @@ export default function ReadingInterfacePage() {
 
   useEffect(() => {
     let cancel = false;
+    setChapter(null);
+    setBook(null);
+    setSiblings([]);
+    setError(null);
+    setProgress(0);
+    setCommentCount(0);
+    setRightPanel(null);
+
     async function load() {
       try {
         const cRes = await api.get(`/chapters/${chapterId}`);
@@ -197,7 +206,7 @@ export default function ReadingInterfacePage() {
       </div>
     );
   }
-  if (!chapter) {
+  if (!chapter || Number(chapter.id) !== Number(chapterId)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--reader-bg)] text-[var(--reader-fg)] font-ui-label-sm uppercase tracking-widest opacity-70">
         Loading…
@@ -205,8 +214,8 @@ export default function ReadingInterfacePage() {
     );
   }
 
-  const locked = !chapter.contentHtml;
-  const isPaidLocked = chapter.isPaid && !chapter.isUnlocked;
+  const locked = isChapterLocked(chapter);
+  const isPaidLocked = locked && chapter.isPaid && Number(chapter.tokenPrice) > 0;
   const showTitlePage = chapter.idx === 1 && book;
 
   return (
@@ -428,7 +437,17 @@ function TitlePageHero({ book, chapter }) {
       </h1>
       {book.authorName ? (
         <p className="mt-4 text-base md:text-lg text-[var(--reader-fg)] font-serif">
-          Author: {book.authorName}
+          Author:{' '}
+          {book.authorId ? (
+            <Link
+              href={`/authors/${book.authorId}`}
+              className="text-[#2f6bff] hover:underline underline-offset-2"
+            >
+              {book.authorName}
+            </Link>
+          ) : (
+            book.authorName
+          )}
         </p>
       ) : null}
       <p className="mt-8 text-sm text-[var(--reader-muted)] tracking-wide">
@@ -639,21 +658,37 @@ function TocPanel({ chapters, currentId, bookSlug, onClose, railPx }) {
         <ul className="space-y-0.5">
           {chapters.map((ch) => {
             const isCurrent = ch.id === currentId;
+            const locked = isChapterLocked(ch);
             return (
               <li key={ch.id}>
-                <Link
-                  href={`/read/${ch.id}`}
-                  onClick={onClose}
-                  className={cn(
-                    'block px-4 py-2.5 text-sm border-l-2 transition-colors',
-                    isCurrent
-                      ? 'border-[#2563eb] bg-[var(--reader-fg)]/[0.06] font-medium'
-                      : 'border-transparent hover:bg-[var(--reader-fg)]/[0.04]',
-                  )}
-                >
-                  <span className="text-[var(--reader-muted)] tabular-nums mr-2">{ch.idx}.</span>
-                  {ch.title}
-                </Link>
+                {locked ? (
+                  <div
+                    className={cn(
+                      'block px-4 py-2.5 text-sm border-l-2 opacity-70',
+                      isCurrent
+                        ? 'border-[#2563eb] bg-[var(--reader-fg)]/[0.06] font-medium'
+                        : 'border-transparent',
+                    )}
+                  >
+                    <span className="text-[var(--reader-muted)] tabular-nums mr-2">{ch.idx}.</span>
+                    {ch.title}
+                    <Icon name="lock" size={14} className="inline ml-2 align-text-bottom opacity-60" />
+                  </div>
+                ) : (
+                  <Link
+                    href={`/read/${ch.id}`}
+                    onClick={onClose}
+                    className={cn(
+                      'block px-4 py-2.5 text-sm border-l-2 transition-colors',
+                      isCurrent
+                        ? 'border-[#2563eb] bg-[var(--reader-fg)]/[0.06] font-medium'
+                        : 'border-transparent hover:bg-[var(--reader-fg)]/[0.04]',
+                    )}
+                  >
+                    <span className="text-[var(--reader-muted)] tabular-nums mr-2">{ch.idx}.</span>
+                    {ch.title}
+                  </Link>
+                )}
               </li>
             );
           })}

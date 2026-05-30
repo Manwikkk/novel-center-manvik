@@ -47,6 +47,22 @@ module.exports = {
   update: {
     body: Joi.object({
       body: Joi.string().trim().min(1).max(2000).required(),
+      isSpoiler: Joi.boolean(),
+      reviewRatings: Joi.object({
+        writingQuality: Joi.number().integer().min(1).max(5).required(),
+        stabilityOfUpdates: Joi.number().integer().min(1).max(5).required(),
+        storyDevelopment: Joi.number().integer().min(1).max(5).required(),
+        characterDesign: Joi.number().integer().min(1).max(5).required(),
+        worldBackground: Joi.number().integer().min(1).max(5).required(),
+      }),
+    }),
+  },
+  report: {
+    body: Joi.object({
+      reason: Joi.string()
+        .valid('spam', 'harassment', 'spoilers', 'inappropriate', 'other')
+        .required(),
+      details: Joi.string().trim().max(500).allow('', null),
     }),
   },
 };

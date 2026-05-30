@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Icon from '@/components/ui/Icon';
 import Avatar from '@/components/ui/Avatar';
 import Logo from '@/components/ui/Logo';
@@ -11,7 +11,6 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useSiteThemeStore } from '@/stores/siteThemeStore';
 import { formatTokens } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { openAuthModal } from '@/lib/authModal';
 
 const navCls = (active) =>
   cn(
@@ -40,8 +39,10 @@ export default function SiteHeader({ variant = 'translucent' }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
   const pathname = usePathname() || '/';
+  const router = useRouter();
 
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const balance = useWalletStore((s) => s.balance);
   const refreshWallet = useWalletStore((s) => s.refresh);
   const siteTheme = useSiteThemeStore((s) => s.siteTheme);
@@ -72,6 +73,13 @@ export default function SiteHeader({ variant = 'translucent' }) {
   const headerBg = isGlass
     ? 'bg-white/85 dark:bg-black/85 backdrop-blur-nav border-neutral-200/80 dark:border-neutral-800'
     : 'bg-white dark:bg-black border-transparent';
+
+  function handleLogout() {
+    logout();
+    setProfileOpen(false);
+    setOpen(false);
+    router.push('/');
+  }
 
   return (
     <header
@@ -164,25 +172,33 @@ export default function SiteHeader({ variant = 'translucent' }) {
                       Admin
                     </Link>
                   )}
+                  <div className="my-1 border-t border-neutral-200 dark:border-neutral-800" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-800 dark:text-neutral-200 hover:bg-ink-900/5 dark:hover:bg-white/10"
+                  >
+                    <Icon name="logout" size={18} />
+                    Logout
+                  </button>
                 </div>
               ) : null}
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => openAuthModal({ tab: 'login' })}
+              <Link
+                href="/auth/login"
                 className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-700 dark:text-neutral-300 hover:text-ink-900 dark:hover:text-white"
               >
                 Login
-              </button>
-              <button
-                type="button"
-                onClick={() => openAuthModal({ tab: 'register' })}
+              </Link>
+              <Link
+                href="/auth/register"
                 className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest bg-ink-900 text-white dark:bg-white dark:text-black px-4 py-2.5 hover:opacity-90"
               >
                 Register
-              </button>
+              </Link>
             </div>
           )}
 
@@ -258,23 +274,31 @@ export default function SiteHeader({ variant = 'translucent' }) {
                     Admin
                   </Link>
                 )}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-2 py-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200 text-left"
+                >
+                  <Icon name="logout" size={18} />
+                  Logout
+                </button>
               </div>
             ) : (
               <div className="flex gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-800 mt-2">
-                <button
-                  type="button"
-                  onClick={() => { setOpen(false); openAuthModal({ tab: 'login' }); }}
+                <Link
+                  href="/auth/login"
+                  onClick={() => setOpen(false)}
                   className="flex-1 text-center font-ui-label-sm text-ui-label-sm uppercase border border-ink-900 dark:border-neutral-500 text-ink-900 dark:text-neutral-100 px-4 py-3"
                 >
                   Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setOpen(false); openAuthModal({ tab: 'register' }); }}
+                </Link>
+                <Link
+                  href="/auth/register"
+                  onClick={() => setOpen(false)}
                   className="flex-1 text-center font-ui-label-sm text-ui-label-sm uppercase bg-ink-900 text-white dark:bg-white dark:text-black px-4 py-3"
                 >
                   Register
-                </button>
+                </Link>
               </div>
             )}
             <div className="pt-4 flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800 mt-2">

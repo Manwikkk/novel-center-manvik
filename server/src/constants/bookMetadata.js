@@ -3,7 +3,7 @@
 const BOOK_TYPES = ['novel', 'fan_fic'];
 const LEADING_GENDERS = ['male', 'female'];
 const GENRE_SLUGS = ['urban', 'fantasy', 'history', 'horror', 'sci_fi', 'sports', 'games'];
-const BOOK_LENGTHS = ['novels', 'short_stories', 'super_short_stories'];
+const BOOK_LENGTHS = ['novels', 'short_stories'];
 const WARNING_NOTICES = [
   'general_audiences',
   'parental_guidance',

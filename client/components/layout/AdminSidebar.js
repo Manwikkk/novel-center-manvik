@@ -7,6 +7,7 @@ import Logo from '@/components/ui/Logo';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { DashboardThemeToggleSidebar } from '@/components/layout/DashboardThemeToggle';
+import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
 
 /**
  * Stitch "Admin" side navigation.  Same shape as the Author sidebar
@@ -57,6 +58,7 @@ export default function AdminSidebar() {
       </div>
 
       <nav className="flex-1 flex flex-col gap-1 overflow-y-auto">
+        <DashboardSiteHomeLink variant="admin-sidebar" />
         {ADMIN_NAV.map((it) => {
           const active = it.exact ? pathname === it.href : pathname.startsWith(it.href);
           return (

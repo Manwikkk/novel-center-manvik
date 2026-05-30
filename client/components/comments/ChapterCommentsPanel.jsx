@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/uiStore';
 import Avatar from '@/components/ui/Avatar';
 import Icon from '@/components/ui/Icon';
 import AddChapterCommentModal from './AddChapterCommentModal';
+import ReportCommentModal from './ReportCommentModal';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { buildCommentTree } from './commentUtils';
@@ -40,6 +41,7 @@ export default function ChapterCommentsPanel({
   const [totalRoots, setTotalRoots] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [replyParentId, setReplyParentId] = useState(null);
+  const [editNode, setEditNode] = useState(null);
 
   const sort = tab === 'liked' ? 'likes' : 'newest';
 
@@ -101,7 +103,10 @@ export default function ChapterCommentsPanel({
   }
 
   async function voteComment(id, reaction) {
-    if (!user) return;
+    if (!user) {
+      openAuthModal({ message: 'Sign in to react to comments.' });
+      return;
+    }
     try {
       const out = await api.patch(`/comments/${id}/reaction`, { reaction });
       setItems((prev) =>
@@ -114,6 +119,58 @@ export default function ChapterCommentsPanel({
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not update reaction', message: err.message });
     }
+  }
+
+  async function editComment(id, payload) {
+    try {
+      const res = await api.patch(`/comments/${id}`, payload);
+      setItems((prev) => prev.map((c) => (c.id === id ? { ...c, ...res.comment } : c)));
+      pushToast({ type: 'success', title: 'Comment updated' });
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Could not update comment', message: err.message });
+      throw err;
+    }
+  }
+
+  async function removeComment(id) {
+    try {
+      await api.delete(`/comments/${id}`);
+      setItems((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Could not delete comment', message: err.message });
+    }
+  }
+
+  async function reportComment(id, { reason, details }) {
+    try {
+      await api.post(`/comments/${id}/report`, { reason, details });
+      pushToast({
+        type: 'success',
+        title: 'Report submitted',
+        message: 'Thank you for helping keep the community safe.',
+      });
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Could not submit report', message: err.message });
+      throw err;
+    }
+  }
+
+  function openEdit(node) {
+    if (!user) {
+      openAuthModal({
+        message: 'Sign in to edit your comment.',
+        onSuccess: () => openEdit(node),
+      });
+      return;
+    }
+    setEditNode(node);
+    setModalOpen(true);
+  }
+
+  function closeComposer() {
+    setModalOpen(false);
+    setReplyParentId(null);
+    setEditNode(null);
   }
 
   function openComposer(parentId = null) {
@@ -210,8 +267,11 @@ export default function ChapterCommentsPanel({
                   key={node.id}
                   node={node}
                   user={user}
-                  onLike={voteComment}
+                  onVote={voteComment}
                   onReply={openComposer}
+                  onEdit={openEdit}
+                  onDelete={removeComment}
+                  onReport={reportComment}
                 />
               ))}
             </ul>
@@ -231,25 +291,50 @@ export default function ChapterCommentsPanel({
 
       <AddChapterCommentModal
         open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setReplyParentId(null);
+        onClose={closeComposer}
+        title={editNode ? 'Edit comment' : replyParentId ? 'Add a reply' : 'Add a Chapter Comment'}
+        initialBody={editNode?.body || ''}
+        submitLabel={editNode ? 'Save' : 'Add'}
+        onSubmit={async ({ body }) => {
+          if (editNode) {
+            await editComment(editNode.id, { body });
+            closeComposer();
+          } else {
+            await postComment({ body, parentId: replyParentId });
+          }
         }}
-        title={replyParentId ? 'Add a reply' : 'Add a Chapter Comment'}
-        onSubmit={({ body }) => postComment({ body, parentId: replyParentId })}
       />
     </>
   );
 }
 
-function ChapterCommentRow({ node, user, onLike, onReply, depth = 0 }) {
+function ChapterCommentRow({ node, user, onVote, onReply, onEdit, onDelete, onReport, depth = 0 }) {
   const [showReplies, setShowReplies] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const isHidden = node.status === 'hidden';
+  const isOwner = user && user.id === node.author?.id;
+  const isAdmin = user && user.role === 'admin';
 
   if (node.status !== 'visible') return null;
   const likeCount = Number(node.likeCount) || 0;
-  const myLike = node.myReaction === 'like';
+  const dislikeCount = Number(node.dislikeCount) || 0;
+  const my = node.myReaction || null;
   const replyCount = node.children?.length || 0;
+
+  function nextReaction(clicked) {
+    if (clicked === 'like') return my === 'like' ? null : 'like';
+    return my === 'dislike' ? null : 'dislike';
+  }
+
+  function openReport() {
+    if (!user) {
+      openAuthModal({ message: 'Sign in to report this comment.' });
+      return;
+    }
+    setReportOpen(true);
+  }
+
+  const actionLink = 'hover:text-ink-700 dark:hover:text-neutral-300';
 
   return (
     <li>
@@ -262,31 +347,63 @@ function ChapterCommentRow({ node, user, onLike, onReply, depth = 0 }) {
           <p className="mt-1 text-[14px] leading-snug text-ink-600 dark:text-neutral-400 whitespace-pre-line">
             {isHidden ? <em className="text-ink-400">[hidden]</em> : node.body}
           </p>
-          <div className="mt-2 flex items-center gap-3 text-[12px] text-ink-400 dark:text-neutral-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-400 dark:text-neutral-500">
             <span>{formatRelative(node.createdAt)}</span>
             <button
               type="button"
-              disabled={!user}
-              onClick={() => onLike(node.id, myLike ? null : 'like')}
+              onClick={() => onVote(node.id, nextReaction('like'))}
               className={cn(
                 'inline-flex items-center gap-1',
-                myLike && 'text-[#2563eb] font-medium',
-                !user && 'opacity-50 cursor-not-allowed',
+                my === 'like' && 'text-[#2563eb] font-medium',
               )}
             >
-              <Icon name="thumb_up" filled={myLike} size={14} />
+              <Icon name="thumb_up" filled={my === 'like'} size={14} />
               {likeCount > 0 ? likeCount : null}
             </button>
             <button
               type="button"
-              disabled={!user}
+              onClick={() => onVote(node.id, nextReaction('dislike'))}
+              className={cn(
+                'inline-flex items-center gap-1',
+                my === 'dislike' && 'text-rose-500 font-medium',
+              )}
+            >
+              <Icon name="thumb_down" filled={my === 'dislike'} size={14} />
+              {dislikeCount > 0 ? dislikeCount : null}
+            </button>
+            <button
+              type="button"
               onClick={() => onReply(node.id)}
-              className={cn('inline-flex items-center gap-1', !user && 'opacity-50 cursor-not-allowed')}
+              className={cn('inline-flex items-center gap-1', actionLink)}
             >
               <Icon name="chat_bubble_outline" size={14} />
               Reply
             </button>
+            {isOwner && (
+              <button type="button" onClick={() => onEdit(node)} className={actionLink}>
+                Edit
+              </button>
+            )}
+            {(isOwner || isAdmin) && (
+              <button
+                type="button"
+                onClick={() => onDelete(node.id)}
+                className={cn(actionLink, 'hover:text-rose-500')}
+              >
+                Delete
+              </button>
+            )}
+            <button type="button" onClick={openReport} className={actionLink}>
+              Report
+            </button>
           </div>
+          <ReportCommentModal
+            open={reportOpen}
+            onClose={() => setReportOpen(false)}
+            onSubmit={async (payload) => {
+              await onReport?.(node.id, payload);
+            }}
+          />
           {replyCount > 0 && (
             <button
               type="button"
@@ -303,8 +420,11 @@ function ChapterCommentRow({ node, user, onLike, onReply, depth = 0 }) {
                   key={child.id}
                   node={child}
                   user={user}
-                  onLike={onLike}
+                  onVote={onVote}
                   onReply={onReply}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onReport={onReport}
                   depth={depth + 1}
                 />
               ))}

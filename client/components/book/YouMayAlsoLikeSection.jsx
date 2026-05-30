@@ -29,7 +29,7 @@ export default function YouMayAlsoLikeSection({ items = [] }) {
         You May Also Like
       </h2>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-x-6 gap-y-8">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 sm:gap-x-6 sm:gap-y-8">
         {visible.map((b, idx) => {
           const href = b?.slug ? `/books/${b.slug}` : '/discover';
           const cover = normalizeCover(b?.coverUrl);
@@ -38,8 +38,8 @@ export default function YouMayAlsoLikeSection({ items = [] }) {
           const rating = toScore(b?.score) ?? fallbackScore(idx);
 
           return (
-            <Link key={b?.id ?? href + title} href={href} className="min-w-0 group">
-              <div className="relative h-[180px] w-[120px] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-900 shadow-book ring-1 ring-black/5 dark:ring-white/10">
+            <Link key={b?.id ?? href + title} href={href} className="min-w-0 group block">
+              <div className="relative w-full max-w-[120px] aspect-[2/3] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-900 shadow-book ring-1 ring-black/5 dark:ring-white/10">
                 {cover ? (
                   <div className="relative h-full w-full">
                     <Image
@@ -48,7 +48,7 @@ export default function YouMayAlsoLikeSection({ items = [] }) {
                       fill
                       referrerPolicy="no-referrer"
                       className="object-cover scale-110 blur-xl opacity-50 transition-transform duration-300 ease-out group-hover:scale-[1.18]"
-                      sizes="120px"
+                      sizes="(max-width: 640px) 28vw, 120px"
                       unoptimized
                     />
                     <Image
@@ -57,7 +57,7 @@ export default function YouMayAlsoLikeSection({ items = [] }) {
                       fill
                       referrerPolicy="no-referrer"
                       className="transition-transform duration-300 ease-out group-hover:scale-[1.06]"
-                      sizes="120px"
+                      sizes="(max-width: 640px) 28vw, 120px"
                       unoptimized
                     />
                   </div>

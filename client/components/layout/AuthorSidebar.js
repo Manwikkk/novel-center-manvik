@@ -25,6 +25,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useDashboardSidebarStore } from '@/stores/dashboardSidebarStore';
 import { DashboardThemeToggleSidebar } from '@/components/layout/DashboardThemeToggle';
 import Avatar from '@/components/ui/Avatar';
+import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
 
 export const AUTHOR_NAV = [
   { href: '/author', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -144,9 +145,9 @@ export default function AuthorSidebar() {
               <Menu size={20} strokeWidth={1.75} />
             </button>
             <Link
-              href="/author"
+              href="/"
               className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-sm bg-cream-100 dark:bg-cream-100 p-1.5 shrink-0"
-              title="Novel Centre"
+              title="Back to home"
             >
               <Image
                 src="/images/Novel_Center_Logo.png"
@@ -161,9 +162,9 @@ export default function AuthorSidebar() {
         ) : (
           <>
             <Link
-              href="/author"
+              href="/"
               className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-sm bg-cream-100 dark:bg-cream-100 p-1.5 shrink-0"
-              title="Novel Centre"
+              title="Back to home"
             >
               <Image
                 src="/images/Novel_Center_Logo.png"
@@ -188,6 +189,8 @@ export default function AuthorSidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 space-y-0.5">
+        <DashboardSiteHomeLink variant="sidebar" collapsed={collapsed} />
+        {!collapsed ? <div className="mx-4 my-2 border-b border-surface-variant" /> : null}
         {AUTHOR_NAV.map((it) => (
           <NavItem key={`${it.href}-${it.label}`} item={it} pathname={pathname} collapsed={collapsed} />
         ))}

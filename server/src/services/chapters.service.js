@@ -6,7 +6,17 @@ const { sanitizeChapterHtml, sanitizeAuthorThought } = require('../utils/htmlSan
 const booksService = require('./books.service');
 const { htmlToWordCount, minutesFromWords } = require('./reading.service');
 
-function rowToChapter(row, { includeContent = false, isUnlocked = false } = {}) {
+function isPaidChapter(row) {
+  return !!row.is_paid && Number(row.token_price) > 0;
+}
+
+function canReadChapter(row, { viewer, bookAuthorId, unlocked }) {
+  if (viewer?.role === 'admin') return true;
+  if (!isPaidChapter(row)) return true;
+  return !!unlocked;
+}
+
+function rowToChapter(row, { includeContent = false, isUnlocked = false, canRead = false } = {}) {
   if (!row) return null;
   const wordCount = htmlToWordCount(row.content_html);
   const out = {
@@ -14,17 +24,18 @@ function rowToChapter(row, { includeContent = false, isUnlocked = false } = {}) 
     bookId: row.book_id,
     idx: row.idx,
     title: row.title,
-    isPaid: !!row.is_paid,
+    isPaid: isPaidChapter(row),
     tokenPrice: Number(row.token_price),
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     isUnlocked,
+    canRead,
     wordCount,
     readingMinutes: minutesFromWords(wordCount, 100),
     authorThought: row.author_thought || '',
   };
-  if (includeContent) out.contentHtml = row.content_html || '';
+  if (includeContent && canRead) out.contentHtml = row.content_html || '';
   return out;
 }
 
@@ -75,10 +86,15 @@ async function listForBook(bookId, viewer) {
     unlockedSet = new Set(u.map((x) => x.chapter_id));
   }
 
-  return rows.map((r) => rowToChapter(r, {
-    includeContent: false,
-    isUnlocked: unlockedSet.has(r.id),
-  }));
+  return rows.map((r) => {
+    const unlocked = unlockedSet.has(r.id);
+    const canRead = canReadChapter(r, { viewer, bookAuthorId: book.author_id, unlocked });
+    return rowToChapter(r, {
+      includeContent: false,
+      isUnlocked: unlocked,
+      canRead,
+    });
+  });
 }
 
 async function getById(id, viewer) {
@@ -90,13 +106,12 @@ async function getById(id, viewer) {
   if (row.status !== 'published' && !isAuthor) throw errors.notFound('Chapter not found');
   if (book.status !== 'published' && !isAuthor) throw errors.notFound('Chapter not found');
 
-  let unlocked = isAuthor;
-  if (!unlocked && viewer) unlocked = await isUnlockedFor(viewer.id, id);
+  let unlocked = false;
+  if (viewer) unlocked = await isUnlockedFor(viewer.id, id);
 
-  const free = !row.is_paid || row.token_price === 0;
-  const canRead = isAuthor || free || unlocked;
+  const canRead = canReadChapter(row, { viewer, bookAuthorId: book.author_id, unlocked });
 
-  return rowToChapter(row, { includeContent: canRead, isUnlocked: !!unlocked });
+  return rowToChapter(row, { includeContent: canRead, isUnlocked: unlocked, canRead });
 }
 
 async function createInBook(bookId, body, user) {
@@ -114,7 +129,7 @@ async function createInBook(bookId, body, user) {
     [bookId, idx, body.title, html, thought || null, body.isPaid ? 1 : 0, body.tokenPrice || 0, body.status || 'draft'],
   );
   const created = await getRawById(r.insertId);
-  return rowToChapter(created, { includeContent: true, isUnlocked: true });
+  return rowToChapter(created, { includeContent: true, isUnlocked: true, canRead: true });
 }
 
 async function update(id, patch, user) {
@@ -125,7 +140,11 @@ async function update(id, patch, user) {
 
   const fields = [];
   const params = [];
-  if (patch.title != null)         { fields.push('title = ?');         params.push(patch.title); }
+  if (patch.title != null) {
+    const t = String(patch.title).trim() || 'Untitled chapter';
+    fields.push('title = ?');
+    params.push(t);
+  }
   if (patch.contentHtml != null)   { fields.push('content_html = ?');  params.push(sanitizeChapterHtml(patch.contentHtml)); }
   if (patch.authorThought != null) {
     const t = sanitizeAuthorThought(patch.authorThought);
@@ -136,11 +155,11 @@ async function update(id, patch, user) {
   if (patch.tokenPrice != null)    { fields.push('token_price = ?');   params.push(patch.tokenPrice); }
   if (patch.status != null)        { fields.push('status = ?');        params.push(patch.status); }
   if (patch.idx != null)           { fields.push('idx = ?');           params.push(patch.idx); }
-  if (fields.length === 0) return rowToChapter(row, { includeContent: true, isUnlocked: true });
+  if (fields.length === 0) return rowToChapter(row, { includeContent: true, isUnlocked: true, canRead: true });
   params.push(id);
   await pool.execute(`UPDATE chapters SET ${fields.join(', ')} WHERE id = ?`, params);
   const fresh = await getRawById(id);
-  return rowToChapter(fresh, { includeContent: true, isUnlocked: true });
+  return rowToChapter(fresh, { includeContent: true, isUnlocked: true, canRead: true });
 }
 
 async function remove(id, user) {

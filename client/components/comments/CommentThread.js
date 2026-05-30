@@ -34,6 +34,7 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
   const [hasMore, setHasMore] = useState(false);
   const [totalRoots, setTotalRoots] = useState(0);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [editReview, setEditReview] = useState(null);
   const user = useAuthStore((s) => s.user);
   const pushToast = useUiStore((s) => s.pushToast);
 
@@ -96,6 +97,31 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
       }
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not post comment', message: err.message });
+    }
+  }
+
+  async function editComment(id, payload) {
+    try {
+      const res = await api.patch(`/comments/${id}`, payload);
+      setItems((prev) => prev.map((c) => (c.id === id ? { ...c, ...res.comment } : c)));
+      pushToast({ type: 'success', title: 'Comment updated' });
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Could not update comment', message: err.message });
+      throw err;
+    }
+  }
+
+  async function reportComment(id, { reason, details }) {
+    try {
+      await api.post(`/comments/${id}/report`, { reason, details });
+      pushToast({
+        type: 'success',
+        title: 'Report submitted',
+        message: 'Thank you for helping keep the community safe.',
+      });
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Could not submit report', message: err.message });
+      throw err;
     }
   }
 
@@ -163,7 +189,7 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
 
   return (
     <section className="mt-20 max-w-reading">
-      <h2 className={cn('font-serif text-[28px]', hx)}>Discussion</h2>
+      <h2 className={cn('font-serif text-[28px]', hx)}>{isBookDiscussion ? 'Reviews' : 'Discussion'}</h2>
 
       <div className={cn('mt-8 rounded-xl overflow-hidden', reviewShell)}>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr]">
@@ -281,6 +307,9 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
               onReply={(parentId, body, isSpoiler) => postComment({ body, parentId, isSpoiler })}
               onDelete={removeComment}
               onVote={voteComment}
+              onEdit={editComment}
+              onEditReview={setEditReview}
+              onReport={reportComment}
             />
           ))
         )}
@@ -293,6 +322,27 @@ export default function CommentThread({ bookId, chapterId, variant = 'default' }
         onSubmit={({ body, isSpoiler, reviewRatings }) =>
           postComment({ body, parentId: null, isSpoiler, reviewRatings })
         }
+      />
+
+      <WriteReviewModal
+        open={Boolean(editReview)}
+        onClose={() => setEditReview(null)}
+        reader={reader}
+        title="Edit review"
+        submitLabel="Save"
+        initialReview={
+          editReview
+            ? {
+                body: editReview.body,
+                isSpoiler: editReview.isSpoiler,
+                reviewRatings: editReview.reviewRatings,
+              }
+            : null
+        }
+        onSubmit={async ({ body, isSpoiler, reviewRatings }) => {
+          await editComment(editReview.id, { body, isSpoiler, reviewRatings });
+          setEditReview(null);
+        }}
       />
 
       {hasMore && !loading && (

@@ -13,9 +13,12 @@ export default function CommentForm({
   compact = false,
   reader = false,
   showSpoilerOption = true,
+  initialBody = '',
+  initialIsSpoiler = false,
+  submitLabel = 'Post',
 }) {
-  const [body, setBody] = useState('');
-  const [isSpoiler, setIsSpoiler] = useState(false);
+  const [body, setBody] = useState(initialBody);
+  const [isSpoiler, setIsSpoiler] = useState(initialIsSpoiler);
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e) {
@@ -25,8 +28,10 @@ export default function CommentForm({
     setBusy(true);
     try {
       await onSubmit?.({ body: trimmed, isSpoiler: showSpoilerOption ? isSpoiler : false });
-      setBody('');
-      setIsSpoiler(false);
+      if (!initialBody) {
+        setBody('');
+        setIsSpoiler(false);
+      }
     } finally {
       setBusy(false);
     }
@@ -81,7 +86,7 @@ export default function CommentForm({
               {2000 - body.length} characters left
             </span>
             <button type="submit" disabled={busy || !body.trim()} className={postBtn}>
-              {busy ? 'Posting…' : 'Post'}
+              {busy ? 'Saving…' : submitLabel}
             </button>
           </div>
         </div>

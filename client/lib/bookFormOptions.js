@@ -32,7 +32,6 @@ export const GENRE_OPTIONS = {
 export const BOOK_LENGTHS = [
   { value: 'novels', label: 'Novels' },
   { value: 'short_stories', label: 'Short Stories' },
-  { value: 'super_short_stories', label: 'Super-Short-Stories' },
 ];
 
 export const WARNING_NOTICES = [

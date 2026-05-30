@@ -13,6 +13,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUiStore } from '@/stores/uiStore';
 import { formatTokens } from '@/lib/format';
+import { isChapterLocked, isChapterReadable } from '@/lib/chapterAccess';
 
 /**
  * Client island for the Book Detail page.  The server component mounts
@@ -53,7 +54,7 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
   }, [book.id, user, refreshWallet, mode]);
 
   const firstReadable = useMemo(
-    () => chapters.find((c) => !c.isPaid || c.isUnlocked) || chapters[0],
+    () => chapters.find((c) => isChapterReadable(c)) || chapters[0],
     [chapters],
   );
 
@@ -221,8 +222,8 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
 }
 
 function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
+  const locked = isChapterLocked(chapter);
   const free = !chapter.isPaid || chapter.tokenPrice === 0;
-  const locked = !free && !chapter.isUnlocked;
   const dateLabel = new Date(chapter.updatedAt || chapter.createdAt || Date.now())
     .toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 

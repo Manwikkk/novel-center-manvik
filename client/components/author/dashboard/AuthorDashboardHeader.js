@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
+import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
 import { cn } from '@/lib/cn';
 
 export default function AuthorDashboardHeader({ activeTab = 'dashboard', onTabChange }) {
@@ -50,7 +51,9 @@ export default function AuthorDashboardHeader({ activeTab = 'dashboard', onTabCh
         </div>
       </div>
 
-      <div className="relative" ref={supportRef}>
+      <div className="flex items-center gap-3">
+        <DashboardSiteHomeLink variant="topbar" />
+        <div className="relative" ref={supportRef}>
         <button
           type="button"
           onClick={() => setSupportOpen((o) => !o)}
@@ -72,6 +75,7 @@ export default function AuthorDashboardHeader({ activeTab = 'dashboard', onTabCh
             </a>
           </div>
         )}
+      </div>
       </div>
     </header>
   );

@@ -20,7 +20,6 @@ function BookEditInner() {
   const pushToast = useUiStore((s) => s.pushToast);
   const [book, setBook] = useState(null);
   const [chapters, setChapters] = useState([]);
-  const [creatingChapter, setCreatingChapter] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('created') !== '1') return;
@@ -50,26 +49,6 @@ function BookEditInner() {
     load();
     return () => { cancel = true; };
   }, [id, pushToast]);
-
-  async function addChapter() {
-    if (!book) return;
-    setCreatingChapter(true);
-    try {
-      const r = await api.post(`/books/${book.id}/chapters`, {
-        title: 'Untitled chapter',
-        contentHtml: '<p></p>',
-        isPaid: false,
-        tokenPrice: 0,
-        status: 'draft',
-      });
-      setChapters((prev) => [...prev, r.chapter]);
-      pushToast({ type: 'success', title: 'Chapter created' });
-    } catch (err) {
-      pushToast({ type: 'error', title: 'Could not create chapter', message: err.message });
-    } finally {
-      setCreatingChapter(false);
-    }
-  }
 
   async function deleteChapter(ch) {
     if (!confirm(`Delete "${ch.title}"? This cannot be undone.`)) return;
@@ -118,15 +97,13 @@ function BookEditInner() {
         <section className="rounded-xl border border-surface-variant bg-surface-container-lowest p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-5 pb-4 border-b border-surface-variant">
             <h2 className="text-[13px] font-bold uppercase tracking-wider text-on-surface">Chapters</h2>
-            <button
-              type="button"
-              onClick={addChapter}
-              disabled={creatingChapter}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-studio-accent hover:bg-studio-accent-hover text-white text-[12px] font-bold uppercase tracking-wider disabled:opacity-50 transition-colors"
+            <Link
+              href={`/author/books/${id}/chapters/new`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-studio-accent hover:bg-studio-accent-hover text-white text-[12px] font-bold uppercase tracking-wider transition-colors"
             >
               <Plus size={14} />
-              {creatingChapter ? 'Adding…' : 'New chapter'}
-            </button>
+              New chapter
+            </Link>
           </div>
 
           {chapters.length === 0 ? (

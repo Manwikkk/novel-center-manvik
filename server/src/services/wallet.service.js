@@ -79,6 +79,19 @@ async function unlockChapter(userId, chapterId) {
     if (chapter.status !== 'published' || chapter.book_status !== 'published') {
       throw errors.notFound('Chapter not available');
     }
+
+    const [bookRows] = await conn.execute('SELECT author_id FROM books WHERE id = ? LIMIT 1', [chapter.book_id]);
+    const bookAuthorId = bookRows[0] ? Number(bookRows[0].author_id) : null;
+    if (bookAuthorId === Number(userId)) {
+      await conn.execute(
+        `INSERT IGNORE INTO chapter_unlocks (user_id, chapter_id, tokens_spent)
+         VALUES (?, ?, 0)`,
+        [userId, chapterId],
+      );
+      const [w] = await conn.execute('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [userId]);
+      return { balance: Number(w[0].balance), tokensSpent: 0, alreadyUnlocked: false };
+    }
+
     if (!chapter.is_paid || Number(chapter.token_price) === 0) {
       // Free chapter - record unlock idempotently and return.
       await conn.execute(

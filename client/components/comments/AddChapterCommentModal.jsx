@@ -12,6 +12,8 @@ export default function AddChapterCommentModal({
   onClose,
   onSubmit,
   title = 'Add a Chapter Comment',
+  initialBody = '',
+  submitLabel = 'Add',
 }) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,8 +33,11 @@ export default function AddChapterCommentModal({
     if (!open) {
       setBody('');
       setBusy(false);
+      return;
     }
-  }, [open]);
+    setBody(initialBody || '');
+    setBusy(false);
+  }, [open, initialBody]);
 
   if (!open) return null;
 
@@ -92,7 +97,7 @@ export default function AddChapterCommentModal({
               disabled={busy || !body.trim()}
               className="rounded-full bg-[#2563eb] px-10 py-2.5 text-[13px] font-semibold uppercase tracking-widest text-white hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {busy ? 'Adding…' : 'Add'}
+              {busy ? 'Saving…' : submitLabel}
             </button>
           </div>
         </div>

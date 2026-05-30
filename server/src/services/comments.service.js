@@ -243,14 +243,84 @@ async function create({ bookId, chapterId, parentId, body, isSpoiler, reviewRati
   return getById(ins.insertId, { id: userId });
 }
 
-async function update(id, body, user) {
+const REVIEW_RATING_KEYS = [
+  'writingQuality',
+  'stabilityOfUpdates',
+  'storyDevelopment',
+  'characterDesign',
+  'worldBackground',
+];
+
+function normalizeReviewRatings(reviewRatings) {
+  if (!reviewRatings) return null;
+  const out = {};
+  for (const key of REVIEW_RATING_KEYS) {
+    const n = Number(reviewRatings[key]);
+    if (!Number.isInteger(n) || n < 1 || n > 5) {
+      throw errors.badRequest('Invalid review ratings');
+    }
+    out[key] = n;
+  }
+  return out;
+}
+
+async function update(id, payload, user) {
   const c = await getById(id, user);
   if (!c) throw errors.notFound('Comment not found');
   if (user.role !== 'admin' && c.userId !== user.id) throw errors.forbidden();
-  const clean = sanitizeCommentBody(body);
+
+  const clean = sanitizeCommentBody(payload.body);
   if (!clean) throw errors.badRequest('Comment body is empty after sanitization');
-  await pool.execute('UPDATE comments SET body = ? WHERE id = ?', [clean, id]);
+
+  const sets = ['body = ?'];
+  const params = [clean];
+
+  if (payload.isSpoiler !== undefined) {
+    sets.push('is_spoiler = ?');
+    params.push(Boolean(payload.isSpoiler) ? 1 : 0);
+  }
+
+  if (payload.reviewRatings !== undefined) {
+    if (!c.reviewRatings && !payload.reviewRatings) {
+      throw errors.badRequest('Cannot add review ratings to a non-review comment');
+    }
+    if (payload.reviewRatings) {
+      const normalized = normalizeReviewRatings(payload.reviewRatings);
+      sets.push('review_ratings = ?');
+      params.push(JSON.stringify(normalized));
+    }
+  }
+
+  params.push(id);
+  await pool.execute(`UPDATE comments SET ${sets.join(', ')} WHERE id = ?`, params);
   return getById(id, user);
+}
+
+async function reportComment(id, { reason, details }, userId) {
+  const c = await getById(id, null);
+  if (!c) throw errors.notFound('Comment not found');
+  if (c.status !== 'visible') throw errors.badRequest('Comment cannot be reported');
+  if (c.userId === userId) throw errors.badRequest('You cannot report your own comment');
+
+  const allowed = new Set(['spam', 'harassment', 'spoilers', 'inappropriate', 'other']);
+  if (!allowed.has(reason)) throw errors.badRequest('Invalid report reason');
+
+  const cleanDetails = details ? String(details).trim().slice(0, 500) : null;
+
+  try {
+    await pool.execute(
+      `INSERT INTO comment_reports (comment_id, user_id, reason, details)
+       VALUES (?, ?, ?, ?)`,
+      [id, userId, reason, cleanDetails],
+    );
+  } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY') {
+      throw errors.conflict('You have already reported this comment');
+    }
+    throw err;
+  }
+
+  return { ok: true };
 }
 
 async function remove(id, user) {
@@ -296,4 +366,4 @@ async function setReaction(commentId, userId, reaction) {
   };
 }
 
-module.exports = { list, getById, create, update, remove, moderate, setReaction };
+module.exports = { list, getById, create, update, remove, moderate, setReaction, reportComment };

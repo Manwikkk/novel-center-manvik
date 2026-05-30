@@ -14,8 +14,13 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  const comment = await svc.update(Number(req.params.id), req.body.body, req.user);
+  const comment = await svc.update(Number(req.params.id), req.body, req.user);
   res.json({ comment });
+});
+
+const report = asyncHandler(async (req, res) => {
+  await svc.reportComment(Number(req.params.id), req.body, req.user.id);
+  res.status(201).json({ ok: true });
 });
 
 const remove = asyncHandler(async (req, res) => {
@@ -28,4 +33,4 @@ const setReaction = asyncHandler(async (req, res) => {
   res.json(out);
 });
 
-module.exports = { list, create, update, remove, setReaction };
+module.exports = { list, create, update, remove, setReaction, report };

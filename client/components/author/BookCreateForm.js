@@ -16,7 +16,7 @@ import {
 export default function BookCreateForm() {
   const router = useRouter();
   const pushToast = useUiStore((s) => s.pushToast);
-  const { catalog, loading: catalogLoading } = useBookCatalog();
+  const { catalog, loading: catalogLoading, addContentTag } = useBookCatalog();
   const [form, setForm] = useState(emptyBookForm());
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
@@ -108,6 +108,7 @@ export default function BookCreateForm() {
             setForm={setForm}
             catalog={catalog}
             catalogLoading={catalogLoading}
+            onTagCreated={addContentTag}
           />
         </FormSection>
       </div>

@@ -1,37 +1,37 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, ChevronDown, Plus } from 'lucide-react';
+import { BookOpen, ChevronDown, Plus, Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatTokens } from '@/lib/format';
 import { BooksEmptyState } from '@/components/author/dashboard/BooksSection';
 
-function StatCell({ label, value, changePercent, changeAbsolute, period, format = 'number' }) {
+function StatCell({ label, description, value, changePercent, period, format = 'number' }) {
   const periodLabel =
     period === 'week' ? 'since previous week' : 'since previous day';
 
-  let changeText = `${Number(changePercent).toFixed(1)}% ${periodLabel}`;
-  if (format === 'rank') {
-    changeText = `${changeAbsolute >= 0 ? '+' : ''}${changeAbsolute} ${periodLabel}`;
-  }
+  const changeText = `${Number(changePercent).toFixed(1)}% ${periodLabel}`;
 
   const displayValue =
-    format === 'rank'
-      ? value
-      : format === 'tokens'
-        ? formatTokens(value)
-        : typeof value === 'number'
-          ? value.toLocaleString()
-          : value;
+    format === 'tokens'
+      ? formatTokens(value)
+      : typeof value === 'number'
+        ? value.toLocaleString()
+        : value;
 
   return (
-    <div className="flex-1 min-w-[120px] px-4 py-4 border-r border-surface-variant last:border-r-0">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-2">
+    <div className="flex-1 min-w-[132px] px-4 py-4 border-r border-surface-variant last:border-r-0">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant leading-snug">
         {label}
       </p>
-      <p className="text-[22px] md:text-[26px] font-semibold text-on-surface leading-none tabular-nums">
+      {description ? (
+        <p className="mt-1 text-[10px] normal-case tracking-normal text-on-surface-variant/80 leading-snug line-clamp-2">
+          {description}
+        </p>
+      ) : null}
+      <p className="mt-2 text-[22px] md:text-[26px] font-semibold text-on-surface leading-none tabular-nums">
         {displayValue}
       </p>
       <p className="mt-3 inline-block text-[11px] text-studio-highlight bg-studio-highlight/10 px-2 py-1 rounded">
@@ -42,31 +42,121 @@ function StatCell({ label, value, changePercent, changeAbsolute, period, format 
 }
 
 function BookSelector({ books, selectedId, onSelect }) {
+  const rootRef = useRef(null);
+  const inputRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
   const selected = books.find((b) => b.id === selectedId);
+  const q = query.trim().toLowerCase();
+
+  const filteredBooks = useMemo(() => {
+    if (!q) return books;
+    return books.filter((b) => b.title.toLowerCase().includes(q));
+  }, [books, q]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => {
+      if (!rootRef.current?.contains(e.target)) {
+        setOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+    else setQuery('');
+  }, [open]);
+
+  function pickBook(id) {
+    onSelect(id);
+    setOpen(false);
+    setQuery('');
+  }
+
   return (
-    <div className="relative shrink-0">
-      <select
-        value={selectedId ?? ''}
-        onChange={(e) => onSelect(Number(e.target.value))}
+    <div ref={rootRef} className="relative shrink-0 w-full sm:w-auto sm:min-w-[200px] sm:max-w-[280px]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
         className={cn(
-          'appearance-none min-w-[180px] max-w-[240px] pl-4 pr-10 py-2.5 rounded-lg',
+          'flex w-full items-center justify-between gap-2 pl-4 pr-3 py-2.5 rounded-lg',
           'border border-surface-variant bg-surface-container text-on-surface',
-          'text-[12px] font-bold uppercase tracking-wider truncate',
+          'text-[12px] font-bold uppercase tracking-wider',
           'focus:outline-none focus:ring-2 focus:ring-studio-accent/40',
         )}
-        aria-label="Select book"
       >
-        {books.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.title}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        size={16}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
-      />
-      {!selected && <span className="sr-only">Select book</span>}
+        <span className="truncate text-left">{selected?.title || 'Select book'}</span>
+        <ChevronDown
+          size={16}
+          className={cn('shrink-0 text-on-surface-variant transition-transform', open && 'rotate-180')}
+        />
+      </button>
+
+      {open ? (
+        <div
+          className="absolute right-0 top-full z-30 mt-1 w-full min-w-[260px] overflow-hidden rounded-lg border border-surface-variant bg-surface-container-lowest shadow-lg"
+          role="listbox"
+          aria-label="Select book"
+        >
+          <div className="relative border-b border-surface-variant">
+            <Search
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+            />
+            <input
+              ref={inputRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search books…"
+              className={cn(
+                'w-full bg-transparent py-2.5 pl-9 pr-3 text-[13px] text-on-surface',
+                'placeholder:text-on-surface-variant focus:outline-none',
+              )}
+              autoComplete="off"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setOpen(false);
+                if (e.key === 'Enter' && filteredBooks[0]) pickBook(filteredBooks[0].id);
+              }}
+            />
+          </div>
+
+          <ul className="max-h-56 overflow-y-auto py-1">
+            {filteredBooks.length === 0 ? (
+              <li className="px-3 py-3 text-[13px] text-on-surface-variant">No books match your search.</li>
+            ) : (
+              filteredBooks.map((b) => {
+                const active = b.id === selectedId;
+                return (
+                  <li key={b.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => pickBook(b.id)}
+                      className={cn(
+                        'flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px]',
+                        active
+                          ? 'bg-studio-accent/10 text-on-surface font-semibold'
+                          : 'text-on-surface hover:bg-surface-container',
+                      )}
+                    >
+                      <span className="truncate">{b.title}</span>
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -170,7 +260,7 @@ export default function BookDashboardPanel({ books, loading: booksLoading, class
                 </p>
                 <div className="flex flex-wrap gap-2 mt-4">
                   <Link
-                    href={`/author/books/${selectedId}/edit`}
+                    href={`/author/books/${selectedId}/chapters/new`}
                     className="inline-flex items-center justify-center px-5 py-2 rounded-md bg-studio-accent hover:bg-studio-accent-hover text-white text-[11px] font-bold uppercase tracking-wider transition-colors"
                   >
                     New chapter
@@ -199,7 +289,8 @@ export default function BookDashboardPanel({ books, loading: booksLoading, class
           ) : stats ? (
             <div className="flex min-w-[640px]">
               <StatCell
-                label="Collections"
+                label="Added to library"
+                description="Readers who saved this book"
                 value={stats.collections.value}
                 changePercent={stats.collections.changePercent}
               />
@@ -213,13 +304,6 @@ export default function BookDashboardPanel({ books, loading: booksLoading, class
                 value={stats.earnings.value}
                 changePercent={stats.earnings.changePercent}
                 format="tokens"
-              />
-              <StatCell
-                label="Power ranking"
-                value={stats.powerRanking.label}
-                changePercent={0}
-                changeAbsolute={stats.powerRanking.change}
-                format="rank"
               />
               <StatCell
                 label="Chapters"

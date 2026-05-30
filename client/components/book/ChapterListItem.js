@@ -5,11 +5,12 @@ import { Lock, Check, BookOpen } from 'lucide-react';
 import Chip from '@/components/ui/Chip';
 import Button from '@/components/ui/Button';
 import { formatTokens } from '@/lib/format';
+import { isChapterLocked } from '@/lib/chapterAccess';
 import { cn } from '@/lib/cn';
 
 export default function ChapterListItem({ chapter, onUnlockClick, busy = false }) {
   const free = !chapter.isPaid || chapter.tokenPrice === 0;
-  const locked = !free && !chapter.isUnlocked;
+  const locked = isChapterLocked(chapter);
 
   return (
     <li className="py-5 border-b border-ink-200/60 last:border-b-0 flex items-center gap-4">

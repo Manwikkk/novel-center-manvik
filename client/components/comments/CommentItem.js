@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Avatar from '@/components/ui/Avatar';
 import CommentForm from './CommentForm';
+import ReportCommentModal from './ReportCommentModal';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { openAuthModal } from '@/lib/authModal';
 import Icon from '@/components/ui/Icon';
 import { StarRatingDisplay, averageRating } from './StarRatingInput';
 
@@ -14,10 +16,15 @@ export default function CommentItem({
   onReply,
   onDelete,
   onVote,
+  onEdit,
+  onEditReview,
+  onReport,
   depth = 0,
   reader = false,
 }) {
   const [replying, setReplying] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [spoilerOpen, setSpoilerOpen] = useState(false);
   const isOwner = currentUser && currentUser.id === node.author?.id;
   const isAdmin = currentUser && currentUser.role === 'admin';
@@ -65,6 +72,30 @@ export default function CommentItem({
   const spoilerShell = reader
     ? 'rounded-lg border border-[var(--reader-rule)] bg-[var(--reader-fg)]/[0.04] p-4'
     : 'rounded-lg border border-ink-200/70 bg-cream-100/50 dark:border-neutral-800 dark:bg-neutral-900/40 p-4';
+
+  const actionLink = cn(
+    'label-sm',
+    reader
+      ? 'text-[var(--reader-muted)] hover:text-[var(--reader-fg)]'
+      : 'text-ink-400 dark:text-neutral-500 hover:text-ink-900 dark:hover:text-neutral-200',
+  );
+
+  function startEdit() {
+    if (isReview) {
+      onEditReview?.(node);
+      return;
+    }
+    setEditing(true);
+    setReplying(false);
+  }
+
+  function openReport() {
+    if (!currentUser) {
+      openAuthModal({ message: 'Sign in to report this comment.' });
+      return;
+    }
+    setReportOpen(true);
+  }
 
   return (
     <div className={depth > 0 ? cn('pl-6', nestBorder) : ''}>
@@ -126,7 +157,25 @@ export default function CommentItem({
               reader ? 'text-[var(--reader-fg)]' : 'text-ink-700 dark:text-neutral-300',
             )}
           >
-            {isHidden ? (
+            {editing && !isReview ? (
+              <div>
+                <CommentForm
+                  compact
+                  reader={reader}
+                  initialBody={node.body || ''}
+                  initialIsSpoiler={Boolean(node.isSpoiler)}
+                  submitLabel="Save"
+                  placeholder="Edit your comment…"
+                  onSubmit={async ({ body, isSpoiler }) => {
+                    await onEdit?.(node.id, { body, isSpoiler });
+                    setEditing(false);
+                  }}
+                />
+                <button type="button" onClick={() => setEditing(false)} className={cn('mt-2', actionLink)}>
+                  Cancel
+                </button>
+              </div>
+            ) : isHidden ? (
               <em className={reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500'}>
                 [hidden by moderator]
               </em>
@@ -153,7 +202,7 @@ export default function CommentItem({
             )}
           </div>
 
-          {!isHidden && (
+          {!isHidden && !editing && (
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex items-center gap-1 tabular-nums">
                 <button
@@ -181,24 +230,24 @@ export default function CommentItem({
                 <button
                   type="button"
                   onClick={() => setReplying((v) => !v)}
-                  className={cn(
-                    'label-sm',
-                    reader
-                      ? 'text-[var(--reader-muted)] hover:text-[var(--reader-fg)]'
-                      : 'text-ink-400 dark:text-neutral-500 hover:text-ink-900 dark:hover:text-neutral-200',
-                  )}
+                  className={actionLink}
                 >
                   {replying ? 'Cancel' : 'Reply'}
                 </button>
               )}
+              {isOwner && (
+                <button type="button" onClick={startEdit} className={actionLink}>
+                  Edit
+                </button>
+              )}
+              <button type="button" onClick={openReport} className={actionLink}>
+                Report
+              </button>
               {(isOwner || isAdmin) && (
                 <button
                   type="button"
                   onClick={() => onDelete?.(node.id)}
-                  className={cn(
-                    'label-sm hover:text-danger',
-                    reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500',
-                  )}
+                  className={cn('label-sm hover:text-danger', actionLink)}
                 >
                   Delete
                 </button>
@@ -218,6 +267,14 @@ export default function CommentItem({
               />
             </div>
           )}
+          <ReportCommentModal
+            open={reportOpen}
+            onClose={() => setReportOpen(false)}
+            reader={reader}
+            onSubmit={async (payload) => {
+              await onReport?.(node.id, payload);
+            }}
+          />
         </div>
       </div>
 
@@ -231,6 +288,9 @@ export default function CommentItem({
               onReply={onReply}
               onDelete={onDelete}
               onVote={onVote}
+              onEdit={onEdit}
+              onEditReview={onEditReview}
+              onReport={onReport}
               depth={depth + 1}
               reader={reader}
             />

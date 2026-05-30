@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AuthGuard from '@/components/layout/AuthGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
+import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
 import Icon from '@/components/ui/Icon';
 import { api } from '@/lib/api';
 import { formatTokens } from '@/lib/format';
@@ -56,13 +57,16 @@ function AdminOverview() {
                 Real-time metrics and alerts for Novel Centre.
               </p>
             </div>
-            <button
-              type="button"
-              className="bg-primary text-on-primary font-ui-label-sm text-ui-label-sm px-6 py-3 rounded uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2 self-start"
-            >
-              <Icon name="download" size={16} />
-              Export Report
-            </button>
+            <div className="flex flex-wrap items-center gap-3 self-start">
+              <DashboardSiteHomeLink variant="topbar" />
+              <button
+                type="button"
+                className="bg-primary text-on-primary font-ui-label-sm text-ui-label-sm px-6 py-3 rounded uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2"
+              >
+                <Icon name="download" size={16} />
+                Export Report
+              </button>
+            </div>
           </div>
 
           {/* STATS BENTO */}

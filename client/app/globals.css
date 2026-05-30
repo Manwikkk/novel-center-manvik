@@ -274,6 +274,15 @@ html, body {
   padding-top: 0.05em;
   color: inherit;
 }
+/* Chapter reader: no drop cap — first letter matches body text */
+.prose-reader.prose-stitch > p:first-of-type::first-letter {
+  float: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+  padding: 0;
+}
 .prose-stitch blockquote {
   padding-left: 1.5rem;
   border-left: 2px solid #261900;

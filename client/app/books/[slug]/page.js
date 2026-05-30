@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
 import Icon from '@/components/ui/Icon';
@@ -133,9 +134,16 @@ export default async function BookDetailPage({ params }) {
 
             <p className="mt-3 text-sm text-ink-600 dark:text-neutral-400">
               Author:{' '}
-              <span className="text-[#2f6bff] hover:opacity-80 transition-opacity">
-                {book.authorName || 'Anonymous'}
-              </span>
+              {book.authorId ? (
+                <Link
+                  href={`/authors/${book.authorId}`}
+                  className="text-[#2f6bff] hover:underline underline-offset-2 transition-opacity"
+                >
+                  {book.authorName || 'Anonymous'}
+                </Link>
+              ) : (
+                <span className="text-[#2f6bff]">{book.authorName || 'Anonymous'}</span>
+              )}
             </p>
 
             <div className="mt-4 flex items-center gap-3">
@@ -161,6 +169,7 @@ export default async function BookDetailPage({ params }) {
 
           <aside className="col-span-1 lg:col-span-4 mt-12 lg:mt-0">
             <AuthorCard
+              authorId={book.authorId}
               name={book.authorName}
               avatarUrl={book.authorAvatarUrl}
               location={book.authorLocation}
@@ -210,7 +219,9 @@ function StarRating({ rating, reviews }) {
   );
 }
 
-function AuthorCard({ name, avatarUrl, location, bio }) {
+function AuthorCard({ authorId, name, avatarUrl, location, bio }) {
+  const profileHref = authorId ? `/authors/${authorId}` : null;
+
   return (
     <div className="bg-neutral-50 dark:bg-neutral-950 p-8 border border-neutral-200 dark:border-neutral-800 rounded-lg sticky top-28">
       <h4 className="font-ui-label-lg text-ui-label-lg text-ink-900 dark:text-neutral-100 uppercase tracking-widest mb-6">
@@ -225,9 +236,18 @@ function AuthorCard({ name, avatarUrl, location, bio }) {
           )}
         </div>
         <div>
-          <div className="font-headline-md text-[20px] text-ink-900 dark:text-neutral-100 mb-1 leading-tight">
-            {name || 'Anonymous'}
-          </div>
+          {profileHref ? (
+            <Link
+              href={profileHref}
+              className="font-headline-md text-[20px] text-ink-900 dark:text-neutral-100 mb-1 leading-tight block hover:text-[#2f6bff] transition-colors"
+            >
+              {name || 'Anonymous'}
+            </Link>
+          ) : (
+            <div className="font-headline-md text-[20px] text-ink-900 dark:text-neutral-100 mb-1 leading-tight">
+              {name || 'Anonymous'}
+            </div>
+          )}
           <div className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400">
             {location || 'Novel Centre'}
           </div>
@@ -236,12 +256,21 @@ function AuthorCard({ name, avatarUrl, location, bio }) {
       <p className="font-reading-body text-[16px] leading-relaxed text-ink-600 dark:text-neutral-400 mb-6">
         {bio || `${name || 'This author'} writes for Novel Centre. Follow to be notified when new chapters land.`}
       </p>
-      <button
-        type="button"
-        className="w-full py-3 bg-transparent border border-neutral-400 dark:border-neutral-600 text-ink-900 dark:text-neutral-100 font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
-      >
-        Follow Author
-      </button>
+      {profileHref ? (
+        <Link
+          href={profileHref}
+          className="block w-full py-3 text-center bg-transparent border border-neutral-400 dark:border-neutral-600 text-ink-900 dark:text-neutral-100 font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+        >
+          View profile
+        </Link>
+      ) : (
+        <button
+          type="button"
+          className="w-full py-3 bg-transparent border border-neutral-400 dark:border-neutral-600 text-ink-900 dark:text-neutral-100 font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+        >
+          Follow Author
+        </button>
+      )}
     </div>
   );
 }
