@@ -1,0 +1,30 @@
+buildscript {
+    ext {
+        buildToolsVersion = "36.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 36
+        targetSdkVersion = 36
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.1.20"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+
+// @react-native-async-storage/async-storage resolves storage-android from a local Maven repo
+// shipped inside the package (not published to Maven Central). See GH async-storage#1280.
+def asyncStorageLocalMaven = file("${rootDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo")
+allprojects {
+    repositories {
+        maven { url(asyncStorageLocalMaven) }
+    }
+}

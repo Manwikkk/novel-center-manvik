@@ -1,9 +1,11 @@
 # dependencies
 node_modules/
 
-# env (keep machine-local overrides out of git)
-.env.local
-.env.*.local
+# env (secrets stay local; keep .env.example templates in git)
+.env
+.env.*
+!.env.example
+!.env.*.example
 
 # next.js
 client/.next/
