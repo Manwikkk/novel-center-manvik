@@ -4,6 +4,9 @@ const pool = require('../db/pool');
 const { errors } = require('../utils/HttpError');
 const { sanitizeCommentBody } = require('../utils/htmlSanitize');
 const { clampPagination } = require('../utils/pagination');
+const { resolveUserRow, assertRestriction } = require('./suspension.service');
+const { assertCapability } = require('../constants/adminPermissions');
+const auditSvc = require('./audit.service');
 
 const SORT_KEYS = new Set(['oldest', 'newest', 'likes', 'dislikes']);
 
@@ -207,6 +210,9 @@ async function getById(id, viewer) {
 }
 
 async function create({ bookId, chapterId, parentId, body, isSpoiler, reviewRatings }, userId) {
+  const userRow = await resolveUserRow(userId);
+  assertRestriction(userRow, 'commenting', 'Commenting is restricted on your account');
+
   const clean = sanitizeCommentBody(body);
   if (!clean) throw errors.badRequest('Comment body is empty after sanitization');
   const spoiler = Boolean(isSpoiler);
@@ -269,6 +275,11 @@ async function update(id, payload, user) {
   if (!c) throw errors.notFound('Comment not found');
   if (user.role !== 'admin' && c.userId !== user.id) throw errors.forbidden();
 
+  if (user.role !== 'admin') {
+    const userRow = await resolveUserRow(user.id);
+    assertRestriction(userRow, 'commenting', 'Commenting is restricted on your account');
+  }
+
   const clean = sanitizeCommentBody(payload.body);
   if (!clean) throw errors.badRequest('Comment body is empty after sanitization');
 
@@ -327,15 +338,31 @@ async function remove(id, user) {
   const c = await getById(id, user);
   if (!c) throw errors.notFound('Comment not found');
   if (user.role !== 'admin' && c.userId !== user.id) throw errors.forbidden();
+
+  if (user.role !== 'admin') {
+    const userRow = await resolveUserRow(user.id);
+    assertRestriction(userRow, 'commenting', 'Commenting is restricted on your account');
+  }
   await pool.execute("UPDATE comments SET status = 'deleted', body = '' WHERE id = ?", [id]);
   return { ok: true };
 }
 
-async function moderate(id, status) {
+async function moderate(id, status, actor = null, actorPermissions = null) {
   if (!['visible', 'hidden', 'deleted'].includes(status)) throw errors.badRequest('Invalid status');
+  assertCapability(actor, actorPermissions, 'comments.moderate', 'Cannot moderate comments');
   const c = await getById(id, null);
   if (!c) throw errors.notFound('Comment not found');
   await pool.execute('UPDATE comments SET status = ? WHERE id = ?', [status, id]);
+  if (actor) {
+    await auditSvc.logAction({
+      actor,
+      action: 'comment.moderate',
+      targetType: 'comment',
+      targetId: id,
+      summary: `Set comment #${id} to ${status}`,
+      meta: { status, previousStatus: c.status },
+    });
+  }
   return getById(id, null);
 }
 

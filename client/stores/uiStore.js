@@ -26,6 +26,13 @@ export const useUiStore = create((set, get) => ({
     });
   },
 
+  /** Close the modal but keep pending onSuccess for Google onboarding completion. */
+  closeAuthModalForOnboarding: () => {
+    set({
+      authModal: { open: false, tab: 'login', message: null },
+    });
+  },
+
   setAuthModalTab: (tab) => {
     set((s) => ({ authModal: { ...s.authModal, tab } }));
   },

@@ -34,4 +34,14 @@ module.exports = {
       avatarUrl: Joi.string().trim().uri({ scheme: ['http', 'https'] }).max(500).allow('', null),
     }).min(1),
   },
+  googleAuth: {
+    body: Joi.object({
+      credential: Joi.string().min(20).required(),
+    }),
+  },
+  completeOnboarding: {
+    body: Joi.object({
+      role: Joi.string().valid('user', 'author').required(),
+    }),
+  },
 };

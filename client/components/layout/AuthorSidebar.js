@@ -9,7 +9,6 @@ import {
   CircleDollarSign,
   Rocket,
   Award,
-  GraduationCap,
   HelpCircle,
   LogOut,
   ChevronRight,
@@ -29,11 +28,17 @@ import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
 
 export const AUTHOR_NAV = [
   { href: '/author', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/author/books', label: 'Workspace', icon: LayoutGrid, showChevron: true },
+  {
+    label: 'Workspace',
+    icon: LayoutGrid,
+    showChevron: true,
+    children: [
+      { href: '/author/books', label: 'Novels', icon: BookOpen },
+    ],
+  },
   { href: '/author/earnings', label: 'Income', icon: CircleDollarSign },
   { href: '/author/books', label: 'Promote', icon: Rocket, disabled: true },
   { href: '#', label: 'Privilege', icon: Award, disabled: true },
-  { href: '/about', label: 'Academy', icon: GraduationCap },
 ];
 
 function StudioClock() {
@@ -60,10 +65,21 @@ function useStateClock() {
 }
 
 function NavItem({ item, pathname, collapsed }) {
+  const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+  const childActive = hasChildren && item.children.some(
+    (c) => c.href && pathname.startsWith(c.href),
+  );
   const active = item.exact
     ? pathname === item.href
-    : item.href !== '#' && pathname.startsWith(item.href);
+    : hasChildren
+      ? childActive
+      : item.href !== '#' && item.href && pathname.startsWith(item.href);
   const Icon = item.icon;
+  const [open, setOpen] = useState(childActive);
+
+  useEffect(() => {
+    if (childActive) setOpen(true);
+  }, [childActive]);
 
   const content = (
     <>
@@ -82,7 +98,18 @@ function NavItem({ item, pathname, collapsed }) {
           <span className="flex-1 text-left normal-case tracking-normal font-semibold text-[13px]">
             {item.label}
           </span>
-          {item.showChevron && <ChevronRight size={14} className="text-on-surface-variant opacity-60" />}
+          {hasChildren ? (
+            <ChevronRight
+              size={14}
+              className={cn(
+                'text-on-surface-variant opacity-60 transition-transform',
+                open && 'rotate-90',
+              )}
+            />
+          ) : null}
+          {item.showChevron && !hasChildren ? (
+            <ChevronRight size={14} className="text-on-surface-variant opacity-60" />
+          ) : null}
         </>
       )}
     </>
@@ -91,12 +118,69 @@ function NavItem({ item, pathname, collapsed }) {
   const className = cn(
     'flex items-center gap-3 transition-colors rounded-lg mx-2',
     collapsed ? 'justify-center px-0 py-2' : 'px-3 py-2.5',
-    active && !collapsed && 'bg-surface-container-high text-on-surface',
+    active && !collapsed && !hasChildren && 'bg-surface-container-high text-on-surface',
     !active && 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface',
     item.disabled && 'opacity-40 pointer-events-none',
   );
 
+  if (hasChildren) {
+    const firstChild = item.children[0];
+    return (
+      <div>
+        {collapsed ? (
+          <Link
+            href={firstChild?.href || '/author/books'}
+            className={className}
+            title={item.label}
+          >
+            {content}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className={cn(className, 'w-[calc(100%-1rem)]', active && 'text-on-surface')}
+            aria-expanded={open}
+          >
+            {content}
+          </button>
+        )}
+        {!collapsed && open ? (
+          <div className="mt-0.5 mb-1 ml-4 pl-3 border-l border-surface-variant space-y-0.5">
+            {item.children.map((child) => {
+              const ChildIcon = child.icon || BookOpen;
+              const childIsActive = child.href && pathname.startsWith(child.href);
+              return (
+                <Link
+                  key={child.href}
+                  href={child.href}
+                  className={cn(
+                    'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                    childIsActive
+                      ? 'bg-surface-container-high text-on-surface'
+                      : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface',
+                  )}
+                >
+                  <ChildIcon size={16} strokeWidth={1.75} className="shrink-0" />
+                  <span>{child.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   if (item.disabled || item.href === '#') {
+    return (
+      <div className={className} title={collapsed ? item.label : undefined}>
+        {content}
+      </div>
+    );
+  }
+
+  if (!item.href) {
     return (
       <div className={className} title={collapsed ? item.label : undefined}>
         {content}
@@ -192,7 +276,7 @@ export default function AuthorSidebar() {
         <DashboardSiteHomeLink variant="sidebar" collapsed={collapsed} />
         {!collapsed ? <div className="mx-4 my-2 border-b border-surface-variant" /> : null}
         {AUTHOR_NAV.map((it) => (
-          <NavItem key={`${it.href}-${it.label}`} item={it} pathname={pathname} collapsed={collapsed} />
+          <NavItem key={it.href || it.label} item={it} pathname={pathname} collapsed={collapsed} />
         ))}
       </nav>
 

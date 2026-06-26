@@ -179,7 +179,11 @@ INSERT INTO book_tags (book_id, tag) VALUES
   (8, 'editors_choice'),
   (9, 'editors_choice'),
   (11, 'completed_novel'),
-  (12, 'completed_novel');
+  (12, 'completed_novel'),
+  -- GS Originals (dedicated shelf)
+  (2, 'originals'),
+  (9, 'originals'),
+  (12, 'originals');
 
 -- Star ratings for ranking “Highly rated” rail (pickTopRated needs score > 0).
 UPDATE books SET score = CASE id

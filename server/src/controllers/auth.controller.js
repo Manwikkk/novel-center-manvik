@@ -13,6 +13,16 @@ const login = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+const googleAuth = asyncHandler(async (req, res) => {
+  const result = await authService.googleAuth(req.body);
+  res.json(result);
+});
+
+const completeOnboarding = asyncHandler(async (req, res) => {
+  const result = await authService.completeOnboarding(req.user.id, req.body);
+  res.json(result);
+});
+
 const refresh = asyncHandler(async (req, res) => {
   const result = await authService.refresh(req.body);
   res.json(result);
@@ -28,4 +38,12 @@ const updateMe = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
-module.exports = { register, login, refresh, me, updateMe };
+module.exports = {
+  register,
+  login,
+  googleAuth,
+  completeOnboarding,
+  refresh,
+  me,
+  updateMe,
+};

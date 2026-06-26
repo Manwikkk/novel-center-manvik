@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Pencil, Trash2, ExternalLink } from 'lucide-react';
+import { Pencil, Trash2, ExternalLink, List } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { formatDate } from '@/lib/format';
 
@@ -31,7 +31,12 @@ export default function BooksTable({ items, onDelete }) {
           {items.map((b) => (
             <tr key={b.id} className="border-b border-surface-variant hover:bg-surface-container-low/50">
               <td className="px-4 py-4">
-                <p className="font-serif text-[16px] text-on-surface">{b.title}</p>
+                <Link
+                  href={`/author/books/${b.id}/chapters`}
+                  className="font-serif text-[16px] text-on-surface hover:text-studio-accent transition-colors"
+                >
+                  {b.title}
+                </Link>
                 <p className="text-[12px] text-on-surface-variant">{b.category || 'Fiction'}</p>
               </td>
               <td className="px-4 py-4">
@@ -51,7 +56,10 @@ export default function BooksTable({ items, onDelete }) {
                   <Link href={`/books/${b.slug}`} className="p-2 text-outline hover:text-primary" aria-label="View public page" title="View public page">
                     <ExternalLink size={16} />
                   </Link>
-                  <Link href={`/author/books/${b.id}/edit`} className="p-2 text-outline hover:text-primary" aria-label="Edit" title="Edit">
+                  <Link href={`/author/books/${b.id}/chapters`} className="p-2 text-outline hover:text-primary" aria-label="Chapters" title="Chapters">
+                    <List size={16} />
+                  </Link>
+                  <Link href={`/author/books/${b.id}/edit`} className="p-2 text-outline hover:text-primary" aria-label="Book details" title="Book details">
                     <Pencil size={16} />
                   </Link>
                   <button onClick={() => onDelete?.(b)} className="p-2 text-outline hover:text-error" aria-label="Delete" title="Delete">

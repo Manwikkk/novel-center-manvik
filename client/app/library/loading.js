@@ -1,6 +1,6 @@
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
-import { Skeleton, SkeletonGrid } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function LibraryLoading() {
   return (
@@ -11,7 +11,15 @@ export default function LibraryLoading() {
           <Skeleton className="h-3 w-32" />
           <Skeleton className="h-10 w-2/3 max-w-md" />
         </header>
-        <SkeletonGrid count={8} />
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 sm:gap-x-6 sm:gap-y-8">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="min-w-0">
+              <Skeleton className="aspect-[2/3] w-full max-w-[120px] rounded-xl" />
+              <Skeleton className="mt-3 h-4 w-full max-w-[120px]" />
+              <Skeleton className="mt-1 h-3 w-2/3 max-w-[80px]" />
+            </div>
+          ))}
+        </div>
       </main>
       <SiteFooter />
     </div>

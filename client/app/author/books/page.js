@@ -80,7 +80,7 @@ function AuthorBooks() {
     <DashboardShell kind="author">
       <DashboardTopbar
         subtitle="Author studio"
-        title="Books"
+        title="Novels"
         actions={<Button href="/author/books/new" variant="primary" size="sm">New book</Button>}
       />
       <div className="px-4 md:px-edge py-8 space-y-8">

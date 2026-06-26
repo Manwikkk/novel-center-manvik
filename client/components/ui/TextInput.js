@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react';
 import { cn } from '@/lib/cn';
+import Icon from '@/components/ui/Icon';
 
 const variants = {
   /** Cream/white public pages (login, register) — readable even when html.dark is set. */
@@ -41,13 +42,23 @@ export default function TextInput({
   multiline = false,
   rows = 4,
   variant = 'editorial',
+  passwordToggle = true,
+  compact = false,
   ...rest
 }) {
   const id = useId();
   const [focused, setFocused] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const isFilled = value !== undefined ? value !== '' && value !== null && value !== undefined : !!defaultValue;
   const isFloating = focused || isFilled;
   const v = variants[variant] ?? variants.editorial;
+  const isPasswordField = type === 'password' && !multiline;
+  const showPasswordToggle = isPasswordField && passwordToggle;
+  const inputType = showPasswordToggle && passwordVisible ? 'text' : type;
+  const fieldPy = compact ? 'py-2' : 'py-3';
+  const labelFloatingTop = compact ? 'top-0' : 'top-0';
+  const labelRestTop = compact ? 'top-2' : 'top-3';
+  const toggleTop = compact ? 'top-1.5' : 'top-3';
 
   const Field = multiline ? 'textarea' : 'input';
 
@@ -56,7 +67,7 @@ export default function TextInput({
       <Field
         id={id}
         name={name}
-        type={multiline ? undefined : type}
+        type={multiline ? undefined : inputType}
         rows={multiline ? rows : undefined}
         value={value}
         defaultValue={defaultValue}
@@ -66,23 +77,42 @@ export default function TextInput({
         onFocus={(e) => { setFocused(true); onFocus?.(e); }}
         onBlur={(e) => { setFocused(false); onBlur?.(e); }}
         className={cn(
-          'peer block w-full bg-transparent border-0 border-b py-3 px-0',
+          'peer block w-full bg-transparent border-0 border-b px-0',
+          fieldPy,
           'focus:outline-none placeholder-transparent',
           v.field,
           error && 'border-danger',
+          showPasswordToggle && 'pr-10',
           inputClassName,
         )}
         placeholder={label || ''}
         aria-invalid={error ? 'true' : undefined}
         {...rest}
       />
+      {showPasswordToggle ? (
+        <button
+          type="button"
+          onClick={() => setPasswordVisible((v) => !v)}
+          className={cn(
+            'absolute right-0 p-1 text-ink-400 hover:text-ink-900 transition-colors',
+            toggleTop,
+            variant === 'dashboard' && 'text-on-surface-variant hover:text-on-surface',
+          )}
+          aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+          tabIndex={-1}
+        >
+          <Icon name={passwordVisible ? 'visibility_off' : 'visibility'} size={compact ? 18 : 20} />
+        </button>
+      ) : null}
       {label && (
         <label
           htmlFor={id}
           className={cn(
             'absolute left-0 transition-all pointer-events-none label-sm',
             v.label,
-            isFloating ? 'top-0 text-[11px] tracking-labelTight' : 'top-3 text-[14px] tracking-normal normal-case',
+            isFloating
+              ? cn(labelFloatingTop, 'text-[11px] tracking-labelTight')
+              : cn(labelRestTop, compact ? 'text-[13px]' : 'text-[14px]', 'tracking-normal normal-case'),
           )}
         >
           {label}
@@ -90,7 +120,7 @@ export default function TextInput({
         </label>
       )}
       {(error || hint) && (
-        <p className={cn('mt-1 text-[12px]', error ? 'text-danger' : v.hint)}>
+        <p className={cn(compact ? 'mt-0.5' : 'mt-1', 'text-[12px]', error ? 'text-danger' : v.hint)}>
           {error || hint}
         </p>
       )}

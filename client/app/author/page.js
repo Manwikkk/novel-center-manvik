@@ -7,11 +7,6 @@ import DashboardShell from '@/components/layout/DashboardShell';
 import AuthorDashboardHeader from '@/components/author/dashboard/AuthorDashboardHeader';
 import BooksSection from '@/components/author/dashboard/BooksSection';
 import NewsInboxPanel from '@/components/author/dashboard/NewsInboxPanel';
-import {
-  PromoSlider,
-  DUMMY_FEATURE_SLIDES,
-  DUMMY_CONTEST_SLIDES,
-} from '@/components/author/dashboard/PromoSlider';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -52,13 +47,6 @@ function AuthorOverview() {
       <main className="flex-1 overflow-y-auto min-h-screen">
         <div className="px-4 md:px-8 py-6 md:py-8 max-w-[1200px] mx-auto w-full">
           <AuthorDashboardHeader activeTab={headerTab} onTabChange={handleHeaderTab} />
-
-          {headerTab === 'dashboard' && (
-            <section className="grid md:grid-cols-2 gap-3 mb-4">
-              <PromoSlider slides={DUMMY_FEATURE_SLIDES} variant="feature" />
-              <PromoSlider slides={DUMMY_CONTEST_SLIDES} variant="contest" />
-            </section>
-          )}
 
           <section ref={booksRef} className="mb-6">
             <BooksSection books={books} loading={loading} />

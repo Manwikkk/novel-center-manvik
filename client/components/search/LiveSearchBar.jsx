@@ -24,14 +24,21 @@ function Inner({ basePath, placeholder, className }) {
     setValue(qInUrl);
   }, [qInUrl]);
 
+  const buildQuery = useCallback((trimmed) => {
+    const qs = new URLSearchParams(searchParams.toString());
+    qs.delete('page');
+    if (trimmed) qs.set('q', trimmed);
+    else qs.delete('q');
+    return qs;
+  }, [searchParams]);
+
   const pushQuery = useCallback(
     (trimmed) => {
       const urlQ = (searchParams.get('q') || '').trim();
       if (trimmed === urlQ) return;
 
-      const qs = new URLSearchParams();
-      if (trimmed) qs.set('q', trimmed);
-      const next = qs.toString() ? `${path}?${qs.toString()}` : path;
+      const qs = buildQuery(trimmed);
+      const next = qs.toString() ? `${pathname}?${qs.toString()}` : pathname;
 
       const cur = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
       if (next === cur) return;
@@ -39,7 +46,7 @@ function Inner({ basePath, placeholder, className }) {
       skipUrlSyncRef.current = true;
       router.replace(next, { scroll: false });
     },
-    [path, pathname, router, searchParams],
+    [buildQuery, pathname, router, searchParams],
   );
 
   useEffect(() => {
@@ -62,7 +69,9 @@ function Inner({ basePath, placeholder, className }) {
     const hasUrlQ = Boolean(searchParams.get('q'));
     if (!hasUrlQ && !value.trim()) return;
     skipUrlSyncRef.current = true;
-    router.replace(path, { scroll: false });
+    const qs = buildQuery('');
+    const next = qs.toString() ? `${pathname}?${qs.toString()}` : pathname;
+    router.replace(next, { scroll: false });
   }
 
   const showClear = Boolean(value.trim() || searchParams.get('q'));

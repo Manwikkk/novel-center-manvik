@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import AuthGuard from '@/components/layout/AuthGuard';
+import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import UsersTable from '@/components/admin/UsersTable';
@@ -55,10 +55,10 @@ function Inner() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name or email"
-          className="w-full md:max-w-md bg-transparent border-b border-ink-300 focus:border-ink-900 focus:outline-none py-2 text-[16px] placeholder-ink-400"
+          className="w-full md:max-w-md bg-transparent border-b border-outline-variant focus:border-on-surface focus:outline-none py-2 text-[16px] text-on-surface placeholder:text-on-surface-variant"
         />
         {loading ? (
-          <div className="border border-ink-200/60 rounded-md p-6 space-y-4">
+          <div className="border border-outline-variant rounded-md p-6 space-y-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonRow key={i} columns={5} />
             ))}
@@ -79,5 +79,5 @@ function Inner() {
 }
 
 export default function AdminUsersPage() {
-  return <AuthGuard roles={['admin']}><Inner /></AuthGuard>;
+  return <AdminPageGuard permission="users"><Inner /></AdminPageGuard>;
 }

@@ -6,6 +6,7 @@ const KEYS = [
   'weekly_book',
   'meet_webnovel',
   'recommended',
+  'continue_reading',
   'new_arrivals',
   'ranking_novels',
   'updated_today',
@@ -33,7 +34,7 @@ function rowToSections(row) {
 async function getPageSections() {
   try {
     const [rows] = await pool.execute(
-      `SELECT weekly_book, meet_webnovel, recommended, new_arrivals, ranking_novels,
+      `SELECT weekly_book, meet_webnovel, recommended, continue_reading, new_arrivals, ranking_novels,
               updated_today, completed_novels, editors_choice, gs_originals
          FROM site_home_page_config WHERE id = 1 LIMIT 1`,
     );

@@ -32,7 +32,7 @@ async function getEarnings(authorId) {
      FROM books b
      LEFT JOIN chapters c        ON c.book_id    = b.id
      LEFT JOIN chapter_unlocks cu ON cu.chapter_id = c.id
-     WHERE b.author_id = ?`,
+     WHERE b.author_id = ? AND b.recycled_at IS NULL`,
     [authorId],
   );
 
@@ -52,9 +52,9 @@ async function getEarnings(authorId) {
        COUNT(cu.user_id)                AS unlocks,
        COALESCE(SUM(cu.tokens_spent),0) AS tokens
      FROM books b
-     LEFT JOIN chapters c        ON c.book_id    = b.id
+     LEFT JOIN chapters c        ON c.book_id    = b.id AND c.recycled_at IS NULL
      LEFT JOIN chapter_unlocks cu ON cu.chapter_id = c.id
-     WHERE b.author_id = ?
+     WHERE b.author_id = ? AND b.recycled_at IS NULL
      GROUP BY b.id, b.title, b.slug, b.status
      ORDER BY tokens DESC, b.created_at DESC
      LIMIT 100`,
@@ -85,7 +85,7 @@ async function getEarnings(authorId) {
 async function getBookStats(authorId, bookId) {
   const [books] = await pool.execute(
     `SELECT b.id, b.title, b.slug, b.status, b.cover_url, b.updated_at, b.score
-     FROM books b WHERE b.id = ? AND b.author_id = ? LIMIT 1`,
+     FROM books b WHERE b.id = ? AND b.author_id = ? AND b.recycled_at IS NULL LIMIT 1`,
     [bookId, authorId],
   );
   const book = books[0];
@@ -164,9 +164,9 @@ async function getBookStats(authorId, bookId) {
   const [rankRows] = await pool.execute(
     `SELECT b.id, COALESCE(SUM(cu.tokens_spent), 0) AS tokens
      FROM books b
-     LEFT JOIN chapters c ON c.book_id = b.id
+     LEFT JOIN chapters c ON c.book_id = b.id AND c.recycled_at IS NULL
      LEFT JOIN chapter_unlocks cu ON cu.chapter_id = c.id
-     WHERE b.author_id = ?
+     WHERE b.author_id = ? AND b.recycled_at IS NULL
      GROUP BY b.id
      ORDER BY tokens DESC, b.updated_at DESC`,
     [authorId],

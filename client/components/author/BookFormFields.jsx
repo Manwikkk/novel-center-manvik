@@ -13,7 +13,6 @@ import {
   WARNING_NOTICES,
   PUBLISH_CHOICES,
   TITLE_MAX,
-  ABBREVIATION_MAX,
 } from '@/lib/bookFormOptions';
 
 export const selectCls = cn(
@@ -381,14 +380,6 @@ export function StoryDetailsFields({ form, setForm, catalog, catalogLoading, onT
         Before selecting tags, choose your target audience (male/female) in the novel information
         section. Accurate tags may raise the chances of readers finding your work.
       </p>
-
-      <CharCountInput
-        label="Abbreviation"
-        value={form.abbreviation}
-        onChange={(v) => setForm((f) => ({ ...f, abbreviation: v }))}
-        max={ABBREVIATION_MAX}
-        placeholder="Within 15 characters"
-      />
 
       <div>
         <FieldLabel required hint="How long is this work?">Length</FieldLabel>

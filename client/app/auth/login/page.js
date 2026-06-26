@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import TextInput from '@/components/ui/TextInput';
 import Button from '@/components/ui/Button';
 import AuthPageLayout from '@/components/auth/AuthPageLayout';
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
+import AuthSocialDivider from '@/components/auth/AuthSocialDivider';
 import { useAuthStore } from '@/stores/authStore';
 
 function LoginForm() {
@@ -33,9 +35,9 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-3">
       {error ? (
-        <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 text-[14px] text-danger">
+        <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-[13px] text-danger">
           {error}
         </div>
       ) : null}
@@ -47,6 +49,7 @@ function LoginForm() {
         onChange={(e) => setEmail(e.target.value)}
         required
         autoComplete="email"
+        compact
       />
       <TextInput
         label="Password"
@@ -55,18 +58,38 @@ function LoginForm() {
         onChange={(e) => setPassword(e.target.value)}
         required
         autoComplete="current-password"
+        compact
       />
 
       <Button
         type="submit"
         variant="primary"
-        size="lg"
-        className="w-full !tracking-widest !bg-ink-900 !text-white hover:!bg-ink-800 dark:!bg-ink-900 dark:!text-white dark:hover:!bg-ink-800"
+        size="md"
+        className="w-full !tracking-widest !bg-ink-900 !text-white hover:!bg-ink-800 dark:!bg-ink-900 dark:!text-white dark:hover:!bg-ink-800 !py-2.5"
         disabled={busy}
       >
         {busy ? 'Signing in…' : 'Sign in'}
       </Button>
     </form>
+  );
+}
+
+function LoginGoogleSignIn() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get('next') || '/';
+
+  return (
+    <GoogleSignInButton
+      label="signin_with"
+      onSuccess={(data) => {
+        if (data?.requiresOnboarding) {
+          sessionStorage.setItem('nc.onboarding.redirect', next);
+          return;
+        }
+        router.push(next);
+      }}
+    />
   );
 }
 
@@ -98,15 +121,19 @@ export default function LoginPage() {
     >
       <div className="hidden lg:block">
         <p className="label-sm uppercase tracking-[0.2em] text-ink-500">Sign in</p>
-        <h2 className="mt-2 font-serif text-[32px] leading-tight text-ink-900">
+        <h2 className="mt-1 font-serif text-[24px] leading-tight text-ink-900">
           Continue reading
         </h2>
-        <p className="mt-2 text-[14px] text-ink-600">
+        <p className="mt-1 text-[13px] text-ink-600">
           Access your library, tokens, and saved progress.
         </p>
       </div>
 
-      <div className="lg:mt-8">
+      <div className="lg:mt-4 space-y-0">
+        <Suspense fallback={<div className="h-11 animate-pulse rounded-md bg-neutral-100" />}>
+          <LoginGoogleSignIn />
+        </Suspense>
+        <AuthSocialDivider />
         <Suspense fallback={<p className="text-[14px] text-ink-400">Loading form…</p>}>
           <LoginForm />
         </Suspense>

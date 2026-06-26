@@ -5,7 +5,13 @@ const Joi = require('joi');
 
 const validate = require('../../middleware/validate');
 const { authRequired } = require('../../middleware/auth');
-const requireRole = require('../../middleware/requireRole');
+const {
+  requireAdminPanel,
+  requireSuperAdmin,
+  loadAdminPermissions,
+  requireAdminPermission,
+  requireAdminCapability,
+} = require('../../middleware/requireAdminAccess');
 const ctrl = require('../../controllers/admin.controller');
 const catCtrl = require('../../controllers/adminCatalog.controller');
 const v = require('../../validators/admin.validators');
@@ -13,38 +19,53 @@ const catv = require('../../validators/adminCatalog.validators');
 
 const idParam = Joi.object({ id: Joi.number().integer().positive().required() });
 
-router.use(authRequired, requireRole('admin'));
+router.use(authRequired, requireAdminPanel(), loadAdminPermissions);
 
-router.get('/users',                validate(v.listUsers),         ctrl.listUsers);
-router.patch('/users/:id',          validate({ params: idParam, body: v.updateUser.body }), ctrl.updateUser);
+router.get('/permissions', requireSuperAdmin(), ctrl.listPermissionDefs);
+router.get('/staff', requireSuperAdmin(), ctrl.listStaff);
+router.post('/staff', requireSuperAdmin(), validate(v.createStaffUser), ctrl.createStaff);
+router.patch('/staff/:id', requireSuperAdmin(), validate({ params: idParam, body: v.updateStaffUser.body }), ctrl.updateStaff);
 
-router.get('/books',                validate(v.listBooks),         ctrl.listBooks);
+router.get('/users', requireAdminPermission('users'), validate(v.listUsers), ctrl.listUsers);
+router.patch('/users/:id', requireAdminPermission('users'), validate({ params: idParam, body: v.updateUser.body }), ctrl.updateUser);
 
-router.get('/transactions',         validate(v.listTransactions),  ctrl.listTransactions);
+router.get('/books', requireAdminPermission('books'), validate(v.listBooks), ctrl.listBooks);
+router.get('/books/:id/chapters', requireAdminPermission('books'), validate({ params: idParam }), ctrl.listBookChapters);
+router.post('/books/:id/recycle', requireAdminPermission('books'), requireAdminCapability('books.delete'), validate({ params: idParam }), ctrl.recycleBook);
+router.post('/chapters/:id/recycle', requireAdminPermission('books'), requireAdminCapability('books.delete'), validate({ params: idParam }), ctrl.recycleChapter);
+router.get('/recycle', requireAdminPermission('books'), validate(v.listRecycle), ctrl.listRecycle);
+router.post('/recycle/:id/restore', requireAdminPermission('books'), requireAdminCapability('books.delete'), validate({ params: idParam }), ctrl.restoreRecycle);
 
-router.get('/comments/by-book',     validate(v.commentsByBook),    ctrl.commentsByBook);
-router.get('/comments/by-chapter',  validate(v.commentsByChapter), ctrl.commentsByChapter);
-router.get('/comments',             validate(v.listComments),      ctrl.listComments);
-router.patch('/comments/:id/status',validate({ params: idParam, body: v.moderateComment.body }), ctrl.moderateComment);
+router.get('/transactions', requireAdminPermission('transactions'), validate(v.listTransactions), ctrl.listTransactions);
 
-router.get('/stats',                ctrl.stats);
+router.get('/comments/by-book', requireAdminPermission('comments'), validate(v.commentsByBook), ctrl.commentsByBook);
+router.get('/comments/by-chapter', requireAdminPermission('comments'), validate(v.commentsByChapter), ctrl.commentsByChapter);
+router.get('/comments', requireAdminPermission('comments'), validate(v.listComments), ctrl.listComments);
+router.patch('/comments/:id/status', requireAdminPermission('comments'), requireAdminCapability('comments.moderate'), validate({ params: idParam, body: v.moderateComment.body }), ctrl.moderateComment);
 
-router.get('/page-sections',         ctrl.getPageSections);
-router.patch('/page-sections',      validate(v.patchPageSections), ctrl.patchPageSections);
+router.get('/stats', requireAdminPermission('dashboard'), ctrl.stats);
 
-router.get('/catalog/categories',   catCtrl.listCategories);
-router.post('/catalog/categories',  validate(catv.createCategory), catCtrl.createCategory);
-router.patch('/catalog/categories/:id', validate({ params: idParam, body: catv.updateCategory.body }), catCtrl.updateCategory);
-router.delete('/catalog/categories/:id', validate({ params: idParam }), catCtrl.deleteCategory);
+router.get('/page-sections', requireAdminPermission('page_configuration'), ctrl.getPageSections);
+router.patch('/page-sections', requireAdminPermission('page_configuration'), validate(v.patchPageSections), ctrl.patchPageSections);
 
-router.get('/catalog/languages',    catCtrl.listLanguages);
-router.post('/catalog/languages',   validate(catv.createLanguage), catCtrl.createLanguage);
-router.patch('/catalog/languages/:id', validate({ params: idParam, body: catv.updateLanguage.body }), catCtrl.updateLanguage);
-router.delete('/catalog/languages/:id', validate({ params: idParam }), catCtrl.deleteLanguage);
+router.get('/settings', requireAdminPermission('users'), ctrl.getSettings);
+router.patch('/settings', requireSuperAdmin(), validate(v.patchAdminSettings), ctrl.patchSettings);
 
-router.get('/catalog/content-tags', catCtrl.listContentTags);
-router.post('/catalog/content-tags', validate(catv.createContentTag), catCtrl.createContentTag);
-router.patch('/catalog/content-tags/:id', validate({ params: idParam, body: catv.updateContentTag.body }), catCtrl.updateContentTag);
-router.delete('/catalog/content-tags/:id', validate({ params: idParam }), catCtrl.deleteContentTag);
+router.get('/audit-logs', requireSuperAdmin(), validate(v.listAuditLogs), ctrl.listAuditLogs);
+
+router.get('/catalog/categories', requireAdminPermission('catalog'), catCtrl.listCategories);
+router.post('/catalog/categories', requireAdminPermission('catalog'), validate(catv.createCategory), catCtrl.createCategory);
+router.patch('/catalog/categories/:id', requireAdminPermission('catalog'), validate({ params: idParam, body: catv.updateCategory.body }), catCtrl.updateCategory);
+router.delete('/catalog/categories/:id', requireAdminPermission('catalog'), validate({ params: idParam }), catCtrl.deleteCategory);
+
+router.get('/catalog/languages', requireAdminPermission('catalog'), catCtrl.listLanguages);
+router.post('/catalog/languages', requireAdminPermission('catalog'), validate(catv.createLanguage), catCtrl.createLanguage);
+router.patch('/catalog/languages/:id', requireAdminPermission('catalog'), validate({ params: idParam, body: catv.updateLanguage.body }), catCtrl.updateLanguage);
+router.delete('/catalog/languages/:id', requireAdminPermission('catalog'), validate({ params: idParam }), catCtrl.deleteLanguage);
+
+router.get('/catalog/content-tags', requireAdminPermission('catalog'), catCtrl.listContentTags);
+router.post('/catalog/content-tags', requireAdminPermission('catalog'), validate(catv.createContentTag), catCtrl.createContentTag);
+router.patch('/catalog/content-tags/:id', requireAdminPermission('catalog'), validate({ params: idParam, body: catv.updateContentTag.body }), catCtrl.updateContentTag);
+router.delete('/catalog/content-tags/:id', requireAdminPermission('catalog'), validate({ params: idParam }), catCtrl.deleteContentTag);
 
 module.exports = router;

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import AuthGuard from '@/components/layout/AuthGuard';
+import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import CommentsModeration from '@/components/admin/CommentsModeration';
@@ -91,12 +91,14 @@ function Inner() {
           ))}
           {level === 3 && (
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-[12px] text-ink-400 label-sm uppercase">Order</span>
+              <span className="text-[12px] text-on-surface-variant label-sm uppercase">Order</span>
               <button
                 type="button"
                 onClick={() => setOrder('asc')}
                 className={`px-3 py-1 text-[11px] tracking-labelTight uppercase border rounded ${
-                  order === 'asc' ? 'border-ink-900 bg-ink-900 text-cream-100' : 'border-ink-200 text-ink-700'
+                  order === 'asc'
+                    ? 'border-on-surface bg-on-surface text-surface dark:bg-neutral-100 dark:text-neutral-950 dark:border-neutral-100'
+                    : 'border-outline-variant text-on-surface-variant dark:border-neutral-700 dark:text-neutral-400'
                 }`}
               >
                 Oldest first
@@ -105,7 +107,9 @@ function Inner() {
                 type="button"
                 onClick={() => setOrder('desc')}
                 className={`px-3 py-1 text-[11px] tracking-labelTight uppercase border rounded ${
-                  order === 'desc' ? 'border-ink-900 bg-ink-900 text-cream-100' : 'border-ink-200 text-ink-700'
+                  order === 'desc'
+                    ? 'border-on-surface bg-on-surface text-surface dark:bg-neutral-100 dark:text-neutral-950 dark:border-neutral-100'
+                    : 'border-outline-variant text-on-surface-variant dark:border-neutral-700 dark:text-neutral-400'
                 }`}
               >
                 Newest first
@@ -152,21 +156,21 @@ function Inner() {
 
 function Breadcrumbs({ level, bookId, chapterId, onAll, onBook }) {
   return (
-    <nav aria-label="Breadcrumbs" className="flex items-center gap-2 text-[12px] tracking-labelTight uppercase text-ink-400">
+    <nav aria-label="Breadcrumbs" className="flex items-center gap-2 text-[12px] tracking-labelTight uppercase text-on-surface-variant">
       <button
         type="button"
         onClick={onAll}
-        className={`hover:text-ink-900 transition-colors ${level === 1 ? 'text-ink-900' : ''}`}
+        className={`hover:text-on-surface transition-colors ${level === 1 ? 'text-on-surface' : ''}`}
       >
         All books
       </button>
       {level >= 2 && (
         <>
-          <Icon name="chevron_right" size={14} className="text-ink-300" />
+          <Icon name="chevron_right" size={14} className="text-outline-variant" />
           <button
             type="button"
             onClick={() => onBook(bookId)}
-            className={`hover:text-ink-900 transition-colors max-w-[260px] truncate ${level === 2 ? 'text-ink-900' : ''}`}
+            className={`hover:text-on-surface transition-colors max-w-[260px] truncate ${level === 2 ? 'text-on-surface' : ''}`}
           >
             Book #{bookId}
           </button>
@@ -174,8 +178,8 @@ function Breadcrumbs({ level, bookId, chapterId, onAll, onBook }) {
       )}
       {level >= 3 && (
         <>
-          <Icon name="chevron_right" size={14} className="text-ink-300" />
-          <span className="text-ink-900 max-w-[260px] truncate">
+          <Icon name="chevron_right" size={14} className="text-outline-variant" />
+          <span className="text-on-surface max-w-[260px] truncate">
             {chapterId === 'null' || chapterId === null ? 'Book-level comments' : `Chapter #${chapterId}`}
           </span>
         </>
@@ -186,9 +190,9 @@ function Breadcrumbs({ level, bookId, chapterId, onAll, onBook }) {
 
 function StatPill({ label, value, tone }) {
   const tones = {
-    base:    'bg-cream-200 text-ink-700',
-    visible: 'bg-cream-300 text-ink-700',
-    hidden:  'bg-ink-200 text-ink-700',
+    base:    'bg-surface-container text-on-surface-variant dark:bg-neutral-800 dark:text-neutral-300',
+    visible: 'bg-surface-container-high text-on-surface dark:bg-neutral-700 dark:text-neutral-200',
+    hidden:  'bg-surface-container-highest text-on-surface-variant dark:bg-neutral-600 dark:text-neutral-300',
     deleted: 'bg-danger/10 text-danger',
   };
   return (
@@ -226,21 +230,21 @@ function BooksLevel({ status, page, onPick, onPageChange, pushToast }) {
   return (
     <section className="space-y-4">
       {loading ? (
-        <div className="border border-ink-200/60 rounded-md p-6 space-y-4">
+        <div className="border border-outline-variant rounded-md p-6 space-y-4">
           {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} columns={5} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="border border-dashed border-ink-200 rounded-md p-12 text-center">
-          <p className="label-sm uppercase text-ink-400">No books with comments</p>
-          <p className="mt-2 font-serif text-[20px] text-ink-700">
+        <div className="border border-dashed border-outline-variant rounded-md p-12 text-center">
+          <p className="label-sm uppercase text-on-surface-variant">No books with comments</p>
+          <p className="mt-2 font-serif text-[20px] text-on-surface">
             Once readers leave comments, books will appear here.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto border border-ink-200/60 rounded-md">
+        <div className="overflow-x-auto border border-outline-variant rounded-md">
           <table className="w-full text-left text-[14px]">
-            <thead className="bg-cream-200/40 border-b border-ink-200/60">
-              <tr className="text-ink-400 label-sm uppercase">
+            <thead className="bg-surface-container dark:bg-neutral-900/80 border-b border-outline-variant">
+              <tr className="text-on-surface-variant label-sm uppercase">
                 <th className="px-4 py-3 font-medium">Title</th>
                 <th className="px-4 py-3 font-medium">Author</th>
                 <th className="px-4 py-3 font-medium text-right">Comments</th>
@@ -252,14 +256,14 @@ function BooksLevel({ status, page, onPick, onPageChange, pushToast }) {
               {filtered.map((row) => (
                 <tr
                   key={row.bookId}
-                  className="border-b border-ink-200/40 hover:bg-cream-200/40 cursor-pointer"
+                  className="border-b border-outline-variant/60 hover:bg-surface-container dark:hover:bg-neutral-900/50 cursor-pointer"
                   onClick={() => onPick(row.bookId)}
                 >
                   <td className="px-4 py-4">
-                    <p className="font-serif text-[16px] text-ink-900">{row.title}</p>
-                    <p className="text-[12px] text-ink-400">/{row.slug}</p>
+                    <p className="font-serif text-[16px] text-on-surface">{row.title}</p>
+                    <p className="text-[12px] text-on-surface-variant">/{row.slug}</p>
                   </td>
-                  <td className="px-4 py-4 text-ink-700">{row.author?.displayName}</td>
+                  <td className="px-4 py-4 text-on-surface-variant">{row.author?.displayName}</td>
                   <td className="px-4 py-4 text-right">
                     <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
                       <StatPill label="total" value={row.totals.total} tone="base" />
@@ -268,14 +272,14 @@ function BooksLevel({ status, page, onPick, onPageChange, pushToast }) {
                       {row.totals.deleted > 0 && <StatPill label="deleted" value={row.totals.deleted} tone="deleted" />}
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-right text-ink-700">
+                  <td className="px-4 py-4 text-right text-on-surface-variant">
                     {row.lastCommentAt ? formatRelative(row.lastCommentAt) : '—'}
                   </td>
                   <td className="px-4 py-4 text-right">
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onPick(row.bookId); }}
-                      className="text-ink-700 hover:text-ink-900 inline-flex items-center gap-1"
+                      className="text-on-surface-variant hover:text-on-surface inline-flex items-center gap-1"
                     >
                       View
                       <Icon name="chevron_right" size={16} />
@@ -334,25 +338,25 @@ function ChaptersLevel({ bookId, status, page, onBack, onPick, onPageChange, pus
   return (
     <section className="space-y-6">
       {data.book && (
-        <div className="bg-cream-100 border border-ink-200/60 rounded-md p-6 flex items-center gap-6">
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-md p-6 flex items-center gap-6">
           {data.book.coverUrl ? (
             <img src={data.book.coverUrl} alt={data.book.title} className="w-16 h-24 object-cover rounded" />
           ) : (
-            <div className="w-16 h-24 bg-cream-300 rounded flex items-center justify-center font-serif text-2xl text-ink-700">
+            <div className="w-16 h-24 bg-surface-container-high rounded flex items-center justify-center font-serif text-2xl text-on-surface-variant">
               {data.book.title?.[0] || 'N'}
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] text-ink-400 label-sm uppercase">{data.book.author?.displayName}</p>
-            <h3 className="font-serif text-[24px] text-ink-900 truncate">{data.book.title}</h3>
-            <Link href={`/books/${data.book.slug}`} className="text-[12px] text-ink-400 underline hover:text-ink-900">
+            <p className="text-[12px] text-on-surface-variant label-sm uppercase">{data.book.author?.displayName}</p>
+            <h3 className="font-serif text-[24px] text-on-surface truncate">{data.book.title}</h3>
+            <Link href={`/books/${data.book.slug}`} className="text-[12px] text-on-surface-variant underline hover:text-on-surface">
               View on site
             </Link>
           </div>
           <button
             type="button"
             onClick={onBack}
-            className="text-[12px] tracking-labelTight uppercase text-ink-700 hover:text-ink-900 inline-flex items-center gap-1"
+            className="text-[12px] tracking-labelTight uppercase text-on-surface-variant hover:text-on-surface inline-flex items-center gap-1"
           >
             <Icon name="chevron_left" size={16} />
             All books
@@ -361,14 +365,14 @@ function ChaptersLevel({ bookId, status, page, onBack, onPick, onPageChange, pus
       )}
 
       {loading ? (
-        <div className="border border-ink-200/60 rounded-md p-6 space-y-4">
+        <div className="border border-outline-variant rounded-md p-6 space-y-4">
           {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} columns={4} />)}
         </div>
       ) : (
-        <div className="overflow-x-auto border border-ink-200/60 rounded-md">
+        <div className="overflow-x-auto border border-outline-variant rounded-md">
           <table className="w-full text-left text-[14px]">
-            <thead className="bg-cream-200/40 border-b border-ink-200/60">
-              <tr className="text-ink-400 label-sm uppercase">
+            <thead className="bg-surface-container dark:bg-neutral-900/80 border-b border-outline-variant">
+              <tr className="text-on-surface-variant label-sm uppercase">
                 <th className="px-4 py-3 font-medium">Chapter</th>
                 <th className="px-4 py-3 font-medium text-right">Comments</th>
                 <th className="px-4 py-3 font-medium text-right">Last activity</th>
@@ -378,21 +382,21 @@ function ChaptersLevel({ bookId, status, page, onBack, onPick, onPageChange, pus
             <tbody>
               {showBookLevel && (
                 <tr
-                  className="border-b border-ink-200/40 bg-cream-200/40 hover:bg-cream-300/40 cursor-pointer"
+                  className="border-b border-outline-variant/60 bg-surface-container dark:bg-neutral-900/50 hover:bg-surface-container-high dark:hover:bg-neutral-900/70 cursor-pointer"
                   onClick={() => onPick(null)}
                 >
                   <td className="px-4 py-4">
-                    <p className="font-serif text-[16px] text-ink-900">Book-level comments</p>
-                    <p className="text-[12px] text-ink-400">Comments left on the book itself, not on a chapter.</p>
+                    <p className="font-serif text-[16px] text-on-surface">Book-level comments</p>
+                    <p className="text-[12px] text-on-surface-variant">Comments left on the book itself, not on a chapter.</p>
                   </td>
                   <td className="px-4 py-4 text-right">
                     <CommentTotals totals={data.bookLevel.totals} />
                   </td>
-                  <td className="px-4 py-4 text-right text-ink-700">
+                  <td className="px-4 py-4 text-right text-on-surface-variant">
                     {data.bookLevel.lastCommentAt ? formatRelative(data.bookLevel.lastCommentAt) : '—'}
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <span className="text-ink-700 inline-flex items-center gap-1">
+                    <span className="text-on-surface-variant inline-flex items-center gap-1">
                       View <Icon name="chevron_right" size={16} />
                     </span>
                   </td>
@@ -400,7 +404,7 @@ function ChaptersLevel({ bookId, status, page, onBack, onPick, onPageChange, pus
               )}
               {filteredItems.length === 0 && !showBookLevel ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-ink-400 label-sm uppercase">
+                  <td colSpan={4} className="px-4 py-12 text-center text-on-surface-variant label-sm uppercase">
                     No chapters with comments matching this filter
                   </td>
                 </tr>
@@ -408,23 +412,23 @@ function ChaptersLevel({ bookId, status, page, onBack, onPick, onPageChange, pus
                 filteredItems.map((row) => (
                   <tr
                     key={row.chapterId}
-                    className="border-b border-ink-200/40 hover:bg-cream-200/40 cursor-pointer"
+                    className="border-b border-outline-variant/60 hover:bg-surface-container dark:hover:bg-neutral-900/50 cursor-pointer"
                     onClick={() => onPick(row.chapterId)}
                   >
                     <td className="px-4 py-4">
-                      <p className="font-serif text-[16px] text-ink-900">
+                      <p className="font-serif text-[16px] text-on-surface">
                         {String(row.idx).padStart(2, '0')} · {row.title}
                       </p>
-                      <p className="text-[12px] text-ink-400">{row.status}</p>
+                      <p className="text-[12px] text-on-surface-variant">{row.status}</p>
                     </td>
                     <td className="px-4 py-4 text-right">
                       <CommentTotals totals={row.totals} />
                     </td>
-                    <td className="px-4 py-4 text-right text-ink-700">
+                    <td className="px-4 py-4 text-right text-on-surface-variant">
                       {row.lastCommentAt ? formatRelative(row.lastCommentAt) : '—'}
                     </td>
                     <td className="px-4 py-4 text-right">
-                      <span className="text-ink-700 inline-flex items-center gap-1">
+                      <span className="text-on-surface-variant inline-flex items-center gap-1">
                         View <Icon name="chevron_right" size={16} />
                       </span>
                     </td>
@@ -499,7 +503,7 @@ function CommentsLevel({ bookId, chapterId, status, order, page, onPageChange, p
   return (
     <section className="space-y-6">
       {loading ? (
-        <div className="border border-ink-200/60 rounded-md p-6 space-y-4">
+        <div className="border border-outline-variant rounded-md p-6 space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="space-y-2">
               <Skeleton className="h-4 w-1/3" />
@@ -523,5 +527,5 @@ function CommentsLevel({ bookId, chapterId, status, order, page, onPageChange, p
 }
 
 export default function AdminCommentsPage() {
-  return <AuthGuard roles={['admin']}><Inner /></AuthGuard>;
+  return <AdminPageGuard permission="comments"><Inner /></AdminPageGuard>;
 }

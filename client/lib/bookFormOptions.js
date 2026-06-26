@@ -43,7 +43,6 @@ export const WARNING_NOTICES = [
 ];
 
 export const TITLE_MAX = 70;
-export const ABBREVIATION_MAX = 15;
 
 export function genreLabel(genre, leadingGender) {
   if (!genre || !leadingGender) return '';
@@ -65,7 +64,6 @@ export function emptyBookForm(book) {
     languageId: book?.languageId != null ? String(book.languageId) : '',
     categoryId: book?.categoryId != null ? String(book.categoryId) : '',
     contentTagIds: new Set((book?.contentTags || []).map((t) => t.id)),
-    abbreviation: book?.abbreviation || '',
     bookLength: book?.bookLength || '',
     warningNotice: book?.warningNotice || '',
     publishChoice: book?.status === 'published' ? 'published' : 'draft',
@@ -83,7 +81,6 @@ export function formToPayload(form, { includeStatus = false } = {}) {
     languageId: form.languageId ? Number(form.languageId) : null,
     categoryId: form.categoryId ? Number(form.categoryId) : null,
     contentTagIds: Array.from(form.contentTagIds),
-    abbreviation: form.abbreviation.trim() || null,
     bookLength: form.bookLength || null,
     warningNotice: form.warningNotice || null,
   };

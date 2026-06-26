@@ -19,7 +19,7 @@ export default function CommentItem({
   onEdit,
   onEditReview,
   onReport,
-  depth = 0,
+  replyToName = null,
   reader = false,
 }) {
   const [replying, setReplying] = useState(false);
@@ -37,10 +37,6 @@ export default function CommentItem({
   const likeCount = Number(node.likeCount) || 0;
   const dislikeCount = Number(node.dislikeCount) || 0;
   const my = node.myReaction || null;
-
-  const nestBorder = reader
-    ? 'border-l border-[var(--reader-rule)]'
-    : 'border-l border-ink-200/60 dark:border-neutral-800';
 
   function nextReaction(clicked) {
     if (clicked === 'like') return my === 'like' ? null : 'like';
@@ -73,6 +69,13 @@ export default function CommentItem({
     ? 'rounded-lg border border-[var(--reader-rule)] bg-[var(--reader-fg)]/[0.04] p-4'
     : 'rounded-lg border border-ink-200/70 bg-cream-100/50 dark:border-neutral-800 dark:bg-neutral-900/40 p-4';
 
+  const spoilerToggleBtn = cn(
+    'text-[12px] font-semibold uppercase tracking-widest underline underline-offset-4',
+    reader
+      ? 'text-[var(--reader-fg)] decoration-[var(--reader-accent)]'
+      : 'text-ink-900 decoration-gold dark:text-neutral-100',
+  );
+
   const actionLink = cn(
     'label-sm',
     reader
@@ -98,10 +101,28 @@ export default function CommentItem({
   }
 
   return (
-    <div className={depth > 0 ? cn('pl-6', nestBorder) : ''}>
+    <div>
       <div className="flex gap-3">
         <Avatar name={node.author?.displayName} src={node.author?.avatarUrl} size={36} />
         <div className="flex-1 min-w-0">
+          {replyToName ? (
+            <p
+              className={cn(
+                'mb-1 text-[11px]',
+                reader ? 'text-[var(--reader-muted)]' : 'text-ink-400 dark:text-neutral-500',
+              )}
+            >
+              Replied to{' '}
+              <span
+                className={cn(
+                  'font-medium',
+                  reader ? 'text-[var(--reader-fg)]' : 'text-ink-600 dark:text-neutral-300',
+                )}
+              >
+                {replyToName}
+              </span>
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <p
               className={cn(
@@ -187,15 +208,28 @@ export default function CommentItem({
                 <button
                   type="button"
                   onClick={() => setSpoilerOpen(true)}
-                  className={cn(
-                    'mt-3 text-[12px] font-semibold uppercase tracking-widest underline underline-offset-4',
-                    reader
-                      ? 'text-[var(--reader-fg)] decoration-[var(--reader-accent)]'
-                      : 'text-ink-900 decoration-gold dark:text-neutral-100',
-                  )}
+                  className={cn(spoilerToggleBtn, 'mt-3')}
                 >
                   Show comment
                 </button>
+              </div>
+            ) : node.isSpoiler && spoilerOpen ? (
+              <div className={spoilerShell}>
+                <p className="whitespace-pre-line">{node.body}</p>
+                <div
+                  className={cn(
+                    'mt-4 pt-3 border-t',
+                    reader ? 'border-[var(--reader-rule)]' : 'border-ink-200/60 dark:border-neutral-700',
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSpoilerOpen(false)}
+                    className={spoilerToggleBtn}
+                  >
+                    Hide comment
+                  </button>
+                </div>
               </div>
             ) : (
               node.body
@@ -279,7 +313,7 @@ export default function CommentItem({
       </div>
 
       {node.children?.length > 0 && (
-        <div className="mt-6 ml-12 space-y-6">
+        <div className="mt-6 space-y-6">
           {node.children.map((c) => (
             <CommentItem
               key={c.id}
@@ -291,7 +325,7 @@ export default function CommentItem({
               onEdit={onEdit}
               onEditReview={onEditReview}
               onReport={onReport}
-              depth={depth + 1}
+              replyToName={node.author?.displayName || 'Reader'}
               reader={reader}
             />
           ))}

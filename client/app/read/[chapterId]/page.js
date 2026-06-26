@@ -15,7 +15,12 @@ import { useReaderStore } from '@/stores/readerStore';
 import { readingApi } from '@/lib/reading';
 import { formatTokens } from '@/lib/format';
 import { openAuthModal } from '@/lib/authModal';
-import { isChapterLocked, isChapterReadable } from '@/lib/chapterAccess';
+import { isChapterLocked } from '@/lib/chapterAccess';
+import {
+  hasReadingRestriction,
+  READING_RESTRICTED_MESSAGE,
+  READING_RESTRICTED_TITLE,
+} from '@/lib/readingRestriction';
 import { cn } from '@/lib/cn';
 
 const WPM = 220;
@@ -23,7 +28,7 @@ const RAIL_W = 56; // px — w-14
 const DEFAULT_COVER = '/stitch/book-architecture-silence.jpg';
 
 /**
- * Reading page: title page (cover → © Novel Center) for chapter 1, then body.
+ * Reading page: title page (cover → © Novel Center) for chapter 1 of GS Originals only.
  * Right rail: TOC, display options (gear), jump to notes, help.
  * Progress: text-only % and minutes (no growing bar).
  */
@@ -193,13 +198,23 @@ export default function ReadingInterfacePage() {
   }, [rightPanel]);
 
   if (error) {
+    const readingBlocked = /reading is restricted/i.test(error.message || '');
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--reader-bg)] text-[var(--reader-fg)]">
-        <div className="text-center">
-          <p className="font-ui-label-sm text-ui-label-sm uppercase opacity-70">Unavailable</p>
-          <h1 className="mt-3 font-display-lg text-[28px]">This chapter could not be opened.</h1>
-          <p className="mt-2 opacity-70">{error.message}</p>
-          <Link href="/" className="mt-6 inline-block font-ui-label-sm text-ui-label-sm uppercase underline decoration-tertiary-fixed-dim underline-offset-4">
+        <div className="text-center max-w-md px-6">
+          <p className="font-ui-label-sm text-ui-label-sm uppercase opacity-70">
+            {readingBlocked ? READING_RESTRICTED_TITLE : 'Unavailable'}
+          </p>
+          <h1 className="mt-3 font-display-lg text-[28px]">
+            {readingBlocked ? 'Reading is restricted' : 'This chapter could not be opened.'}
+          </h1>
+          <p className="mt-2 opacity-70">
+            {readingBlocked ? READING_RESTRICTED_MESSAGE : error.message}
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-block font-ui-label-sm text-ui-label-sm uppercase underline decoration-tertiary-fixed-dim underline-offset-4"
+          >
             Return home
           </Link>
         </div>
@@ -215,8 +230,9 @@ export default function ReadingInterfacePage() {
   }
 
   const locked = isChapterLocked(chapter);
-  const isPaidLocked = locked && chapter.isPaid && Number(chapter.tokenPrice) > 0;
-  const showTitlePage = chapter.idx === 1 && book;
+  const readingBlocked = hasReadingRestriction(user) && !chapter.canRead;
+  const isPaidLocked = locked && !readingBlocked && chapter.isPaid && Number(chapter.tokenPrice) > 0;
+  const showTitlePage = chapter.idx === 1 && book?.isOriginal;
 
   return (
     <div className="bg-[var(--reader-bg)] text-[var(--reader-fg)] min-h-screen flex flex-col antialiased selection:bg-tertiary-fixed selection:text-on-tertiary-fixed pr-14">
@@ -287,7 +303,21 @@ export default function ReadingInterfacePage() {
             </header>
           )}
 
-          {locked && isPaidLocked ? (
+          {readingBlocked ? (
+            <div className="border border-danger/30 rounded-lg p-8 text-center bg-danger/5">
+              <p className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-danger">
+                {READING_RESTRICTED_TITLE}
+              </p>
+              <h2 className="mt-3 font-headline-md text-headline-md">Reading is restricted</h2>
+              <p className="mt-3 opacity-80">{READING_RESTRICTED_MESSAGE}</p>
+              <Link
+                href={book ? `/books/${book.slug}` : '/'}
+                className="mt-6 inline-block px-6 py-3 border border-[var(--reader-rule)] font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-[var(--reader-fg)]/5 transition-colors"
+              >
+                Back to book
+              </Link>
+            </div>
+          ) : locked && isPaidLocked ? (
             <div className="border border-[var(--reader-rule)] rounded-lg p-8 text-center bg-[var(--reader-bg)]/60">
               <p className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest opacity-70">
                 Locked chapter

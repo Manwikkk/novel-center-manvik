@@ -9,9 +9,11 @@ const v = require('../../validators/library.validators');
 
 router.use(authRequired);
 
-router.get('/',           validate(v.list),     ctrl.list);
-router.get('/contains',   validate(v.contains), ctrl.contains);
-router.post('/',          validate(v.add),      ctrl.add);
-router.delete('/:bookId', validate(v.remove),   ctrl.remove);
+router.get('/',           validate(v.list),       ctrl.list);
+router.get('/contains',   validate(v.contains),   ctrl.contains);
+router.get('/status',     validate(v.statusMany), ctrl.statusMany);
+router.post('/',          validate(v.add),        ctrl.add);
+router.patch('/:bookId/status', validate(v.setStatus), ctrl.setStatus);
+router.delete('/:bookId', validate(v.remove),     ctrl.remove);
 
 module.exports = router;

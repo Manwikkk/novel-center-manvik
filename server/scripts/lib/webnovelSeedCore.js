@@ -6,7 +6,7 @@
  * - Accepts JSON shaped like webnovel-books.json (internal keys), normalize-webnovel
  *   output (weekly_book, recommended, …), or scrape output (weekly, featured, …).
  * - Dedupes by WebNovel book id / URL.
- * - Maps every section to the seven `book_tags.tag` values consumed by
+ * - Maps every section to the `book_tags.tag` values consumed by
  *   `home.service.js`, including cross-tagging so Recommended + New Arrivals
  *   strips both stay full.
  * - Optional minimum books per rail (`enrichMinimumTags`).
@@ -25,6 +25,7 @@ const INTERNAL_HOME_TAGS = [
   'cheering_reads',
   'editors_choice',
   'completed_novel',
+  'originals',
 ];
 
 const RANKING_ALTERNATE = '__ranking_alternate__';
@@ -68,7 +69,8 @@ function mapSourceKeyToTags(sourceKey) {
     completed_novel: ['completed_novel'],
     completed_novels: ['completed_novel'],
 
-    gs_originals: ['rising_fictions', 'editors_choice'],
+    gs_originals: ['originals'],
+    originals: ['originals'],
 
     potential_starlet: ['potential_starlet'],
     rising_fictions: ['rising_fictions'],

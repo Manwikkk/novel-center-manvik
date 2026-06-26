@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import AuthGuard from '@/components/layout/AuthGuard';
+import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import Button from '@/components/ui/Button';
@@ -259,8 +259,8 @@ function Inner() {
 
 export default function AdminCatalogPage() {
   return (
-    <AuthGuard roles={['admin']}>
+    <AdminPageGuard permission="catalog">
       <Inner />
-    </AuthGuard>
+    </AdminPageGuard>
   );
 }

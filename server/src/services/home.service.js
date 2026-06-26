@@ -15,6 +15,7 @@ const SECTION_TAGS = [
   'cheering_reads',
   'editors_choice',
   'completed_novel',
+  'originals',
 ];
 
 const PER_SECTION_LIMIT = 24;
@@ -44,7 +45,7 @@ async function getHomeSections() {
        FROM book_tags bt
        JOIN books b ON b.id = bt.book_id
        JOIN users u ON u.id = b.author_id
-      WHERE b.status = 'published'
+      WHERE b.status = 'published' AND b.recycled_at IS NULL
       ORDER BY bt.tag ASC, b.id ASC`,
   );
 

@@ -308,7 +308,16 @@ export default function ChapterCommentsPanel({
   );
 }
 
-function ChapterCommentRow({ node, user, onVote, onReply, onEdit, onDelete, onReport, depth = 0 }) {
+function ChapterCommentRow({
+  node,
+  user,
+  onVote,
+  onReply,
+  onEdit,
+  onDelete,
+  onReport,
+  replyToName = null,
+}) {
   const [showReplies, setShowReplies] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const isHidden = node.status === 'hidden';
@@ -341,6 +350,12 @@ function ChapterCommentRow({ node, user, onVote, onReply, onEdit, onDelete, onRe
       <div className="flex gap-2.5">
         <Avatar name={node.author?.displayName} src={node.author?.avatarUrl} size={32} />
         <div className="flex-1 min-w-0">
+          {replyToName ? (
+            <p className="mb-1 text-[11px] text-ink-400 dark:text-neutral-500">
+              Replied to{' '}
+              <span className="font-medium text-ink-600 dark:text-neutral-300">{replyToName}</span>
+            </p>
+          ) : null}
           <p className="font-semibold text-[13px] text-ink-900 dark:text-neutral-100 truncate">
             {node.author?.displayName || 'Reader'}
           </p>
@@ -413,25 +428,25 @@ function ChapterCommentRow({ node, user, onVote, onReply, onEdit, onDelete, onRe
               {showReplies ? 'Hide' : `View ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}`}
             </button>
           )}
-          {showReplies && replyCount > 0 && (
-            <ul className="mt-3 space-y-3 pl-2 border-l border-neutral-200 dark:border-neutral-700">
-              {node.children.map((child) => (
-                <ChapterCommentRow
-                  key={child.id}
-                  node={child}
-                  user={user}
-                  onVote={onVote}
-                  onReply={onReply}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onReport={onReport}
-                  depth={depth + 1}
-                />
-              ))}
-            </ul>
-          )}
         </div>
       </div>
+      {showReplies && replyCount > 0 && (
+        <ul className="mt-3 space-y-5">
+          {node.children.map((child) => (
+            <ChapterCommentRow
+              key={child.id}
+              node={child}
+              user={user}
+              onVote={onVote}
+              onReply={onReply}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onReport={onReport}
+              replyToName={node.author?.displayName || 'Reader'}
+            />
+          ))}
+        </ul>
+      )}
     </li>
   );
 }

@@ -10,6 +10,7 @@ router.use('/chapters', require('./chapters.routes'));
 router.use('/wallet',   require('./wallet.routes'));
 router.use('/comments', require('./comments.routes'));
 router.use('/library',  require('./library.routes'));
+router.use('/collections', require('./collections.routes'));
 router.use('/authors',  require('./authors.routes'));
 router.use('/reading',  require('./reading.routes'));
 router.use('/author',   require('./author.routes'));

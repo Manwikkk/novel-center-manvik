@@ -1,12 +1,15 @@
 'use client';
 
 import AuthorSidebar, { AUTHOR_NAV } from './AuthorSidebar';
-import AdminSidebar, { ADMIN_NAV } from './AdminSidebar';
+import AdminSidebar from './AdminSidebar';
 import MobileNavStrip from './MobileNavStrip';
+import { useAuthStore } from '@/stores/authStore';
+import { navItemsForUser } from '@/lib/adminPermissions';
 
 export default function DashboardShell({ kind = 'author', children }) {
   const Sidebar = kind === 'admin' ? AdminSidebar : AuthorSidebar;
-  const items = kind === 'admin' ? ADMIN_NAV : AUTHOR_NAV;
+  const user = useAuthStore((s) => s.user);
+  const items = kind === 'admin' ? navItemsForUser(user) : AUTHOR_NAV;
   return (
     <div className="flex min-h-screen">
       <Sidebar />

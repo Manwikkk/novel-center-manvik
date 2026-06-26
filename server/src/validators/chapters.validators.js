@@ -9,6 +9,7 @@ const tokenPrice = Joi.number().integer().min(0).max(100000);
 const status = Joi.string().valid('draft', 'published');
 const idx = Joi.number().integer().min(1).max(100000);
 const authorThought = Joi.string().trim().allow('', null).max(5000);
+const scheduledPublishAt = Joi.date().iso().allow(null);
 
 module.exports = {
   create: {
@@ -19,6 +20,7 @@ module.exports = {
       isPaid: isPaid.default(false),
       tokenPrice: tokenPrice.default(0),
       status: status.default('draft'),
+      scheduledPublishAt,
       idx,
     }),
   },
@@ -30,6 +32,7 @@ module.exports = {
       isPaid,
       tokenPrice,
       status,
+      scheduledPublishAt,
       idx,
     }).min(1),
   },

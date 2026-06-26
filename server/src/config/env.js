@@ -39,6 +39,9 @@ const env = {
       .map((s) => s.trim())
       .filter(Boolean),
   },
+  google: {
+    clientId: optional('GOOGLE_CLIENT_ID', ''),
+  },
   storage: {
     driver: optional('STORAGE_DRIVER', 'local'),
     localDir: optional('STORAGE_LOCAL_DIR', 'uploads'),

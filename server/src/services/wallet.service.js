@@ -4,6 +4,7 @@ const pool = require('../db/pool');
 const { withTransaction } = require('../db/tx');
 const { errors } = require('../utils/HttpError');
 const { clampPagination } = require('../utils/pagination');
+const { resolveUserRow, assertRestriction } = require('./suspension.service');
 
 const PACKS = {
   small: { tokens: 100, price: 199 },
@@ -66,6 +67,9 @@ async function purchase(userId, { pack, tokens }) {
 }
 
 async function unlockChapter(userId, chapterId) {
+  const userRow = await resolveUserRow(userId);
+  assertRestriction(userRow, 'reading', 'Reading is restricted on your account');
+
   return withTransaction(async (conn) => {
     // Lock chapter and wallet rows for update
     const [cRows] = await conn.execute(

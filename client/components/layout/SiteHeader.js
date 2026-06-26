@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Icon from '@/components/ui/Icon';
 import Avatar from '@/components/ui/Avatar';
 import Logo from '@/components/ui/Logo';
+import HeaderSearch from '@/components/search/HeaderSearch';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useSiteThemeStore } from '@/stores/siteThemeStore';
@@ -93,23 +94,9 @@ export default function SiteHeader({ variant = 'translucent' }) {
           <Logo className="shrink-0" size={56} label={false} />
         </div>
 
-        <form
-          action="/discover"
-          method="get"
-          className={cn(
-            'order-3 w-full lg:order-2 lg:w-auto lg:flex-1 lg:max-w-[220px] xl:max-w-xs',
-            'flex items-center gap-2 border-b border-ink-300 dark:border-neutral-600 pb-1',
-          )}
-        >
-          <Icon name="search" size={20} className="text-ink-500 dark:text-neutral-500 shrink-0" />
-          <input
-            name="q"
-            type="search"
-            placeholder="Search titles or authors…"
-            className="min-w-0 flex-1 bg-transparent border-none p-0 text-sm outline-none text-ink-900 dark:text-neutral-100 placeholder:text-ink-400 dark:placeholder:text-neutral-500"
-            autoComplete="off"
-          />
-        </form>
+        <HeaderSearch
+          className="order-3 w-full lg:order-2 lg:w-auto lg:flex-1 lg:max-w-[220px] xl:max-w-xs"
+        />
 
         <nav className="hidden lg:flex items-center gap-5 xl:gap-6 order-2 lg:order-3 flex-1 justify-center min-w-0 overflow-x-auto no-scrollbar shrink-0">
           <NavLink href="/discover" label="Browse" pathname={pathname} />
@@ -170,6 +157,15 @@ export default function SiteHeader({ variant = 'translucent' }) {
                       onClick={() => setProfileOpen(false)}
                     >
                       Admin
+                    </Link>
+                  )}
+                  {user.role === 'staff' && (
+                    <Link
+                      href="/admin"
+                      className="block px-4 py-2.5 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-800 dark:text-neutral-200 hover:bg-ink-900/5 dark:hover:bg-white/10"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      Admin Panel
                     </Link>
                   )}
                   <div className="my-1 border-t border-neutral-200 dark:border-neutral-800" />
@@ -272,6 +268,11 @@ export default function SiteHeader({ variant = 'translucent' }) {
                 {user.role === 'admin' && (
                   <Link href="/admin" onClick={() => setOpen(false)} className="py-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200">
                     Admin
+                  </Link>
+                )}
+                {user.role === 'staff' && (
+                  <Link href="/admin" onClick={() => setOpen(false)} className="py-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200">
+                    Admin Panel
                   </Link>
                 )}
                 <button

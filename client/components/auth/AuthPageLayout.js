@@ -54,17 +54,17 @@ export default function AuthPageLayout({
               <Logo variant="cream" />
             </div>
 
-            <div className="auth-form-card rounded-2xl border border-neutral-200 bg-white p-7 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-9">
-              <div className="mb-8 lg:hidden">
+            <div className="auth-form-card rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-6">
+              <div className="mb-5 lg:hidden">
                 <p className="label-sm uppercase tracking-[0.2em] text-ink-500">{eyebrow}</p>
-                <h2 className="mt-2 font-serif text-[28px] leading-tight text-ink-900">
+                <h2 className="mt-1.5 font-serif text-[24px] leading-tight text-ink-900">
                   {title}
                 </h2>
               </div>
 
               {children}
 
-              {footer ? <div className="auth-form-card mt-8 border-t border-neutral-200 pt-6">{footer}</div> : null}
+              {footer ? <div className="auth-form-card mt-5 border-t border-neutral-200 pt-4">{footer}</div> : null}
             </div>
           </div>
         </main>

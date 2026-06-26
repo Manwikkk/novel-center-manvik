@@ -1,6 +1,10 @@
 'use strict';
 
 const Joi = require('joi');
+const { ALL_PERMISSION_KEYS } = require('../constants/adminPermissions');
+const { STAFF_ROLE_KEYS } = require('../constants/staffRoles');
+
+const permissionSchema = Joi.string().valid(...ALL_PERMISSION_KEYS);
 
 module.exports = {
   listUsers: {
@@ -16,8 +20,79 @@ module.exports = {
     body: Joi.object({
       role: Joi.string().valid('admin', 'author', 'user'),
       status: Joi.string().valid('active', 'suspended'),
-      walletDelta: Joi.number().integer(),
+      suspensionType: Joi.string().valid('permanent', 'temporary'),
+      restrictions: Joi.object({
+        portal_access: Joi.boolean(),
+        reading: Joi.boolean(),
+        commenting: Joi.boolean(),
+        publishing: Joi.boolean(),
+      }).min(1),
+      removeRestrictions: Joi.array().items(
+        Joi.string().valid('portal_access', 'reading', 'commenting', 'publishing'),
+      ).min(1),
+      walletDelta: Joi.number().integer().invalid(0),
+    }).min(1).custom((value, helpers) => {
+      if (value.removeRestrictions?.length && value.status === 'active') {
+        return helpers.message('Use removeRestrictions or status active, not both');
+      }
+      if (value.status === 'suspended') {
+        if (!value.suspensionType) {
+          return helpers.message('suspensionType is required when suspending a user');
+        }
+        if (!value.restrictions) {
+          return helpers.message('restrictions are required when suspending a user');
+        }
+        const selected = Object.values(value.restrictions).some(Boolean);
+        if (!selected) {
+          return helpers.message('Select at least one restriction');
+        }
+      }
+      return value;
+    }),
+  },
+  patchAdminSettings: {
+    body: Joi.object({
+      temporaryBanDays: Joi.number().integer().min(1).max(365),
     }).min(1),
+  },
+  createStaffUser: {
+    body: Joi.object({
+      email: Joi.string().email().max(190).required(),
+      password: Joi.string().min(8).max(128).required(),
+      displayName: Joi.string().trim().min(1).max(120).required(),
+      staffRole: Joi.string().valid(...STAFF_ROLE_KEYS),
+      permissions: Joi.array().items(permissionSchema),
+    }).custom((value, helpers) => {
+      if (!value.staffRole && (!value.permissions || !value.permissions.length)) {
+        return helpers.message('Select a staff role or at least one permission');
+      }
+      return value;
+    }),
+  },
+  updateStaffUser: {
+    body: Joi.object({
+      displayName: Joi.string().trim().min(1).max(120),
+      password: Joi.string().min(8).max(128),
+      status: Joi.string().valid('active', 'suspended'),
+      staffRole: Joi.string().valid(...STAFF_ROLE_KEYS),
+      permissions: Joi.array().items(permissionSchema).min(1),
+    }).min(1),
+  },
+  listRecycle: {
+    query: Joi.object({
+      q: Joi.string().trim().max(120),
+      entityType: Joi.string().valid('book', 'chapter'),
+      page: Joi.number().integer().min(1).default(1),
+      pageSize: Joi.number().integer().min(1).max(100).default(20),
+    }),
+  },
+  listAuditLogs: {
+    query: Joi.object({
+      q: Joi.string().trim().max(120),
+      action: Joi.string().trim().max(64),
+      page: Joi.number().integer().min(1).default(1),
+      pageSize: Joi.number().integer().min(1).max(100).default(30),
+    }),
   },
   listBooks: {
     query: Joi.object({

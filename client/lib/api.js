@@ -2,6 +2,18 @@
 
 const BASE = `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '')}/api/v1`;
 
+function handleAccountSuspended(message) {
+  clearTokens();
+  if (typeof window !== 'undefined') {
+    import('@/stores/authStore').then(({ useAuthStore }) => {
+      useAuthStore.getState().logout();
+    });
+    window.dispatchEvent(new CustomEvent('nc:account-suspended', {
+      detail: { message: message || 'Your account has been suspended.' },
+    }));
+  }
+}
+
 let memoryAccessToken = null;
 let memoryRefreshToken = null;
 
@@ -46,7 +58,12 @@ async function tryRefresh() {
         body: JSON.stringify({ refreshToken }),
       });
       if (!res.ok) {
-        clearTokens();
+        const failData = await res.json().catch(() => null);
+        if (res.status === 403 && failData?.error?.code === 'ACCOUNT_SUSPENDED') {
+          handleAccountSuspended(failData.error.message);
+        } else {
+          clearTokens();
+        }
         return null;
       }
       const data = await res.json();
@@ -59,7 +76,7 @@ async function tryRefresh() {
   return refreshPromise;
 }
 
-async function request(path, { method = 'GET', body, query, headers, formData } = {}, _retry = false) {
+async function request(path, { method = 'GET', body, query, headers, formData, signal } = {}, _retry = false) {
   let url = `${BASE}${path}`;
   if (query && typeof query === 'object') {
     const qs = new URLSearchParams();
@@ -82,7 +99,7 @@ async function request(path, { method = 'GET', body, query, headers, formData } 
   const token = getAccessToken();
   if (token) finalHeaders['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(url, { method, headers: finalHeaders, body: payload });
+  const res = await fetch(url, { method, headers: finalHeaders, body: payload, signal });
 
   if (res.status === 401 && !_retry) {
     const refreshed = await tryRefresh();
@@ -101,6 +118,9 @@ async function request(path, { method = 'GET', body, query, headers, formData } 
     err.code = data && data.error && data.error.code;
     err.details = data && data.error && data.error.details;
     err.payload = data;
+    if (res.status === 403 && err.code === 'ACCOUNT_SUSPENDED') {
+      handleAccountSuspended(err.message);
+    }
     throw err;
   }
   return data;

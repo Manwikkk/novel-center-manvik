@@ -10,7 +10,7 @@ export default function AdminPageConfigurationLoading() {
       </div>
       <div className="px-4 md:px-edge py-8 max-w-3xl space-y-6">
         <Skeleton className="h-3 w-40" />
-        <div className="border border-ink-200/60 rounded-md divide-y divide-ink-200/60 overflow-hidden">
+        <div className="border border-outline-variant rounded-md divide-y divide-outline-variant overflow-hidden">
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between gap-4 px-4 py-4 bg-surface-container-lowest">
               <div className="space-y-2 flex-1">

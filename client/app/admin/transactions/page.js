@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import AuthGuard from '@/components/layout/AuthGuard';
+import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import TransactionsTable from '@/components/admin/TransactionsTable';
@@ -55,12 +55,12 @@ function Inner() {
               <Chip active={type === t}>{t.replace('_', ' ')}</Chip>
             </button>
           ))}
-          <span className="ml-auto text-[12px] text-ink-400 label-sm uppercase">
+          <span className="ml-auto text-[12px] text-on-surface-variant label-sm uppercase">
             {total} {total === 1 ? 'entry' : 'entries'}
           </span>
         </div>
         {loading ? (
-          <div className="border border-ink-200/60 rounded-md p-6 space-y-4">
+          <div className="border border-outline-variant rounded-md p-6 space-y-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonRow key={i} columns={6} />
             ))}
@@ -81,5 +81,5 @@ function Inner() {
 }
 
 export default function AdminTransactionsPage() {
-  return <AuthGuard roles={['admin']}><Inner /></AuthGuard>;
+  return <AdminPageGuard permission="transactions"><Inner /></AdminPageGuard>;
 }

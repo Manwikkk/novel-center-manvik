@@ -5,6 +5,7 @@ import SiteFooter from '@/components/layout/SiteFooter';
 import Icon from '@/components/ui/Icon';
 import BookDetailClient from './BookDetailClient';
 import BookTabsClient from './BookTabsClient';
+import BookActionsMenu from '@/components/book/BookActionsMenu';
 import YouMayAlsoLikeSection from '@/components/book/YouMayAlsoLikeSection';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -95,9 +96,12 @@ export default async function BookDetailPage({ params }) {
           </div>
 
           <div className="min-w-0 pt-1">
-            <h1 className="font-sans font-bold text-3xl sm:text-4xl md:text-[42px] leading-tight text-ink-900 dark:text-neutral-100">
-              {book.title}
-            </h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="font-sans font-bold text-3xl sm:text-4xl md:text-[42px] leading-tight text-ink-900 dark:text-neutral-100 min-w-0">
+                {book.title}
+              </h1>
+              <BookActionsMenu book={book} />
+            </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-ink-600 dark:text-neutral-400">
               <span className="inline-flex items-center gap-2 text-sm">

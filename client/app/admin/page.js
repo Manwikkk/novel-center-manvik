@@ -2,12 +2,16 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import AuthGuard from '@/components/layout/AuthGuard';
+import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
 import Icon from '@/components/ui/Icon';
 import { api } from '@/lib/api';
 import { formatTokens } from '@/lib/format';
+import { exportAdminDashboardReport } from '@/lib/adminReportExport';
+import { useUiStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
+import { hasAdminCapability } from '@/lib/adminPermissions';
 
 /**
  * Admin Panel — pixel-aligned with Stitch admin_panel.html.
@@ -22,9 +26,13 @@ import { formatTokens } from '@/lib/format';
  */
 
 function AdminOverview() {
+  const user = useAuthStore((s) => s.user);
+  const canExportReports = hasAdminCapability(user, 'transactions.reports');
+  const pushToast = useUiStore((s) => s.pushToast);
   const [stats, setStats] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [comments, setComments] = useState([]);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +52,27 @@ function AdminOverview() {
 
   const pendingCount = comments.length;
 
+  async function handleExportReport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const result = await exportAdminDashboardReport();
+      pushToast({
+        type: 'success',
+        title: 'Report exported',
+        message: `${result.transactionCount} transactions and ${result.commentCount} moderation items included.`,
+      });
+    } catch (err) {
+      pushToast({
+        type: 'error',
+        title: 'Export failed',
+        message: err.message || 'Could not generate the report.',
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <DashboardShell kind="admin">
       <main className="flex-1 overflow-y-auto">
@@ -59,13 +88,17 @@ function AdminOverview() {
             </div>
             <div className="flex flex-wrap items-center gap-3 self-start">
               <DashboardSiteHomeLink variant="topbar" />
-              <button
-                type="button"
-                className="bg-primary text-on-primary font-ui-label-sm text-ui-label-sm px-6 py-3 rounded uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2"
-              >
-                <Icon name="download" size={16} />
-                Export Report
-              </button>
+              {canExportReports && (
+                <button
+                  type="button"
+                  onClick={handleExportReport}
+                  disabled={exporting}
+                  className="bg-primary text-on-primary font-ui-label-sm text-ui-label-sm px-6 py-3 rounded uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Icon name="download" size={16} />
+                  {exporting ? 'Exporting…' : 'Export Report'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -285,8 +318,8 @@ function formatRelative(iso) {
 
 export default function AdminPage() {
   return (
-    <AuthGuard roles={['admin']}>
+    <AdminPageGuard permission="dashboard">
       <AdminOverview />
-    </AuthGuard>
+    </AdminPageGuard>
   );
 }

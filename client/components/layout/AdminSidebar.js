@@ -6,29 +6,16 @@ import Icon from '@/components/ui/Icon';
 import Logo from '@/components/ui/Logo';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
+import { navItemsForUser } from '@/lib/adminPermissions';
 import { DashboardThemeToggleSidebar } from '@/components/layout/DashboardThemeToggle';
 import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
-
-/**
- * Stitch "Admin" side navigation.  Same shape as the Author sidebar
- * but anchored by an admin profile chip and a different nav set.
- */
-
-export const ADMIN_NAV = [
-  { href: '/admin',                     label: 'Dashboard',          icon: 'dashboard',  exact: true },
-  { href: '/admin/page-configuration', label: 'Page Configuration', icon: 'tune' },
-  { href: '/admin/catalog',           label: 'Catalog',              icon: 'label' },
-  { href: '/admin/users',               label: 'User Management',    icon: 'group' },
-  { href: '/admin/comments',            label: 'Moderation',         icon: 'gavel' },
-  { href: '/admin/transactions',        label: 'Transactions',       icon: 'monitoring' },
-  { href: '/admin/books',               label: 'Books',              icon: 'menu_book' },
-];
 
 export default function AdminSidebar() {
   const pathname = usePathname() || '/';
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const navItems = navItemsForUser(user);
 
   return (
     <aside
@@ -52,14 +39,14 @@ export default function AdminSidebar() {
             {user?.displayName || 'Admin'}
           </p>
           <p className="font-ui-label-sm text-ui-label-sm text-on-surface-variant lowercase">
-            System Control
+            {user?.role === 'staff' ? 'Staff access' : 'System Control'}
           </p>
         </div>
       </div>
 
       <nav className="flex-1 flex flex-col gap-1 overflow-y-auto">
         <DashboardSiteHomeLink variant="admin-sidebar" />
-        {ADMIN_NAV.map((it) => {
+        {navItems.map((it) => {
           const active = it.exact ? pathname === it.href : pathname.startsWith(it.href);
           return (
             <Link

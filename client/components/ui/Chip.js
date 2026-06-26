@@ -6,8 +6,8 @@ export default function Chip({ children, active = false, as: Tag = 'span', class
       className={cn(
         'inline-flex items-center px-3 py-1 rounded-full border text-[12px] tracking-labelTight uppercase',
         active
-          ? 'bg-ink-900 text-cream-100 border-ink-900'
-          : 'bg-cream-100 text-ink-700 border-ink-300 hover:border-ink-700',
+          ? 'bg-on-surface text-surface border-on-surface dark:bg-neutral-100 dark:text-neutral-950 dark:border-neutral-100'
+          : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-on-surface dark:bg-neutral-900 dark:text-neutral-400 dark:border-neutral-700 dark:hover:border-neutral-500',
         className,
       )}
       {...rest}

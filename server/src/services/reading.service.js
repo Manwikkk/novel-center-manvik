@@ -3,6 +3,7 @@
 const pool = require('../db/pool');
 const { errors } = require('../utils/HttpError');
 const { clampPagination } = require('../utils/pagination');
+const { resolveUserRow, assertRestriction } = require('./suspension.service');
 
 const WPM = 220;
 
@@ -23,6 +24,9 @@ function minutesFromWords(words, percentRemaining = 100) {
 }
 
 async function upsertProgress(userId, chapterId, percent, position) {
+  const userRow = await resolveUserRow(userId);
+  assertRestriction(userRow, 'reading', 'Reading is restricted on your account');
+
   const [rows] = await pool.execute(
     'SELECT id, book_id, status FROM chapters WHERE id = ? LIMIT 1',
     [chapterId],
@@ -86,6 +90,8 @@ async function recent(userId, { page, pageSize, limit } = {}) {
        JOIN chapters c ON c.id = rp.chapter_id
       WHERE rp.user_id = ?
         AND b.status = 'published'
+        AND b.recycled_at IS NULL
+        AND c.recycled_at IS NULL
       ORDER BY rp.updated_at DESC
       LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`,
     [userId, userId],

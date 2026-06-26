@@ -14,6 +14,10 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useUiStore } from '@/stores/uiStore';
 import { formatTokens } from '@/lib/format';
 import { isChapterLocked, isChapterReadable } from '@/lib/chapterAccess';
+import {
+  hasReadingRestriction,
+  notifyReadingRestricted,
+} from '@/lib/readingRestriction';
 
 /**
  * Client island for the Book Detail page.  The server component mounts
@@ -58,11 +62,26 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
     [chapters],
   );
 
+  function guardReadingAccess() {
+    const currentUser = useAuthStore.getState().user;
+    if (hasReadingRestriction(currentUser)) {
+      notifyReadingRestricted(pushToast);
+      return false;
+    }
+    return true;
+  }
+
+  function goToChapter(chapterId) {
+    if (!guardReadingAccess()) return;
+    router.push(`/read/${chapterId}`);
+  }
+
   async function confirmUnlock(ch) {
     if (!useAuthStore.getState().user) {
       openAuthModal({ message: 'Sign in to unlock chapters.', onSuccess: () => confirmUnlock(ch) });
       return;
     }
+    if (!guardReadingAccess()) return;
     setBusy(true);
     try {
       const res = await api.post(`/chapters/${ch.id}/unlock`);
@@ -140,11 +159,11 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
               if (!user) {
                 openAuthModal({
                   message: 'Sign in to start reading.',
-                  onSuccess: () => router.push(`/read/${firstReadable.id}`),
+                  onSuccess: () => goToChapter(firstReadable.id),
                 });
                 return;
               }
-              router.push(`/read/${firstReadable.id}`);
+              goToChapter(firstReadable.id);
             }}
             className="px-8 py-4 bg-ink-900 text-white dark:bg-white dark:text-black font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:opacity-90 transition-colors flex items-center gap-2"
           >
@@ -184,6 +203,8 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
                 chapter={ch}
                 isLast={i === visible.length - 1}
                 onUnlockClick={handleUnlockClick}
+                onReadClick={goToChapter}
+                readingRestricted={hasReadingRestriction(user)}
                 busy={busy}
               />
             ))}
@@ -221,8 +242,17 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
   return null;
 }
 
-function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
-  const locked = isChapterLocked(chapter);
+function ChapterRow({
+  chapter,
+  onUnlockClick,
+  onReadClick,
+  readingRestricted,
+  busy,
+  isLast,
+}) {
+  const suspended = readingRestricted && chapter.canRead === false;
+  const locked = suspended || isChapterLocked(chapter);
+  const paidLock = locked && !suspended;
   const free = !chapter.isPaid || chapter.tokenPrice === 0;
   const dateLabel = new Date(chapter.updatedAt || chapter.createdAt || Date.now())
     .toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -253,9 +283,13 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
       {locked ? (
         <div className="flex items-center gap-6 min-w-0 flex-1">{Body}</div>
       ) : (
-        <Link href={`/read/${chapter.id}`} className="flex items-center gap-6 min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={() => onReadClick?.(chapter.id)}
+          className="flex items-center gap-6 min-w-0 flex-1 text-left"
+        >
           {Body}
-        </Link>
+        </button>
       )}
 
       <div className="flex items-center gap-4 shrink-0">
@@ -269,7 +303,17 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
             <Icon name="check_circle" filled size={14} /> Unlocked
           </span>
         )}
-        {locked && (
+        {suspended && (
+          <button
+            type="button"
+            onClick={() => onReadClick?.(chapter.id)}
+            disabled={busy}
+            className="px-4 py-2 border border-danger/40 text-danger font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-danger/5 transition-colors text-[10px] disabled:opacity-60"
+          >
+            Restricted
+          </button>
+        )}
+        {paidLock && (
           <>
             <div className="hidden sm:flex items-center gap-1 bg-tertiary-fixed/20 dark:bg-tertiary-container/60 px-3 py-1 rounded-full border border-tertiary-fixed-dim/30 dark:border-on-tertiary-container/40">
               <Icon name="toll" filled size={14} className="text-on-tertiary-container" />
@@ -287,13 +331,14 @@ function ChapterRow({ chapter, onUnlockClick, busy, isLast }) {
             </button>
           </>
         )}
-        {!free && chapter.isUnlocked && (
-          <Link
-            href={`/read/${chapter.id}`}
+        {!free && chapter.isUnlocked && !suspended && (
+          <button
+            type="button"
+            onClick={() => onReadClick?.(chapter.id)}
             className="px-4 py-2 border border-neutral-400 dark:border-neutral-600 text-ink-900 dark:text-neutral-100 font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors text-[10px]"
           >
             Read
-          </Link>
+          </button>
         )}
       </div>
     </div>

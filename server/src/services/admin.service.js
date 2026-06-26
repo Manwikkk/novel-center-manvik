@@ -3,10 +3,37 @@
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/tx');
 const { errors } = require('../utils/HttpError');
-const { publicUser } = require('./auth.service');
+const { publicUser } = require('../utils/publicUser');
 const { clampPagination } = require('../utils/pagination');
+const { getTemporaryBanDays } = require('./adminSettings.service');
+const {
+  sanitizeRestrictions,
+  hasAnyRestriction,
+  clearSuspension,
+  parseRestrictions,
+} = require('./suspension.service');
+const permSvc = require('./adminPermissions.service');
+const { assertCapability } = require('../constants/adminPermissions');
+const auditSvc = require('./audit.service');
 
-async function listUsers({ q, role, status, page, pageSize }) {
+async function actorContext(actor) {
+  if (!actor) return { perms: [], staffRole: null };
+  if (actor.role === 'admin') {
+    return { perms: null, staffRole: null };
+  }
+  const perms = await permSvc.getUserPermissions(actor.id);
+  const meta = await permSvc.getStaffMeta(actor.id);
+  return { perms, staffRole: meta?.staff_role || actor.staffRole || null };
+}
+
+async function listUsers({ q, role, status, page, pageSize }, actor = null) {
+  const ctx = await actorContext(actor);
+  if (actor?.role === 'staff') {
+    assertCapability(actor, ctx.perms, 'users.view', 'Cannot view user profiles');
+    if (ctx.staffRole === 'author_relations' && !role) {
+      role = 'author';
+    }
+  }
   const where = [];
   const params = [];
   if (q) {
@@ -35,20 +62,116 @@ async function listUsers({ q, role, status, page, pageSize }) {
   };
 }
 
-async function updateUser(id, patch) {
-  const [u] = await pool.execute('SELECT id FROM users WHERE id = ?', [id]);
+async function updateUser(id, patch, actor) {
+  const [u] = await pool.execute('SELECT id, role, email, display_name FROM users WHERE id = ?', [id]);
   if (!u[0]) throw errors.notFound('User not found');
+  const target = u[0];
+  const ctx = await actorContext(actor);
+
+  if (patch.walletDelta !== undefined && patch.walletDelta !== 0) {
+    assertCapability(actor, ctx.perms, 'users.manage_wallet', 'Cannot adjust wallet balances');
+  }
+  if (patch.role) {
+    assertCapability(actor, ctx.perms, 'users.manage_roles', 'Cannot change member roles');
+  }
+  const suspensionPatch = patch.status === 'suspended'
+    || patch.status === 'active'
+    || patch.removeRestrictions?.length;
+  if (suspensionPatch && actor?.role === 'staff') {
+    const canSuspend = ctx.perms.includes('users.suspend')
+      || ctx.perms.includes('comments.suspend_content');
+    if (!canSuspend) throw errors.forbidden('Cannot suspend or reinstate members');
+  }
+
+  if (actor?.role === 'staff') {
+    if (['admin', 'staff'].includes(u[0].role)) {
+      throw errors.forbidden('Cannot modify admin or staff accounts');
+    }
+    if (patch.role && ['admin', 'staff'].includes(patch.role)) {
+      throw errors.forbidden('Cannot assign admin or staff role');
+    }
+  }
+
+  if (patch.role === 'staff') {
+    throw errors.badRequest('Create staff accounts from Access Control');
+  }
 
   return withTransaction(async (conn) => {
-    if (patch.role || patch.status) {
-      const fields = [];
-      const params = [];
-      if (patch.role) { fields.push('role = ?'); params.push(patch.role); }
-      if (patch.status) { fields.push('status = ?'); params.push(patch.status); }
-      params.push(id);
-      await conn.execute(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, params);
+    if (patch.role) {
+      await conn.execute('UPDATE users SET role = ? WHERE id = ?', [patch.role, id]);
     }
-    if (patch.walletDelta) {
+
+    if (patch.removeRestrictions?.length) {
+      const [rows] = await conn.execute(
+        'SELECT status, suspension_type, suspended_until, suspension_restrictions FROM users WHERE id = ?',
+        [id],
+      );
+      const row = rows[0];
+      let current = parseRestrictions(row.suspension_restrictions);
+      if (!current || !hasAnyRestriction(current)) {
+        if (row.status === 'suspended') {
+          current = sanitizeRestrictions({ portal_access: true });
+        } else {
+          throw errors.badRequest('User has no active restrictions');
+        }
+      }
+
+      const toRemove = [...new Set(patch.removeRestrictions)];
+      for (const key of toRemove) {
+        if (!current[key]) {
+          throw errors.badRequest(`Restriction "${key}" is not active on this account`);
+        }
+        current[key] = false;
+      }
+
+      if (!hasAnyRestriction(current)) {
+        await clearSuspension(conn, id);
+      } else {
+        const portalBlock = !!current.portal_access;
+        await conn.execute(
+          `UPDATE users
+              SET status = ?,
+                  suspension_restrictions = ?
+            WHERE id = ?`,
+          [portalBlock ? 'suspended' : 'active', JSON.stringify(current), id],
+        );
+      }
+    } else if (patch.status === 'active') {
+      await clearSuspension(conn, id);
+    } else if (patch.status === 'suspended') {
+      const restrictions = sanitizeRestrictions(patch.restrictions);
+      if (!hasAnyRestriction(restrictions)) {
+        throw errors.badRequest('Select at least one restriction');
+      }
+      const suspensionType = patch.suspensionType;
+      if (!['permanent', 'temporary'].includes(suspensionType)) {
+        throw errors.badRequest('Suspension type must be permanent or temporary');
+      }
+
+      let suspendedUntil = null;
+      if (suspensionType === 'temporary') {
+        const days = await getTemporaryBanDays();
+        suspendedUntil = new Date(Date.now() + days * 86_400_000);
+      }
+
+      const portalBlock = !!restrictions.portal_access;
+      await conn.execute(
+        `UPDATE users
+            SET status = ?,
+                suspension_type = ?,
+                suspended_until = ?,
+                suspension_restrictions = ?
+          WHERE id = ?`,
+        [
+          portalBlock ? 'suspended' : 'active',
+          suspensionType,
+          suspendedUntil,
+          JSON.stringify(restrictions),
+          id,
+        ],
+      );
+    }
+    if (patch.walletDelta !== undefined && patch.walletDelta !== 0) {
       await conn.execute(
         'UPDATE wallets SET balance = GREATEST(CAST(balance AS SIGNED) + ?, 0) WHERE user_id = ?',
         [patch.walletDelta, id],
@@ -64,12 +187,47 @@ async function updateUser(id, patch) {
        FROM users u LEFT JOIN wallets w ON w.user_id = u.id WHERE u.id = ?`,
       [id],
     );
-    return { ...publicUser(rows[0]), wallet: { balance: Number(rows[0].wallet_balance) } };
+    const updated = { ...publicUser(rows[0]), wallet: { balance: Number(rows[0].wallet_balance) } };
+
+    if (actor && (patch.walletDelta || patch.role || suspensionPatch)) {
+      let action = 'user.update';
+      let summary = `Updated member ${target.display_name}`;
+      if (patch.walletDelta) {
+        action = patch.walletDelta > 0 ? 'user.tokens_add' : 'user.tokens_deduct';
+        summary = `${patch.walletDelta > 0 ? 'Added' : 'Deducted'} ${Math.abs(patch.walletDelta)} tokens for ${target.display_name}`;
+      } else if (patch.status === 'suspended') {
+        action = 'user.suspend';
+        summary = `Suspended ${target.display_name}`;
+      } else if (patch.status === 'active' || patch.removeRestrictions?.length) {
+        action = 'user.reinstate';
+        summary = `Reinstated or lifted restrictions for ${target.display_name}`;
+      } else if (patch.role) {
+        action = 'user.role_change';
+        summary = `Changed role for ${target.display_name} to ${patch.role}`;
+      }
+      await auditSvc.logAction({
+        actor: { ...actor, staffRole: ctx.staffRole },
+        action,
+        targetType: 'user',
+        targetId: id,
+        summary,
+        meta: {
+          walletDelta: patch.walletDelta,
+          role: patch.role,
+          status: patch.status,
+          removeRestrictions: patch.removeRestrictions,
+          restrictions: patch.restrictions,
+          suspensionType: patch.suspensionType,
+        },
+      });
+    }
+
+    return updated;
   });
 }
 
 async function listBooks({ q, status, page, pageSize }) {
-  const where = [];
+  const where = ['b.recycled_at IS NULL'];
   const params = [];
   if (q) { where.push('(b.title LIKE ? OR b.slug LIKE ?)'); const like = `%${q}%`; params.push(like, like); }
   if (status) { where.push('b.status = ?'); params.push(status); }
@@ -77,7 +235,7 @@ async function listBooks({ q, status, page, pageSize }) {
   const { page: safePage, pageSize: safePageSize, offset } = clampPagination(page, pageSize);
   const [rows] = await pool.execute(
     `SELECT b.*, u.display_name AS author_name,
-       (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id) AS chapter_count
+       (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.recycled_at IS NULL) AS chapter_count
      FROM books b JOIN users u ON u.id = b.author_id
      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY b.updated_at DESC LIMIT ${safePageSize} OFFSET ${offset}`,

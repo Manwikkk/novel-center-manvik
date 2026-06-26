@@ -39,6 +39,22 @@ export const useAuthStore = create(
         return data.user;
       },
 
+      loginWithGoogle: async (credential) => {
+        const data = await api.post('/auth/google', { credential });
+        setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+        set({ user: data.user, hydrated: true });
+        return data;
+      },
+
+      completeOnboarding: async (role) => {
+        const data = await api.post('/auth/onboarding', { role });
+        if (data.accessToken) {
+          setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+        }
+        set({ user: data.user, hydrated: true });
+        return data.user;
+      },
+
       logout: () => {
         clearTokens();
         set({ user: null });
@@ -49,6 +65,19 @@ export const useAuthStore = create(
       hasRole: (...roles) => {
         const u = get().user;
         return !!(u && roles.includes(u.role));
+      },
+
+      hasAdminPermission: (permission) => {
+        const u = get().user;
+        if (!u) return false;
+        if (u.role === 'admin') return true;
+        if (u.role !== 'staff') return false;
+        return (u.adminPermissions || []).includes(permission);
+      },
+
+      canAccessAdminPanel: () => {
+        const u = get().user;
+        return u?.role === 'admin' || u?.role === 'staff';
       },
     }),
     {

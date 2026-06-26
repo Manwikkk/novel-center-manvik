@@ -6,6 +6,9 @@ import Icon from '@/components/ui/Icon';
 import TextInput from '@/components/ui/TextInput';
 import Button from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
+import AuthSocialDivider from '@/components/auth/AuthSocialDivider';
+import RolePicker from '@/components/auth/RolePicker';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -77,8 +80,11 @@ function RegisterPanel({ onSuccess }) {
   const refreshWallet = useWalletStore((s) => s.refresh);
   const pushToast = useUiStore((s) => s.pushToast);
   const [form, setForm] = useState({ displayName: '', email: '', password: '', role: 'user' });
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -86,6 +92,14 @@ function RegisterPanel({ onSuccess }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    const next = {};
+    if (!form.displayName.trim()) next.displayName = 'Username is required.';
+    if (form.password.length < 8) next.password = 'Password must be at least 8 characters.';
+    if (confirmPassword !== form.password) next.confirmPassword = 'Passwords do not match.';
+    if (!acceptedTerms) next.terms = 'Accept the Terms & Conditions and Privacy Policy.';
+    setFieldErrors(next);
+    if (Object.keys(next).length) return;
+
     setBusy(true);
     setError('');
     try {
@@ -104,14 +118,17 @@ function RegisterPanel({ onSuccess }) {
     }
   }
 
+  const passwordsMismatch =
+    confirmPassword.length > 0 && confirmPassword !== form.password;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {error ? (
         <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-[14px] text-danger">
           {error}
         </div>
       ) : null}
-      <TextInput label="Display name" value={form.displayName} onChange={update('displayName')} required />
+      <TextInput label="Username" value={form.displayName} onChange={update('displayName')} autoComplete="username" required error={fieldErrors.displayName} />
       <TextInput label="Email" type="email" value={form.email} onChange={update('email')} autoComplete="email" required />
       <TextInput
         label="Password"
@@ -120,34 +137,34 @@ function RegisterPanel({ onSuccess }) {
         onChange={update('password')}
         autoComplete="new-password"
         required
-        hint="At least 8 characters."
+        hint={fieldErrors.password ? undefined : 'At least 8 characters.'}
+        error={fieldErrors.password}
       />
-      <fieldset>
-        <legend className="label-sm uppercase tracking-[0.2em] text-ink-500">I&rsquo;m here to</legend>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {[
-            { value: 'user', label: 'Read' },
-            { value: 'author', label: 'Write' },
-          ].map((opt) => {
-            const active = form.role === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, role: opt.value }))}
-                className={cn(
-                  'rounded-lg border p-3 text-left text-[13px] transition-colors',
-                  active
-                    ? 'border-ink-900 bg-ink-900 text-white'
-                    : 'border-neutral-200 text-ink-900 hover:border-ink-400',
-                )}
-              >
-                <span className="font-semibold uppercase tracking-wider text-[11px]">{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+      <TextInput
+        label="Confirm password"
+        type="password"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        autoComplete="new-password"
+        required
+        error={fieldErrors.confirmPassword || (passwordsMismatch ? 'Passwords do not match.' : undefined)}
+      />
+      <label className="flex items-start gap-2.5 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={acceptedTerms}
+          onChange={(e) => setAcceptedTerms(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-ink-300"
+        />
+        <span className="text-[12px] leading-relaxed text-ink-600">
+          I agree to the{' '}
+          <a href="/legal/terms" className="font-semibold text-ink-900 underline">Terms &amp; Conditions</a>
+          {' '}and{' '}
+          <a href="/legal/privacy" className="font-semibold text-ink-900 underline">Privacy Policy</a>.
+        </span>
+      </label>
+      {fieldErrors.terms ? <p className="text-[12px] text-danger -mt-2">{fieldErrors.terms}</p> : null}
+      <RolePicker value={form.role} onChange={(role) => setForm((f) => ({ ...f, role }))} />
       <Button
         type="submit"
         variant="primary"
@@ -165,6 +182,7 @@ export default function AuthModal() {
   const router = useRouter();
   const { open, tab, message } = useUiStore((s) => s.authModal);
   const closeAuthModal = useUiStore((s) => s.closeAuthModal);
+  const closeAuthModalForOnboarding = useUiStore((s) => s.closeAuthModalForOnboarding);
   const setAuthModalTab = useUiStore((s) => s.setAuthModalTab);
   const finishAuthModal = useUiStore((s) => s.finishAuthModal);
 
@@ -242,6 +260,14 @@ export default function AuthModal() {
         </div>
 
         <div className="mt-6">
+          <GoogleSignInButton
+              label={tab === 'login' ? 'signin_with' : 'signup_with'}
+              onSuccess={(data) => {
+                if (!data?.requiresOnboarding) handleSuccess();
+                else closeAuthModalForOnboarding();
+              }}
+            />
+          <AuthSocialDivider />
           {tab === 'login' ? (
             <LoginPanel onSuccess={handleSuccess} />
           ) : (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import AuthGuard from '@/components/layout/AuthGuard';
+import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -11,8 +11,9 @@ import { cn } from '@/lib/cn';
 
 const SECTION_ROWS = [
   { key: 'weekly_book',      label: 'Weekly Book',      hint: 'Hero — left column'   },
-  { key: 'meet_webnovel',    label: 'Meet Webnovel',    hint: 'Hero — right column'  },
+  { key: 'meet_webnovel',    label: 'Meet Novel Centre', hint: 'Hero — right column'  },
   { key: 'recommended',      label: 'Recommended',      hint: 'Home feed'            },
+  { key: 'continue_reading', label: 'Continue Reading', hint: 'Logged-in users'      },
   { key: 'new_arrivals',     label: 'New Arrivals',     hint: 'Home feed'            },
   { key: 'ranking_novels',   label: 'Ranking Novels',   hint: 'Home feed'            },
   { key: 'updated_today',    label: 'Updated Today',    hint: 'Home feed'            },
@@ -34,8 +35,8 @@ function SectionSwitch({ on, disabled, onToggle, id }) {
         // Track: 52px wide, 30px tall — gives enough room for the knob
         'relative inline-flex h-[30px] w-[52px] shrink-0 cursor-pointer items-center',
         'rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-cream-100',
-        on  ? 'bg-ink-900' : 'bg-ink-300',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-cream-100 dark:focus-visible:ring-offset-neutral-900',
+        on ? 'bg-ink-900 dark:bg-neutral-200' : 'bg-ink-300 dark:bg-neutral-600',
         disabled && 'opacity-50 cursor-not-allowed',
       )}
     >
@@ -99,7 +100,7 @@ function Inner() {
         subtitle="Administration"
         title="Page configuration"
         actions={(
-          <p className="text-[12px] text-ink-500 max-w-xs md:max-w-md text-right normal-case tracking-normal font-sans font-normal">
+          <p className="text-[12px] text-on-surface-variant max-w-xs md:max-w-md text-right normal-case tracking-normal font-sans font-normal">
             Toggles control which blocks appear on the public home page.
             Turning off one hero column lets the other span full width.
           </p>
@@ -107,11 +108,11 @@ function Inner() {
       />
 
       <div className="px-4 md:px-edge py-8 space-y-6 max-w-3xl">
-        <p className="label-sm uppercase text-ink-400">
+        <p className="label-sm uppercase text-on-surface-variant">
           Home page sections
         </p>
 
-        <div className="border border-ink-200/60 rounded-md divide-y divide-ink-200/60 overflow-hidden">
+        <div className="border border-outline-variant rounded-md divide-y divide-outline-variant overflow-hidden">
           {loading || !sections
             ? SECTION_ROWS.map((row) => (
                 <div
@@ -135,11 +136,11 @@ function Inner() {
                     <div className="min-w-0">
                       <label
                         htmlFor={`sec-${row.key}`}
-                        className="font-serif text-[16px] text-ink-900 cursor-pointer"
+                        className="font-serif text-[16px] text-on-surface cursor-pointer"
                       >
                         {row.label}
                       </label>
-                      <p className="mt-0.5 text-[12px] text-ink-500 normal-case tracking-normal font-sans font-normal">
+                      <p className="mt-0.5 text-[12px] text-on-surface-variant normal-case tracking-normal font-sans font-normal">
                         {row.hint}
                       </p>
                     </div>
@@ -160,8 +161,8 @@ function Inner() {
 
 export default function AdminPageConfigurationPage() {
   return (
-    <AuthGuard roles={['admin']}>
+    <AdminPageGuard permission="page_configuration">
       <Inner />
-    </AuthGuard>
+    </AdminPageGuard>
   );
 }

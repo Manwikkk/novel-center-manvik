@@ -260,10 +260,10 @@ export default function BookDashboardPanel({ books, loading: booksLoading, class
                 </p>
                 <div className="flex flex-wrap gap-2 mt-4">
                   <Link
-                    href={`/author/books/${selectedId}/chapters/new`}
+                    href={`/author/books/${selectedId}/chapters`}
                     className="inline-flex items-center justify-center px-5 py-2 rounded-md bg-studio-accent hover:bg-studio-accent-hover text-white text-[11px] font-bold uppercase tracking-wider transition-colors"
                   >
-                    New chapter
+                    Chapters
                   </Link>
                   <Link
                     href={`/author/books/${selectedId}/edit`}

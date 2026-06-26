@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import SectionViewAllLink from '@/components/home/SectionViewAllLink';
+import { cn } from '@/lib/cn';
 
 function normalizeCover(url) {
   if (!url) return url;
@@ -24,14 +25,18 @@ export default function UpdatedTodaySection({ items = [] }) {
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 sm:gap-x-6 sm:gap-y-8">
-        {visible.map((b) => {
+        {visible.map((b, i) => {
           const href = b?.slug ? `/books/${b.slug}` : '/discover';
           const cover = normalizeCover(b?.coverUrl);
           const title = b?.title || 'Untitled';
           const category = b?.category || 'Novel';
 
           return (
-            <Link key={b?.id ?? href + title} href={href} className="min-w-0 group block">
+            <Link
+              key={b?.id ?? href + title}
+              href={href}
+              className={cn('min-w-0 group block', i >= 6 && 'hidden sm:block')}
+            >
               <div className="relative w-full max-w-[120px] aspect-[2/3] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-900 shadow-book ring-1 ring-black/5 dark:ring-white/10">
                 {cover ? (
                   <div className="relative h-full w-full">

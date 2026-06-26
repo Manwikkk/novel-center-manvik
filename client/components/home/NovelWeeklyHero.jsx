@@ -174,11 +174,11 @@ export default function NovelWeeklyHero({ items = [], visibility = {} }) {
           </div>
           ) : null}
 
-          {/* Meet Webnovel — sidebar */}
+          {/* Meet Novel Centre — sidebar */}
           {renderMeet ? (
           <div className={meetCol}>
             <h2 className="font-ui-label-sm text-ui-label-sm font-bold uppercase tracking-widest text-ink-900 dark:text-neutral-100">
-              Meet Webnovel
+              Meet Novel Centre
             </h2>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-editorial-card divide-y divide-neutral-200 dark:divide-neutral-800">
               {SIDEBAR.map((item) => (

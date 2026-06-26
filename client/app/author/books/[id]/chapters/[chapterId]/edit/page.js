@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { CalendarClock, Pencil, Plus } from 'lucide-react';
 import AuthGuard from '@/components/layout/AuthGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
@@ -11,19 +11,102 @@ import TextInput from '@/components/ui/TextInput';
 import ChapterEditor from '@/components/author/ChapterEditor';
 import AuthorThoughtModal from '@/components/author/AuthorThoughtModal';
 import { api } from '@/lib/api';
+import { formatDateTime } from '@/lib/format';
 import { useUiStore } from '@/stores/uiStore';
 import { useChapterDraft } from '@/lib/useChapterDraft';
 import { cn } from '@/lib/cn';
 
 const SERVER_DEBOUNCE_MS = 3000;
 const DEFAULT_CHAPTER_TITLE = 'Untitled chapter';
+const PUBLISH_MODES = [
+  { id: 'draft', label: 'Draft' },
+  { id: 'publishNow', label: 'Publish now' },
+  { id: 'schedule', label: 'Schedule' },
+];
+
+function toDatetimeLocalValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocalValue(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function isCompleteDatetimeLocal(value) {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value);
+}
+
+function derivePublishMode(chapter) {
+  if (!chapter) return 'draft';
+  if (chapter.status === 'published') return 'publishNow';
+  if (chapter.scheduledPublishAt) return 'schedule';
+  return 'draft';
+}
 
 function normalizeChapterPayload(data) {
   if (!data) return null;
+  const isPaid = !!data.isPaid;
   return {
     ...data,
     title: String(data.title ?? '').trim() || DEFAULT_CHAPTER_TITLE,
+    isPaid,
+    tokenPrice: isPaid ? Math.max(0, Number.parseInt(data.tokenPrice, 10) || 0) : 0,
   };
+}
+
+function buildSnapshotFromChapter(chapter, contentHtml, publishMode) {
+  let status = chapter.status;
+  let scheduledPublishAt = chapter.scheduledPublishAt || null;
+  if (publishMode === 'draft') {
+    status = 'draft';
+    scheduledPublishAt = null;
+  } else if (publishMode === 'publishNow') {
+    status = 'published';
+    scheduledPublishAt = null;
+  } else if (publishMode === 'schedule') {
+    status = 'draft';
+    scheduledPublishAt = chapter.scheduledPublishAt || null;
+  }
+  return {
+    title: chapter.title,
+    contentHtml,
+    idx: Number(chapter.idx),
+    isPaid: !!chapter.isPaid,
+    tokenPrice: chapter.isPaid ? Number(chapter.tokenPrice) || 0 : 0,
+    status,
+    scheduledPublishAt,
+    authorThought: chapter.authorThought || '',
+  };
+}
+
+function resolveScheduleAt(publishMode, chapter, scheduleLocal, scheduleLocalRef) {
+  if (publishMode !== 'schedule') return null;
+  if (chapter?.scheduledPublishAt) return chapter.scheduledPublishAt;
+  const pending = scheduleLocalRef?.current || scheduleLocal;
+  if (isCompleteDatetimeLocal(pending)) return fromDatetimeLocalValue(pending);
+  return null;
+}
+
+function buildPersistPayload(snapshot, publishMode, scheduleAt = null) {
+  const payload = normalizeChapterPayload({ ...snapshot });
+  const at = publishMode === 'schedule' ? scheduleAt : null;
+  if (at && new Date(at).getTime() > Date.now()) {
+    payload.scheduledPublishAt = at;
+  } else {
+    payload.scheduledPublishAt = null;
+  }
+  return payload;
+}
+
+function serializePersistState(snapshot, publishMode, scheduleAt = null) {
+  return JSON.stringify(buildPersistPayload(snapshot, publishMode, scheduleAt));
 }
 
 function relativeFromNow(ts) {
@@ -82,24 +165,38 @@ function ChapterEditInner() {
   const [saveState, setSaveState] = useState('idle');
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [thoughtModalOpen, setThoughtModalOpen] = useState(false);
+  const [publishMode, setPublishMode] = useState('draft');
+  const [scheduleLocal, setScheduleLocal] = useState('');
+  const [scheduleEditing, setScheduleEditing] = useState(false);
 
   const hydratedRef = useRef(false);
   const serverTimerRef = useRef(null);
   const persistRef = useRef(null);
   const lastSavedSnapshotRef = useRef(null);
+  const schedulePickerFocusedRef = useRef(false);
+  const scheduleEditingRef = useRef(false);
+  const scheduleLocalRef = useRef('');
+  const serverStatusRef = useRef(null);
+
+  function syncScheduleFields(scheduledAt, { editing = false } = {}) {
+    const local = toDatetimeLocalValue(scheduledAt);
+    scheduleLocalRef.current = local;
+    setScheduleLocal(local);
+    scheduleEditingRef.current = editing;
+    setScheduleEditing(editing);
+  }
+
+  function displayScheduleIso() {
+    if (chapter?.scheduledPublishAt) return chapter.scheduledPublishAt;
+    const pending = scheduleLocalRef.current || scheduleLocal;
+    if (isCompleteDatetimeLocal(pending)) return fromDatetimeLocalValue(pending);
+    return null;
+  }
 
   const snapshot = useMemo(() => {
     if (!chapter) return null;
-    return {
-      title: chapter.title,
-      contentHtml: content,
-      idx: Number(chapter.idx),
-      isPaid: !!chapter.isPaid,
-      tokenPrice: chapter.isPaid ? Number(chapter.tokenPrice) || 0 : 0,
-      status: chapter.status,
-      authorThought: chapter.authorThought || '',
-    };
-  }, [chapter, content]);
+    return buildSnapshotFromChapter(chapter, content, publishMode);
+  }, [chapter, content, publishMode]);
 
   useEffect(() => {
     let cancel = false;
@@ -114,36 +211,67 @@ function ChapterEditInner() {
           : 0;
         const draft = loadDraft(chapterId);
 
-        const serverSnapshot = {
-          title: serverChapter.title,
-          contentHtml: serverChapter.contentHtml || '',
-          idx: Number(serverChapter.idx),
-          isPaid: !!serverChapter.isPaid,
-          tokenPrice: serverChapter.isPaid ? Number(serverChapter.tokenPrice) || 0 : 0,
-          status: serverChapter.status,
-          authorThought: serverChapter.authorThought || '',
-        };
-        lastSavedSnapshotRef.current = JSON.stringify(normalizeChapterPayload(serverSnapshot));
+        serverStatusRef.current = serverChapter.status;
+        const serverContent = serverChapter.contentHtml || '';
+        const serverPublished = serverChapter.status === 'published';
 
-        if (draft && Number(draft.savedAt || 0) > serverTime) {
-          setChapter({
-            ...serverChapter,
-            title: draft.title ?? serverChapter.title,
-            idx: draft.idx ?? serverChapter.idx,
-            isPaid: draft.isPaid ?? serverChapter.isPaid,
-            tokenPrice: draft.tokenPrice ?? serverChapter.tokenPrice,
-            status: draft.status ?? serverChapter.status,
-            authorThought: draft.authorThought ?? serverChapter.authorThought ?? '',
-          });
-          setContent(draft.contentHtml ?? serverChapter.contentHtml ?? '');
+        // Published on server always wins — stale local drafts must not unpublish.
+        if (serverPublished) {
+          if (draft) clearDraft(chapterId);
+          setChapter(serverChapter);
+          setContent(serverContent);
+          setPublishMode('publishNow');
+          syncScheduleFields(null, { editing: false });
+          setSaveState('idle');
+          lastSavedSnapshotRef.current = serializePersistState(
+            buildSnapshotFromChapter(serverChapter, serverContent, 'publishNow'),
+            'publishNow',
+            null,
+          );
+          hydratedRef.current = true;
+          return;
+        }
+
+        const draftContent = draft?.contentHtml ?? '';
+        const draftIsNewer = draft && Number(draft.savedAt || 0) > serverTime;
+        const draftHasContentOnly = draft && !serverContent && draftContent;
+        const useDraft = draftIsNewer || draftHasContentOnly;
+        const draftScheduleAt = draft?.scheduledPublishAt ?? null;
+        const mergedChapter = useDraft
+          ? {
+              ...serverChapter,
+              title: draft.title ?? serverChapter.title,
+              idx: draft.idx ?? serverChapter.idx,
+              isPaid: draft.isPaid ?? serverChapter.isPaid,
+              tokenPrice: draft.tokenPrice ?? serverChapter.tokenPrice,
+              status: draftScheduleAt ? 'draft' : (draft.status ?? serverChapter.status),
+              scheduledPublishAt: draftScheduleAt || serverChapter.scheduledPublishAt || null,
+              authorThought: draft.authorThought ?? serverChapter.authorThought ?? '',
+            }
+          : serverChapter;
+
+        const initialContent = useDraft ? draftContent : serverContent;
+
+        if (useDraft) {
           setSaveState('dirty');
           pushToast({ type: 'success', title: 'Unsaved changes restored' });
         } else {
           if (draft) clearDraft(chapterId);
-          setChapter(serverChapter);
-          setContent(serverChapter.contentHtml || '');
           setSaveState('idle');
         }
+
+        setChapter(mergedChapter);
+        setContent(initialContent);
+        const mode = derivePublishMode(mergedChapter);
+        setPublishMode(mode);
+        syncScheduleFields(mergedChapter.scheduledPublishAt, {
+          editing: mode === 'schedule' && !mergedChapter.scheduledPublishAt,
+        });
+        lastSavedSnapshotRef.current = serializePersistState(
+          buildSnapshotFromChapter(mergedChapter, initialContent, mode),
+          mode,
+          mergedChapter.scheduledPublishAt,
+        );
 
         hydratedRef.current = true;
       })
@@ -157,32 +285,139 @@ function ChapterEditInner() {
     setChapter((c) => ({ ...c, [field]: value }));
   }
 
+  function changePublishMode(mode) {
+    setPublishMode(mode);
+    if (mode === 'draft') {
+      setChapter((c) => ({ ...c, status: 'draft', scheduledPublishAt: null }));
+      syncScheduleFields(null, { editing: false });
+    } else if (mode === 'publishNow') {
+      setChapter((c) => ({ ...c, status: 'published', scheduledPublishAt: null }));
+      syncScheduleFields(null, { editing: false });
+    } else if (mode === 'schedule') {
+      const existing = chapter?.scheduledPublishAt || null;
+      setChapter((c) => ({ ...c, status: 'draft' }));
+      syncScheduleFields(existing, { editing: !existing });
+    }
+  }
+
+  function startReschedule() {
+    syncScheduleFields(chapter?.scheduledPublishAt, { editing: true });
+  }
+
+  function commitScheduleLocal(localValue = scheduleLocalRef.current) {
+    if (!isCompleteDatetimeLocal(localValue)) return;
+    const iso = fromDatetimeLocalValue(localValue);
+    setChapter((c) => ({ ...c, status: 'draft', scheduledPublishAt: iso }));
+    scheduleEditingRef.current = false;
+    setScheduleEditing(false);
+  }
+
+  function effectiveScheduledPublishAt() {
+    if (publishMode !== 'schedule') return null;
+    if (chapter?.scheduledPublishAt) return chapter.scheduledPublishAt;
+    const pending = scheduleLocalRef.current || scheduleLocal;
+    if (isCompleteDatetimeLocal(pending)) return fromDatetimeLocalValue(pending);
+    return null;
+  }
+
   const persist = useCallback(async ({ manual = false, statusOverride } = {}) => {
     if (!chapter || !snapshot) return false;
-    const payload = normalizeChapterPayload(
-      statusOverride ? { ...snapshot, status: statusOverride } : snapshot,
-    );
-    const sentSerialized = JSON.stringify(payload);
+    const base = statusOverride ? { ...snapshot, status: statusOverride } : snapshot;
+    const scheduleAt = resolveScheduleAt(publishMode, chapter, scheduleLocal, scheduleLocalRef);
+    const payload = buildPersistPayload(base, publishMode, scheduleAt);
+    if (manual && publishMode === 'schedule' && scheduleEditing && !scheduleAt) {
+      pushToast({ type: 'error', title: 'Pick a publish date and time' });
+      setSaveState('error');
+      return false;
+    }
+    if (
+      manual
+      && scheduleEditing
+      && payload.scheduledPublishAt
+      && new Date(payload.scheduledPublishAt).getTime() <= Date.now()
+    ) {
+      pushToast({ type: 'error', title: 'Scheduled time must be in the future' });
+      setSaveState('error');
+      return false;
+    }
+    const sentSerialized = serializePersistState(base, publishMode, scheduleAt);
     if (!manual && sentSerialized === lastSavedSnapshotRef.current) {
       return true;
+    }
+    if (!manual && serverStatusRef.current === 'published' && payload.status !== 'published') {
+      return false;
     }
     if (manual) setBusy(true);
     setSaveState('saving');
     try {
+      if (!manual && payload.status === 'draft') {
+        const fresh = await api.get(`/chapters/${chapter.id}`);
+        if (fresh.chapter?.status === 'published') {
+          serverStatusRef.current = 'published';
+          const publishedContent = fresh.chapter.contentHtml || content;
+          setChapter((c) => (
+            c
+              ? {
+                  ...c,
+                  status: 'published',
+                  scheduledPublishAt: null,
+                  isPaid: fresh.chapter.isPaid,
+                  tokenPrice: fresh.chapter.tokenPrice,
+                  updatedAt: fresh.chapter.updatedAt,
+                }
+              : c
+          ));
+          setPublishMode('publishNow');
+          syncScheduleFields(null, { editing: false });
+          clearDraft(chapter.id);
+          lastSavedSnapshotRef.current = serializePersistState(
+            buildSnapshotFromChapter(
+              { ...chapter, status: 'published', scheduledPublishAt: null },
+              publishedContent,
+              'publishNow',
+            ),
+            'publishNow',
+            null,
+          );
+          setSaveState('saved');
+          setLastSavedAt(Date.now());
+          return true;
+        }
+      }
       const r = await api.patch(`/chapters/${chapter.id}`, payload);
-      lastSavedSnapshotRef.current = sentSerialized;
       setLastSavedAt(Date.now());
       setSaveState('saved');
-      setChapter((c) => (
-        c
-          ? {
-              ...c,
-              title: r.chapter.title,
-              status: r.chapter.status,
-              updatedAt: r.chapter.updatedAt,
-            }
-          : c
-      ));
+      const savedScheduleAt = r.chapter.scheduledPublishAt
+        || chapter.scheduledPublishAt
+        || scheduleAt
+        || null;
+      const savedChapter = {
+        ...r.chapter,
+        scheduledPublishAt: savedScheduleAt,
+      };
+      const savedMode = (!schedulePickerFocusedRef.current && !scheduleEditingRef.current)
+        ? derivePublishMode(savedChapter)
+        : publishMode;
+      const savedChapterState = {
+        ...chapter,
+        title: r.chapter.title,
+        status: r.chapter.status,
+        isPaid: r.chapter.isPaid,
+        tokenPrice: r.chapter.tokenPrice,
+        scheduledPublishAt: savedScheduleAt,
+        updatedAt: r.chapter.updatedAt,
+      };
+      setChapter((c) => (c ? { ...c, ...savedChapterState } : c));
+      if (!schedulePickerFocusedRef.current && !scheduleEditingRef.current) {
+        setPublishMode(savedMode);
+        syncScheduleFields(savedScheduleAt, { editing: false });
+      }
+      serverStatusRef.current = r.chapter.status;
+      lastSavedSnapshotRef.current = serializePersistState(
+        buildSnapshotFromChapter(savedChapterState, content, savedMode),
+        savedMode,
+        savedScheduleAt,
+      );
       clearDraft(chapter.id);
       if (manual) pushToast({ type: 'success', title: 'Chapter saved' });
       return true;
@@ -193,10 +428,14 @@ function ChapterEditInner() {
     } finally {
       if (manual) setBusy(false);
     }
-  }, [chapter, snapshot, clearDraft, pushToast]);
+  }, [chapter, snapshot, content, publishMode, scheduleLocal, clearDraft, pushToast]);
 
-  const saveAndNewChapter = useCallback(async (targetStatus) => {
+  const saveAndNewChapter = useCallback(async (targetStatus, { scheduledPublishAt = null } = {}) => {
     if (!chapter || !snapshot || creatingNext || busy) return;
+    if (scheduledPublishAt && new Date(scheduledPublishAt).getTime() <= Date.now()) {
+      pushToast({ type: 'error', title: 'Scheduled time must be in the future' });
+      return;
+    }
     if (serverTimerRef.current) {
       clearTimeout(serverTimerRef.current);
       serverTimerRef.current = null;
@@ -204,7 +443,11 @@ function ChapterEditInner() {
     setCreatingNext(true);
     setSaveState('saving');
     try {
-      const payload = normalizeChapterPayload({ ...snapshot, status: targetStatus });
+      const payload = normalizeChapterPayload({
+        ...snapshot,
+        status: scheduledPublishAt ? 'draft' : targetStatus,
+        scheduledPublishAt: scheduledPublishAt || null,
+      });
       await api.patch(`/chapters/${chapter.id}`, payload);
       clearDraft(chapter.id);
       const r = await api.post(`/books/${id}/chapters`, {
@@ -214,9 +457,12 @@ function ChapterEditInner() {
         tokenPrice: 0,
         status: 'draft',
       });
+      let toastTitle = 'Chapter saved as draft';
+      if (scheduledPublishAt) toastTitle = 'Chapter scheduled';
+      else if (targetStatus === 'published') toastTitle = 'Chapter published';
       pushToast({
         type: 'success',
-        title: targetStatus === 'published' ? 'Chapter published' : 'Chapter saved as draft',
+        title: toastTitle,
         message: 'Opening a new chapter.',
       });
       router.push(`/author/books/${id}/chapters/${r.chapter.id}/edit`);
@@ -234,10 +480,12 @@ function ChapterEditInner() {
 
   useEffect(() => {
     if (!hydratedRef.current || !chapter || !snapshot) return undefined;
+    if (schedulePickerFocusedRef.current) return undefined;
 
-    const serialized = JSON.stringify(normalizeChapterPayload(snapshot));
+    const scheduleAt = resolveScheduleAt(publishMode, chapter, scheduleLocal, scheduleLocalRef);
+    const serialized = serializePersistState(snapshot, publishMode, scheduleAt);
     if (serialized === lastSavedSnapshotRef.current) {
-      setSaveState((prev) => (prev === 'dirty' || prev === 'saving' ? 'saved' : prev));
+      setSaveState((prev) => (prev === 'dirty' || prev === 'saving' || prev === 'error' ? 'saved' : prev));
       return undefined;
     }
 
@@ -247,6 +495,7 @@ function ChapterEditInner() {
     if (serverTimerRef.current) clearTimeout(serverTimerRef.current);
     serverTimerRef.current = setTimeout(() => {
       serverTimerRef.current = null;
+      if (schedulePickerFocusedRef.current) return;
       persistRef.current?.();
     }, SERVER_DEBOUNCE_MS);
 
@@ -256,7 +505,7 @@ function ChapterEditInner() {
         serverTimerRef.current = null;
       }
     };
-  }, [chapter, snapshot, saveDraftDebounced]);
+  }, [chapter, snapshot, publishMode, scheduleLocal, saveDraftDebounced]);
 
   useEffect(() => {
     function onBeforeUnload(e) {
@@ -271,7 +520,10 @@ function ChapterEditInner() {
   }, [saveState, flushDraft]);
 
   useEffect(() => () => {
-    if (serverTimerRef.current) clearTimeout(serverTimerRef.current);
+    if (serverTimerRef.current) {
+      clearTimeout(serverTimerRef.current);
+      serverTimerRef.current = null;
+    }
     flushDraft();
   }, [flushDraft]);
 
@@ -292,10 +544,10 @@ function ChapterEditInner() {
           <>
             <SaveStatus state={saveState} lastSavedAt={lastSavedAt} />
             <Link
-              href={`/author/books/${id}/edit`}
+              href={`/author/books/${id}/chapters`}
               className="shrink-0 whitespace-nowrap text-[12px] font-bold uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors"
             >
-              Back to book
+              Back to chapters
             </Link>
             <button
               type="button"
@@ -350,24 +602,86 @@ function ChapterEditInner() {
               />
             </div>
             <div>
-              <p className="label-sm uppercase text-on-surface-variant">Status</p>
-              <div className="mt-2 inline-flex rounded-md border border-surface-variant overflow-hidden">
-                {['draft','published'].map((s) => (
+              <p className="label-sm uppercase text-on-surface-variant">Publish mode</p>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {PUBLISH_MODES.map((mode) => (
                   <button
-                    key={s}
+                    key={mode.id}
                     type="button"
-                    onClick={() => update('status', s)}
-                    className={
-                      'px-3 py-1.5 text-[12px] tracking-labelTight uppercase ' +
-                      (chapter.status === s
-                        ? 'bg-primary text-on-primary'
-                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface')
-                    }
+                    onClick={() => changePublishMode(mode.id)}
+                    className={cn(
+                      'w-full px-3 py-2 rounded-md border text-left text-[12px] tracking-labelTight uppercase transition-colors',
+                      publishMode === mode.id
+                        ? 'border-studio-accent bg-studio-accent/10 text-on-surface'
+                        : 'border-surface-variant text-on-surface-variant hover:bg-surface-container hover:text-on-surface',
+                    )}
                   >
-                    {s}
+                    {mode.label}
                   </button>
                 ))}
               </div>
+              {publishMode === 'schedule' && (
+                <div className="mt-3 space-y-2">
+                  {displayScheduleIso() && !scheduleEditing ? (
+                    <div className="rounded-md border border-amber-600/30 bg-amber-500/10 px-3 py-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <CalendarClock size={16} className="shrink-0 mt-0.5 text-amber-700 dark:text-amber-300" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800/80 dark:text-amber-300/80">
+                            Scheduled publish
+                          </p>
+                          <p className="text-[14px] font-semibold text-amber-900 dark:text-amber-100 mt-0.5">
+                            {formatDateTime(displayScheduleIso())}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={startReschedule}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 hover:underline"
+                      >
+                        <Pencil size={12} />
+                        Reschedule
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="block">
+                        <span className="sr-only">Publish date and time</span>
+                        <input
+                          key={`schedule-edit-${chapterId}-${scheduleLocal || 'new'}`}
+                          type="datetime-local"
+                          defaultValue={scheduleLocal}
+                          onChange={(e) => { scheduleLocalRef.current = e.target.value; }}
+                          onFocus={() => { schedulePickerFocusedRef.current = true; }}
+                          onBlur={(e) => {
+                            schedulePickerFocusedRef.current = false;
+                            const localValue = e.target.value;
+                            scheduleLocalRef.current = localValue;
+                            setScheduleLocal(localValue);
+                            commitScheduleLocal(localValue);
+                          }}
+                          className="w-full rounded-md border border-surface-variant bg-transparent px-3 py-2 text-[14px] text-on-surface focus:border-on-surface focus:outline-none [color-scheme:light] dark:[color-scheme:dark]"
+                        />
+                      </label>
+                      {displayScheduleIso() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            syncScheduleFields(chapter.scheduledPublishAt, { editing: false });
+                          }}
+                          className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant hover:text-on-surface"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                    Publishes automatically at this time. Hidden from readers until then.
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <p className="label-sm uppercase text-on-surface-variant">Access</p>
@@ -432,6 +746,22 @@ function ChapterEditInner() {
               >
                 <Plus size={14} />
                 {creatingNext ? 'Working…' : 'Publish & new chapter'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const at = effectiveScheduledPublishAt();
+                  if (!at) {
+                    pushToast({ type: 'error', title: 'Pick a publish date and time' });
+                    return;
+                  }
+                  saveAndNewChapter('draft', { scheduledPublishAt: at });
+                }}
+                disabled={busy || creatingNext || saveState === 'saving' || publishMode !== 'schedule'}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-amber-600/40 text-amber-800 dark:text-amber-300 text-[11px] font-bold uppercase tracking-wider hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+              >
+                <Plus size={14} />
+                {creatingNext ? 'Working…' : 'Schedule & new chapter'}
               </button>
             </div>
           </aside>

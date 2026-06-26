@@ -7,6 +7,11 @@ import { formatRelative } from '@/lib/format';
 
 const STATUSES = ['visible', 'hidden', 'deleted'];
 
+const statusBtnActive =
+  'border-on-surface bg-on-surface text-surface dark:bg-neutral-100 dark:text-neutral-950 dark:border-neutral-100';
+const statusBtnInactive =
+  'border-outline-variant text-on-surface-variant hover:border-on-surface dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-500';
+
 export default function CommentsModeration({ items, onChange }) {
   const pushToast = useUiStore((s) => s.pushToast);
   const [busy, setBusy] = useState(null);
@@ -24,21 +29,25 @@ export default function CommentsModeration({ items, onChange }) {
     }
   }
 
-  if (!items?.length) return <p className="text-ink-400">No comments to moderate.</p>;
+  if (!items?.length) return <p className="text-on-surface-variant">No comments to moderate.</p>;
 
   return (
-    <ul className="divide-y divide-ink-200/60 border border-ink-200/60 rounded-md bg-cream-100">
+    <ul className="divide-y divide-outline-variant border border-outline-variant rounded-md bg-surface-container-lowest">
       {items.map((c) => (
         <li key={c.id} className="p-5 flex flex-col md:flex-row md:items-start gap-4">
           <div className="flex-1 min-w-0">
-            <p className="font-serif text-[16px] text-ink-900">{c.author?.displayName}</p>
-            <p className="text-[12px] text-ink-400">{c.bookTitle ? `On "${c.bookTitle}"` : 'Direct comment'} · {formatRelative(c.createdAt)}</p>
-            <p className="mt-3 text-[15px] text-ink-700 whitespace-pre-line">{c.body || <em className="text-ink-400">[no body]</em>}</p>
+            <p className="font-serif text-[16px] text-on-surface">{c.author?.displayName}</p>
+            <p className="text-[12px] text-on-surface-variant">{c.bookTitle ? `On "${c.bookTitle}"` : 'Direct comment'} · {formatRelative(c.createdAt)}</p>
+            <p className="mt-3 text-[15px] text-on-surface whitespace-pre-line">{c.body || <em className="text-on-surface-variant">[no body]</em>}</p>
           </div>
           <div className="flex flex-wrap gap-2 md:flex-col md:items-end">
             <span className={
               'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] tracking-labelTight uppercase ' +
-              (c.status === 'visible' ? 'bg-cream-300 text-ink-700' : c.status === 'hidden' ? 'bg-ink-200 text-ink-700' : 'bg-danger/10 text-danger')
+              (c.status === 'visible'
+                ? 'bg-surface-container-high text-on-surface dark:bg-neutral-800 dark:text-neutral-200'
+                : c.status === 'hidden'
+                  ? 'bg-surface-container-highest text-on-surface-variant dark:bg-neutral-700 dark:text-neutral-300'
+                  : 'bg-danger/10 text-danger')
             }>
               {c.status}
             </span>
@@ -51,7 +60,7 @@ export default function CommentsModeration({ items, onChange }) {
                   onClick={() => set(c.id, s)}
                   className={
                     'px-2 py-1 text-[11px] tracking-labelTight uppercase border rounded ' +
-                    (c.status === s ? 'border-ink-900 bg-ink-900 text-cream-100' : 'border-ink-200 text-ink-700 hover:border-ink-700')
+                    (c.status === s ? statusBtnActive : statusBtnInactive)
                   }
                 >
                   {s}

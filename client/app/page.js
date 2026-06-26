@@ -20,6 +20,7 @@ const DEFAULT_PAGE_SECTIONS = {
   weekly_book: true,
   meet_webnovel: true,
   recommended: true,
+  continue_reading: true,
   new_arrivals: true,
   ranking_novels: true,
   updated_today: true,
@@ -36,6 +37,7 @@ const EMPTY_HOME = {
   cheering_reads: [],
   editors_choice: [],
   completed_novel: [],
+  originals: [],
   pageSections: { ...DEFAULT_PAGE_SECTIONS },
 };
 
@@ -119,6 +121,7 @@ export default async function HomePage() {
           }}
         />
         {show('recommended') ? <RecommendedSection items={home.new_arrivals} /> : null}
+        {show('continue_reading') ? <ContinueReadingSection /> : null}
         {show('new_arrivals') ? <NewArrivalsSection items={home.weekly_featured} /> : null}
         {show('ranking_novels') ? (
           <RankingNovelsSection
@@ -136,16 +139,8 @@ export default async function HomePage() {
             editors_choice: show('editors_choice'),
           }}
         />
-        {show('gs_originals') ? (
-          <GSOriginalsSection
-            items={home.rising_fictions.length ? home.rising_fictions : home.editors_choice}
-          />
-        ) : null}
+        {show('gs_originals') ? <GSOriginalsSection items={home.originals} /> : null}
         <BecomeAuthorCTA />
-
-        {/* CONTINUE READING (disabled for now; kept as reference) ----
-        <ContinueReadingSection />
-        ------------------------------------------------------------ */}
 
         {/* CURATED COLLECTIONS (disabled for now; kept as reference) -
         <section className="bg-neutral-50 dark:bg-neutral-950 py-24 border-y border-neutral-200 dark:border-neutral-800 mb-24">

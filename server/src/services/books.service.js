@@ -7,6 +7,7 @@ const storage = require('../storage');
 const { clampPagination } = require('../utils/pagination');
 const catalog = require('./catalog.service');
 const bookMeta = require('../constants/bookMetadata');
+const { resolveUserRow, assertRestriction } = require('./suspension.service');
 
 function rowToBook(row, opts = {}) {
   if (!row) return null;
@@ -47,7 +48,16 @@ function rowToBook(row, opts = {}) {
     out.languageId = null;
   }
   if (opts.contentTags) out.contentTags = opts.contentTags;
+  if (opts.isOriginal != null) out.isOriginal = Boolean(opts.isOriginal);
   return out;
+}
+
+async function hasBookTag(bookId, tag) {
+  const [rows] = await pool.execute(
+    'SELECT 1 FROM book_tags WHERE book_id = ? AND tag = ? LIMIT 1',
+    [bookId, tag],
+  );
+  return rows.length > 0;
 }
 
 async function defaultLanguageId() {
@@ -97,7 +107,7 @@ async function uniqueSlug(base) {
 const RANKING_HOME_TAGS = ['potential_starlet', 'rising_fictions', 'new_arrivals', 'completed_novel'];
 
 async function list({ q, author, category, status, tag, page, pageSize }, viewer) {
-  const where = [];
+  const where = ['b.recycled_at IS NULL'];
   const params = [];
 
   const viewingOwn =
@@ -138,7 +148,7 @@ async function list({ q, author, category, status, tag, page, pageSize }, viewer
       : 'b.updated_at DESC';
   const sql =
     'SELECT b.*, u.display_name AS author_name, ' +
-    '  (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.status = "published") AS chapter_count ' +
+    '  (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.status = "published" AND c.recycled_at IS NULL) AS chapter_count ' +
     'FROM books b JOIN users u ON u.id = b.author_id ' +
     (where.length ? `WHERE ${where.join(' AND ')} ` : '') +
     `ORDER BY ${orderBy} LIMIT ${safePageSize} OFFSET ${offset}`;
@@ -160,9 +170,9 @@ async function list({ q, author, category, status, tag, page, pageSize }, viewer
 async function getBySlug(slug, viewer) {
   const [rows] = await pool.execute(
     `SELECT b.*, u.display_name AS author_name, u.avatar_url AS author_avatar_url,
-       (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.status = 'published') AS chapter_count
+       (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.status = 'published' AND c.recycled_at IS NULL) AS chapter_count
      FROM books b JOIN users u ON u.id = b.author_id
-     WHERE b.slug = ? LIMIT 1`,
+     WHERE b.slug = ? AND b.recycled_at IS NULL LIMIT 1`,
     [slug],
   );
   const row = rows[0];
@@ -170,8 +180,11 @@ async function getBySlug(slug, viewer) {
   if (row.status !== 'published' && !(viewer && (viewer.role === 'admin' || viewer.id === row.author_id))) {
     throw errors.notFound('Book not found');
   }
-  const tags = await catalog.getContentTagsForBook(row.id);
-  return rowToBook(row, { contentTags: tags });
+  const [tags, isOriginal] = await Promise.all([
+    catalog.getContentTagsForBook(row.id),
+    hasBookTag(row.id, 'originals'),
+  ]);
+  return rowToBook(row, { contentTags: tags, isOriginal });
 }
 
 async function getById(id) {
@@ -182,9 +195,9 @@ async function getById(id) {
 async function getByIdForViewer(id, viewer) {
   const [rows] = await pool.execute(
     `SELECT b.*, u.display_name AS author_name, u.avatar_url AS author_avatar_url,
-       (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.status = 'published') AS chapter_count
+       (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id AND c.status = 'published' AND c.recycled_at IS NULL) AS chapter_count
      FROM books b JOIN users u ON u.id = b.author_id
-     WHERE b.id = ? LIMIT 1`,
+     WHERE b.id = ? AND b.recycled_at IS NULL LIMIT 1`,
     [id],
   );
   const row = rows[0];
@@ -192,8 +205,11 @@ async function getByIdForViewer(id, viewer) {
   if (row.status !== 'published' && !(viewer && (viewer.role === 'admin' || viewer.id === row.author_id))) {
     throw errors.notFound('Book not found');
   }
-  const tags = await catalog.getContentTagsForBook(row.id);
-  return rowToBook(row, { contentTags: tags });
+  const [tags, isOriginal] = await Promise.all([
+    catalog.getContentTagsForBook(row.id),
+    hasBookTag(row.id, 'originals'),
+  ]);
+  return rowToBook(row, { contentTags: tags, isOriginal });
 }
 
 function validateBookMetadata(body, { requireSynopsis } = {}) {
@@ -211,6 +227,9 @@ function validateBookMetadata(body, { requireSynopsis } = {}) {
 }
 
 async function create(body, authorId, user) {
+  const userRow = await resolveUserRow(user.id);
+  assertRestriction(userRow, 'publishing', 'Publishing is restricted on your account');
+
   const {
     title,
     synopsis,
@@ -278,6 +297,9 @@ function assertOwnerOrAdmin(book, user) {
 }
 
 async function update(id, patch, user) {
+  const userRow = await resolveUserRow(user.id);
+  assertRestriction(userRow, 'publishing', 'Publishing is restricted on your account');
+
   const book = await getById(id);
   assertOwnerOrAdmin(book, user);
 
@@ -349,6 +371,9 @@ async function update(id, patch, user) {
 }
 
 async function remove(id, user) {
+  const userRow = await resolveUserRow(user.id);
+  assertRestriction(userRow, 'publishing', 'Publishing is restricted on your account');
+
   const book = await getById(id);
   assertOwnerOrAdmin(book, user);
   if (book.cover_storage_key) {

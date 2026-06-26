@@ -31,7 +31,7 @@ function NewChapterInner() {
         router.replace(`/author/books/${id}/chapters/${r.chapter.id}/edit`);
       } catch (err) {
         pushToast({ type: 'error', title: 'Could not create chapter', message: err.message });
-        router.replace(`/author/books/${id}/edit`);
+        router.replace(`/author/books/${id}/chapters`);
       }
     }
 

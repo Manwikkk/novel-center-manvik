@@ -3,6 +3,13 @@
 const asyncHandler = require('../utils/asyncHandler');
 const svc = require('../services/library.service');
 
+function parseBookIds(raw) {
+  return String(raw || '')
+    .split(',')
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
+
 const list = asyncHandler(async (req, res) => {
   res.json(await svc.list({ userId: req.user.id, ...req.query }));
 });
@@ -18,11 +25,16 @@ const remove = asyncHandler(async (req, res) => {
 });
 
 const contains = asyncHandler(async (req, res) => {
-  const ids = String(req.query.bookIds || '')
-    .split(',')
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isFinite(n) && n > 0);
-  res.json(await svc.containsMany(req.user.id, ids));
+  res.json(await svc.containsMany(req.user.id, parseBookIds(req.query.bookIds)));
 });
 
-module.exports = { list, add, remove, contains };
+const statusMany = asyncHandler(async (req, res) => {
+  res.json(await svc.statusMany(req.user.id, parseBookIds(req.query.bookIds)));
+});
+
+const setStatus = asyncHandler(async (req, res) => {
+  const result = await svc.setStatus(req.user.id, Number(req.params.bookId), req.body.status);
+  res.json(result);
+});
+
+module.exports = { list, add, remove, contains, statusMany, setStatus };
