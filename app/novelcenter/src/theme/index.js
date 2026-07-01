@@ -11,14 +11,14 @@ export { spacing, radii } from '@/theme/spacing';
 export { shadows } from '@/theme/shadows';
 
 /**
- * Returns the theme bundle. By default we use cream — only the reader
- * surfaces opt into `{ readerScope: true }` to mirror the reader theme.
+ * Returns the theme bundle. Uses the reader preference theme app-wide so
+ * cream / sepia / dark from Reader Preferences apply on every screen.
  */
 export function useTheme({ readerScope = false } = {}) {
   const readerTheme = useReaderStore((s) => s.theme);
   const fontSize = useReaderStore((s) => s.fontSize);
   const fontFamilyKind = useReaderStore((s) => s.fontFamily);
-  const paletteKey = readerScope ? readerTheme : 'cream';
+  const paletteKey = readerTheme;
 
   return useMemo(() => {
     const colors = palettes[paletteKey] || palettes.cream;

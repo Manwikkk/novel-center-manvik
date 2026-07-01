@@ -5,8 +5,8 @@ import Button from '@/components/primitives/Button';
 import NCText from '@/components/primitives/Text';
 import { useTheme } from '@/theme';
 
-export default function CommentComposer({ replyingTo, onSubmit, onCancelReply, busy }) {
-  const t = useTheme();
+export default function CommentComposer({ replyingTo, onSubmit, onCancelReply, busy, readerScope = false }) {
+  const t = useTheme({ readerScope });
   const [text, setText] = useState('');
 
   const submit = async () => {

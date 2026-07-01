@@ -5,13 +5,15 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import NCText from '@/components/primitives/Text';
 import IconButton from '@/components/primitives/IconButton';
 import { useTheme } from '@/theme';
-import { useReaderStore, READER_THEMES } from '@/stores/readerStore';
+import { useReaderStore, READER_THEMES, READER_FAMILIES } from '@/stores/readerStore';
 
 export default function ReaderTopBar({ chapter, book, progress, minutesLeft, onBack }) {
   const t = useTheme({ readerScope: true });
   const insets = useSafeAreaInsets();
   const fontSize = useReaderStore((s) => s.fontSize);
+  const fontFamilyKind = useReaderStore((s) => s.fontFamily);
   const bumpFont = useReaderStore((s) => s.bumpFont);
+  const setFontFamily = useReaderStore((s) => s.setFontFamily);
   const theme = useReaderStore((s) => s.theme);
   const setTheme = useReaderStore((s) => s.setTheme);
 
@@ -52,8 +54,30 @@ export default function ReaderTopBar({ chapter, book, progress, minutesLeft, onB
         </View>
       </View>
 
-      {/* theme pills */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingBottom: 6 }}>
+      {/* theme + type family */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingBottom: 6, flexWrap: 'wrap', paddingHorizontal: 12 }}>
+        {READER_FAMILIES.map((key) => {
+          const active = fontFamilyKind === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setFontFamily(key)}
+              hitSlop={6}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: active ? t.colors.fg : t.colors.rule,
+                backgroundColor: active ? t.colors.surfaceLow : 'transparent',
+              }}
+            >
+              <NCText variant="uiLabelXs" style={{ color: t.colors.fg }}>
+                {key === 'serif' ? 'SERIF' : 'SANS'}
+              </NCText>
+            </Pressable>
+          );
+        })}
         {READER_THEMES.map((key) => {
           const active = theme === key;
           const icon = key === 'cream' ? 'wb-sunny' : key === 'sepia' ? 'menu-book' : 'nightlight-round';

@@ -1,23 +1,29 @@
 import React from 'react';
-import { View } from 'react-native';
 import { useAuthStore } from '@/stores/authStore';
-import AuthStack from '@/navigation/AuthStack';
+import DiscoverStack from '@/navigation/DiscoverStack';
 import RootTabs from '@/navigation/RootTabs';
 import Spinner from '@/components/primitives/Spinner';
-import { useTheme } from '@/theme';
+import { useAppTheme } from '@/theme/discoverColors';
+import { View } from 'react-native';
 
 export default function AuthGate() {
-  const t = useTheme();
+  const { colors: C } = useAppTheme();
+  const hydrate = useAuthStore((s) => s.hydrate);
   const hydrated = useAuthStore((s) => s.hydrated);
   const user = useAuthStore((s) => s.user);
 
+  React.useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
   if (!hydrated) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.colors.bg }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg }}>
         <Spinner />
       </View>
     );
   }
 
-  return user ? <RootTabs /> : <AuthStack />;
+  // Guests browse Discover + book details without the bottom tab bar.
+  return user ? <RootTabs /> : <DiscoverStack />;
 }

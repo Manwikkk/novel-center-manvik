@@ -1,21 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { View, KeyboardAvoidingView, Platform, ScrollView, Pressable, Switch } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, ScrollView, Pressable, Switch, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
-import Screen from '@/components/primitives/Screen';
 import NCText from '@/components/primitives/Text';
-import IconButton from '@/components/primitives/IconButton';
-import Input from '@/components/primitives/Input';
-import Button from '@/components/primitives/Button';
 import Spinner from '@/components/primitives/Spinner';
-import { useTheme } from '@/theme';
+import {
+  StudioScreen,
+  StudioHeader,
+  StudioInput,
+  StudioChipGroup,
+  STUDIO_LAYOUT,
+  useAppTheme,
+} from '@/components/studio/StudioTheme';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
 
-const STATUSES = ['draft', 'published'];
+const STATUSES = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'published', label: 'Published' },
+];
 
 export default function ChapterEditScreen({ route, navigation }) {
-  const t = useTheme();
+  const { colors: C } = useAppTheme();
   const { chapterId } = route.params || {};
   const pushToast = useUiStore((s) => s.pushToast);
 
@@ -26,7 +32,6 @@ export default function ChapterEditScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
-  const [chapter, setChapter] = useState(null);
   const [initialContent, setInitialContent] = useState(null);
 
   const editor = useEditorBridge({
@@ -34,12 +39,12 @@ export default function ChapterEditScreen({ route, navigation }) {
     avoidIosKeyboard: true,
     initialContent: '',
     theme: {
-      webview: { backgroundColor: t.colors.bg },
+      webview: { backgroundColor: C.bg },
       toolbar: {
-        toolbarBody: { backgroundColor: t.colors.surface, borderTopColor: t.colors.containerHigh },
+        toolbarBody: { backgroundColor: C.sheet, borderTopColor: C.inputBorder },
       },
       colorKeyboard: {
-        keyboardRootColor: t.colors.surface,
+        keyboardRootColor: C.sheet,
       },
     },
   });
@@ -50,7 +55,6 @@ export default function ChapterEditScreen({ route, navigation }) {
       try {
         const { chapter: c } = await api.get(`/chapters/${chapterId}`);
         if (!active) return;
-        setChapter(c);
         setTitle(c.title || '');
         setStatus(c.status || 'draft');
         setIsPaid(!!c.isPaid);
@@ -66,7 +70,6 @@ export default function ChapterEditScreen({ route, navigation }) {
     return () => { active = false; };
   }, [chapterId, navigation, pushToast]);
 
-  // Push initial HTML once we have it.
   useEffect(() => {
     if (initialContent != null && editor?.setContent) {
       editor.setContent(initialContent);
@@ -83,14 +86,13 @@ export default function ChapterEditScreen({ route, navigation }) {
         html = initialContent || '';
       }
       const price = Math.max(0, Math.floor(Number(tokenPrice) || 0));
-      const { chapter: updated } = await api.patch(`/chapters/${chapterId}`, {
+      await api.patch(`/chapters/${chapterId}`, {
         title: title.trim() || 'Untitled chapter',
         contentHtml: html,
         status,
         isPaid,
         tokenPrice: isPaid ? price : 0,
       });
-      setChapter(updated);
       pushToast({ type: 'success', title: 'Saved', message: status === 'published' ? 'Published' : 'Draft saved' });
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not save', message: err.message });
@@ -100,101 +102,90 @@ export default function ChapterEditScreen({ route, navigation }) {
   };
 
   return (
-    <Screen padded={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <IconButton name="arrow-back" onPress={() => navigation.goBack()} />
-          <NCText variant="uiLabelSm" tone="muted">Chapters</NCText>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 4 }}>
-          <IconButton name={showPanel ? 'expand-less' : 'tune'} onPress={() => setShowPanel((p) => !p)} />
-          <Pressable
-            onPress={onSave}
-            disabled={busy}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              backgroundColor: t.colors.fg,
-              borderRadius: t.radii.sm,
-              opacity: busy ? 0.6 : 1,
-            }}
-          >
-            <NCText variant="uiLabelSm" style={{ color: t.colors.cream100 }}>
-              {busy ? 'Saving…' : 'Save'}
-            </NCText>
-          </Pressable>
-        </View>
-      </View>
+    <StudioScreen>
+      <StudioHeader
+          breadcrumb="Chapters"
+          title="Chapter editor"
+          onBack={() => navigation.goBack()}
+          right={(
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Pressable onPress={() => setShowPanel((p) => !p)} hitSlop={8} style={{ padding: 6 }}>
+                <Icon name={showPanel ? 'expand-less' : 'tune'} size={22} color={C.white} />
+              </Pressable>
+              <Pressable
+                onPress={onSave}
+                disabled={busy}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  backgroundColor: C.white,
+                  borderRadius: 999,
+                  opacity: busy ? 0.6 : 1,
+                }}
+              >
+                <NCText variant="uiLabelSm" style={{ color: C.bg, fontWeight: '700' }}>
+                  {busy ? 'Saving…' : 'Save'}
+                </NCText>
+              </Pressable>
+            </View>
+          )}
+        />
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Spinner />
         </View>
       ) : (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
-          <View style={{ paddingHorizontal: 20, paddingBottom: 12, gap: 8 }}>
-            <Input
-              label={null}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, paddingBottom: 8 }}>
+            <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder="Chapter title"
-              autoCapitalize="sentences"
-              autoCorrect
-              inputStyle={{ ...t.typography.headlineSm, paddingVertical: 14, minHeight: 50, backgroundColor: 'transparent', borderWidth: 0 }}
+              placeholderTextColor={C.muted}
+              style={{
+                color: C.white,
+                fontSize: 20,
+                fontWeight: '700',
+                paddingVertical: 10,
+              }}
             />
           </View>
 
           {showPanel ? (
             <ScrollView
-              horizontal={false}
               style={{
-                paddingHorizontal: 20,
+                paddingHorizontal: STUDIO_LAYOUT.hPadding,
                 paddingVertical: 14,
-                backgroundColor: t.colors.surfaceLow,
+                backgroundColor: C.sheet,
                 borderTopWidth: 1,
                 borderBottomWidth: 1,
-                borderColor: t.colors.containerHigh,
-                maxHeight: 240,
+                borderColor: C.inputBorder,
+                maxHeight: 260,
               }}
-              contentContainerStyle={{ gap: 14 }}
+              contentContainerStyle={{ gap: 16 }}
             >
               <View style={{ gap: 8 }}>
-                <NCText variant="uiLabelSm" tone="muted">Status</NCText>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {STATUSES.map((s) => {
-                    const active = status === s;
-                    return (
-                      <Pressable
-                        key={s}
-                        onPress={() => setStatus(s)}
-                        style={{
-                          flex: 1,
-                          paddingVertical: 10,
-                          borderRadius: t.radii.sm,
-                          borderWidth: 1,
-                          borderColor: active ? t.colors.fg : t.colors.containerHigh,
-                          backgroundColor: active ? t.colors.surface : 'transparent',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <NCText variant="uiLabelXs">{s.toUpperCase()}</NCText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                  Status
+                </NCText>
+                <StudioChipGroup options={STATUSES} value={status} onChange={setStatus} />
               </View>
 
               <View style={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <NCText variant="uiLabelSm" tone="muted">Paid chapter</NCText>
-                  <Switch value={isPaid} onValueChange={setIsPaid} />
+                  <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                    Paid chapter
+                  </NCText>
+                  <Switch
+                    value={isPaid}
+                    onValueChange={setIsPaid}
+                    trackColor={{ false: C.inputBorder, true: C.pillBg }}
+                    thumbColor={C.white}
+                  />
                 </View>
                 {isPaid ? (
-                  <Input
+                  <StudioInput
                     label="Token price"
                     value={String(tokenPrice)}
                     onChangeText={setTokenPrice}
@@ -206,12 +197,12 @@ export default function ChapterEditScreen({ route, navigation }) {
             </ScrollView>
           ) : null}
 
-          <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
-            <RichText editor={editor} style={{ flex: 1, backgroundColor: t.colors.bg }} />
+          <View style={{ flex: 1, backgroundColor: C.bg }}>
+            <RichText editor={editor} style={{ flex: 1, backgroundColor: C.bg }} />
             <Toolbar editor={editor} />
           </View>
         </KeyboardAvoidingView>
       )}
-    </Screen>
+    </StudioScreen>
   );
 }

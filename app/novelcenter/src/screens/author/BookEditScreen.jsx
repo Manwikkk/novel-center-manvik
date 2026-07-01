@@ -1,22 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, Pressable, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Screen from '@/components/primitives/Screen';
 import NCText from '@/components/primitives/Text';
-import IconButton from '@/components/primitives/IconButton';
-import Input from '@/components/primitives/Input';
-import Button from '@/components/primitives/Button';
-import Cover from '@/components/primitives/Cover';
-import { useTheme } from '@/theme';
+import {
+  StudioScreen,
+  StudioHeader,
+  StudioInput,
+  StudioPrimaryButton,
+  StudioOutlineButton,
+  StudioChipGroup,
+  STUDIO_LAYOUT,
+  useAppTheme,
+} from '@/components/studio/StudioTheme';
+import { DarkSurface } from '@/components/discover/DiscoverTheme';
 import { api, getAccessToken } from '@/lib/api';
+import { catalogApi } from '@/lib/catalog';
 import { API_URL } from '@/config/env';
+import { resolveImageUrl } from '@/lib/image';
 import { useUiStore } from '@/stores/uiStore';
 
-const STATUSES = ['draft', 'published', 'archived'];
+const STATUSES = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'published', label: 'Published' },
+  { value: 'archived', label: 'Archive' },
+];
 
 export default function BookEditScreen({ route, navigation }) {
-  const t = useTheme();
+  const { colors: C } = useAppTheme();
   const { mode, bookId } = route.params || {};
   const isEdit = mode === 'edit' && bookId;
   const pushToast = useUiStore((s) => s.pushToast);
@@ -28,8 +39,20 @@ export default function BookEditScreen({ route, navigation }) {
   const [status, setStatus] = useState('draft');
   const [coverUrl, setCoverUrl] = useState(null);
   const [book, setBook] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [languages, setLanguages] = useState([]);
   const [busy, setBusy] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      catalogApi.categories().catch(() => ({ items: [] })),
+      catalogApi.languages().catch(() => ({ items: [] })),
+    ]).then(([cats, langs]) => {
+      setCategories(cats?.items || []);
+      setLanguages(langs?.items || []);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -57,29 +80,44 @@ export default function BookEditScreen({ route, navigation }) {
     }
     setBusy(true);
     try {
+      const payload = {
+        title: title.trim(),
+        synopsis: synopsis.trim() || null,
+        category: category.trim() || null,
+        language: language.trim() || 'en',
+        status,
+      };
       if (isEdit) {
-        const { book: updated } = await api.patch(`/books/${book.id}`, {
-          title: title.trim(),
-          synopsis: synopsis.trim() || null,
-          category: category.trim() || null,
-          language: language.trim() || 'en',
-          status,
-        });
+        const { book: updated } = await api.patch(`/books/${book.id}`, payload);
         setBook(updated);
         pushToast({ type: 'success', title: 'Saved' });
       } else {
-        const { book: created } = await api.post('/books', {
-          title: title.trim(),
-          synopsis: synopsis.trim() || null,
-          category: category.trim() || null,
-          language: language.trim() || 'en',
-          status,
-        });
+        const { book: created } = await api.post('/books', payload);
         pushToast({ type: 'success', title: 'Book created' });
         navigation.replace('AuthorBookEdit', { mode: 'edit', bookId: created.id });
       }
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not save', message: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPublishToggle = async () => {
+    if (!book?.id) return;
+    const next = status === 'published' ? 'draft' : 'published';
+    setBusy(true);
+    try {
+      const { book: updated } = await api.patch(`/books/${book.id}`, { status: next });
+      setBook(updated);
+      setStatus(updated.status);
+      pushToast({
+        type: 'success',
+        title: next === 'published' ? 'Published' : 'Unpublished',
+        message: next === 'published' ? 'Your book is live.' : 'Book moved to draft.',
+      });
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Could not update', message: err.message });
     } finally {
       setBusy(false);
     }
@@ -125,79 +163,143 @@ export default function BookEditScreen({ route, navigation }) {
     }
   };
 
+  const coverUri = resolveImageUrl(coverUrl);
+  const categoryOptions = categories.length
+    ? categories.map((c) => ({ value: c.label, label: c.label }))
+    : category
+      ? [{ value: category, label: category }]
+      : [];
+  const languageOptions = languages.length
+    ? languages.map((l) => ({ value: l.code, label: l.name || l.label || l.code }))
+    : [{ value: 'en', label: 'English' }];
+
   return (
-    <Screen padded={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <IconButton name="arrow-back" onPress={() => navigation.goBack()} />
-          <NCText variant="uiLabelSm" tone="muted">{isEdit ? 'Edit book' : 'New book'}</NCText>
-        </View>
-        {isEdit ? (
-          <IconButton
-            name="menu-book"
-            onPress={() => navigation.navigate('AuthorChapters', { bookId: book.id, bookTitle: book.title })}
-          />
-        ) : null}
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 48, gap: 24 }}>
-          <NCText variant="headlineXl">{isEdit ? 'Edit book' : 'Create book'}</NCText>
-
-          <View style={{ alignItems: 'center', gap: 10 }}>
-            <Pressable onPress={onPickCover} style={{ alignItems: 'center', gap: 10 }}>
-              <Cover source={coverUrl} width={160} />
-              <NCText variant="uiLabelSm" tone="muted">
-                {uploadingCover ? 'Uploading…' : isEdit ? 'Tap to change cover' : 'Save book to upload cover'}
-              </NCText>
+    <StudioScreen>
+      <StudioHeader
+        breadcrumb="Author Studio"
+        title={isEdit ? 'Edit book' : 'New book'}
+        onBack={() => navigation.goBack()}
+        right={
+          isEdit ? (
+            <Pressable
+              onPress={() => navigation.navigate('AuthorChapters', { bookId: book.id, bookTitle: book.title })}
+              hitSlop={8}
+              style={{ padding: 6 }}
+            >
+              <Icon name="menu-book" size={22} color={C.white} />
             </Pressable>
-          </View>
+          ) : null
+        }
+      />
 
-          <Input label="Title" value={title} onChangeText={setTitle} autoCapitalize="words" autoCorrect />
-          <Input
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, paddingBottom: 48, gap: 20 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {isEdit ? (
+            <DarkSurface style={{ padding: 14, gap: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ gap: 4 }}>
+                  <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 10, letterSpacing: 1 }}>
+                    VISIBILITY
+                  </NCText>
+                  <NCText variant="titleMd" style={{ color: C.white, textTransform: 'capitalize' }}>
+                    {status}
+                  </NCText>
+                </View>
+                <StudioOutlineButton
+                  label={status === 'published' ? 'Unpublish' : 'Publish now'}
+                  onPress={onPublishToggle}
+                />
+              </View>
+              {book?.slug && status === 'published' ? (
+                <Pressable
+                  onPress={() => navigation.getParent()?.getParent()?.navigate('DiscoverTab', {
+                    screen: 'BookDetail',
+                    params: { slug: book.slug, id: book.id },
+                  })}
+                >
+                  <NCText variant="uiLabelSm" style={{ color: C.accent, fontSize: 12 }}>
+                    View public page →
+                  </NCText>
+                </Pressable>
+              ) : null}
+            </DarkSurface>
+          ) : null}
+
+          <Pressable onPress={onPickCover} style={{ alignItems: 'center', gap: 10 }}>
+            <View
+              style={{
+                width: 140,
+                height: 210,
+                borderRadius: 12,
+                overflow: 'hidden',
+                backgroundColor: C.inputBg,
+                borderWidth: 1,
+                borderColor: C.inputBorder,
+              }}
+            >
+              {coverUri ? (
+                <Image source={{ uri: coverUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              ) : (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="image" size={32} color={C.muted} />
+                </View>
+              )}
+            </View>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 12 }}>
+              {uploadingCover ? 'Uploading…' : isEdit ? 'Tap to change cover' : 'Save book to upload cover'}
+            </NCText>
+          </Pressable>
+
+          <StudioInput label="Title" value={title} onChangeText={setTitle} autoCapitalize="words" placeholder="Book title" />
+          <StudioInput
             label="Synopsis"
             value={synopsis}
             onChangeText={setSynopsis}
             multiline
             numberOfLines={6}
             autoCapitalize="sentences"
-            autoCorrect
+            placeholder="Tell readers what this story is about…"
           />
-          <Input label="Category" value={category} onChangeText={setCategory} autoCapitalize="words" autoCorrect />
-          <Input label="Language" value={language} onChangeText={setLanguage} placeholder="en" />
+
+          {categoryOptions.length ? (
+            <View style={{ gap: 8 }}>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                Category
+              </NCText>
+              <StudioChipGroup
+                options={categoryOptions}
+                value={category}
+                onChange={setCategory}
+              />
+            </View>
+          ) : (
+            <StudioInput label="Category" value={category} onChangeText={setCategory} autoCapitalize="words" />
+          )}
 
           <View style={{ gap: 8 }}>
-            <NCText variant="uiLabelSm" tone="muted">Status</NCText>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {STATUSES.map((s) => {
-                const active = status === s;
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => setStatus(s)}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      borderWidth: 1,
-                      borderColor: active ? t.colors.fg : t.colors.containerHigh,
-                      backgroundColor: active ? t.colors.surfaceLow : 'transparent',
-                      borderRadius: t.radii.sm,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <NCText variant="uiLabelXs">{s.toUpperCase()}</NCText>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+              Language
+            </NCText>
+            <StudioChipGroup options={languageOptions} value={language} onChange={setLanguage} />
           </View>
 
-          <Button label={isEdit ? 'Save changes' : 'Create book'} onPress={onSave} loading={busy} full size="lg" />
+          <View style={{ gap: 8 }}>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+              Status
+            </NCText>
+            <StudioChipGroup options={STATUSES} value={status} onChange={setStatus} />
+          </View>
+
+          <StudioPrimaryButton
+            label={isEdit ? 'Save changes' : 'Create book'}
+            onPress={onSave}
+            loading={busy}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
-    </Screen>
+    </StudioScreen>
   );
 }

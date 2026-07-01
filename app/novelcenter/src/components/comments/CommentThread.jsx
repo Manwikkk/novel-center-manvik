@@ -30,11 +30,11 @@ function directChildren(comments, parentId) {
  * Renders one comment and all nested replies (unlimited depth).
  * Previous UI only listed direct children of roots, so replies-to-replies never appeared.
  */
-function CommentSubtree({ comment, comments, depth, onReply }) {
+function CommentSubtree({ comment, comments, depth, onReply, readerScope }) {
   const children = directChildren(comments, comment.id);
   return (
     <View style={{ gap: 12 }}>
-      <CommentItem comment={comment} onReply={onReply} depth={depth} />
+      <CommentItem comment={comment} onReply={onReply} depth={depth} readerScope={readerScope} />
       {children.length > 0 ? (
         <View style={{ gap: 12 }}>
           {children.map((child) => (
@@ -44,6 +44,7 @@ function CommentSubtree({ comment, comments, depth, onReply }) {
               comments={comments}
               depth={depth + 1}
               onReply={onReply}
+              readerScope={readerScope}
             />
           ))}
         </View>
@@ -56,8 +57,8 @@ function CommentSubtree({ comment, comments, depth, onReply }) {
  * Hierarchical comment thread for a chapter or book.
  * The API returns flat comments; we group by parentId on the client.
  */
-export default function CommentThread({ chapterId, bookId }) {
-  const t = useTheme();
+export default function CommentThread({ chapterId, bookId, readerScope = false }) {
+  const t = useTheme({ readerScope });
   const user = useAuthStore((s) => s.user);
   const pushToast = useUiStore((s) => s.pushToast);
 
@@ -132,7 +133,7 @@ export default function CommentThread({ chapterId, bookId }) {
       ) : (
         <View style={{ gap: 18 }}>
           {roots.map((root) => (
-            <CommentSubtree key={root.id} comment={root} comments={comments} depth={0} onReply={setReplyingTo} />
+            <CommentSubtree key={root.id} comment={root} comments={comments} depth={0} onReply={setReplyingTo} readerScope={readerScope} />
           ))}
         </View>
       )}
@@ -145,6 +146,7 @@ export default function CommentThread({ chapterId, bookId }) {
           onCancelReply={() => setReplyingTo(null)}
           onSubmit={submit}
           busy={busy}
+          readerScope={readerScope}
         />
       ) : (
         <View style={{ padding: 14, borderWidth: 1, borderColor: t.colors.containerHigh, borderRadius: t.radii.md }}>

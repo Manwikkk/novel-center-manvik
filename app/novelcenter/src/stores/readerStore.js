@@ -35,6 +35,11 @@ export const useReaderStore = create((set, get) => ({
     set({ fontSize: next });
     persist(get());
   },
+  setFontSize: (size) => {
+    if (!FONT_SIZES.includes(size)) return;
+    set({ fontSize: size });
+    persist(get());
+  },
   setFontFamily: (family) => {
     if (!FAMILIES.includes(family)) return;
     set({ fontFamily: family });

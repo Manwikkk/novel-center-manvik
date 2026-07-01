@@ -1,16 +1,19 @@
 import { Platform } from 'react-native';
 
-const FALLBACK = Platform.select({
-  android: 'http://10.0.2.2:4000',
-  ios: 'http://localhost:4000',
-  default: 'http://localhost:4000',
+// Must match `PORT` in server/.env (example default is 4000).
+const API_PORT = 3008;
+
+const HOST = Platform.select({
+  android: '10.0.2.2',
+  ios: 'localhost',
+  default: 'localhost',
 });
 
-// Override at runtime by setting NC_API_URL via Metro's --env flags or by
-// editing this file. Devices on physical hardware should use the LAN IP of
-// the dev machine (e.g. http://192.168.1.42:4000).
-// export const API_BASE_URL = process?.env?.NC_API_URL || FALLBACK;
+const FALLBACK = `http://${HOST}:${API_PORT}`;
 
-export const API_BASE_URL = 'https://unexaggerated-angelina-sustenanceless.ngrok-free.dev';
+// Physical device or custom tunnel: set your machine's LAN IP or ngrok base URL.
+// Examples: 'http://192.168.1.42:4000'  |  'https://abc123.ngrok-free.dev'
+export const DEV_API_OVERRIDE = null;
 
-export const API_URL = `${API_BASE_URL.replace(/\/$/, '')}/api/v1`;
+export const API_BASE_URL = (DEV_API_OVERRIDE || FALLBACK).replace(/\/$/, '');
+export const API_URL = `${API_BASE_URL}/api/v1`;

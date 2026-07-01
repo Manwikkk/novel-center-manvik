@@ -12,22 +12,26 @@ export const useAuthStore = create((set, get) => ({
   hydrate: async () => {
     if (get().hydrated) return;
     try {
-      const cachedRaw = await AsyncStorage.getItem(USER_KEY);
-      if (cachedRaw) set({ user: JSON.parse(cachedRaw) });
-    } catch (_e) {}
+      try {
+        const cachedRaw = await AsyncStorage.getItem(USER_KEY);
+        if (cachedRaw) set({ user: JSON.parse(cachedRaw) });
+      } catch (_e) {}
 
-    const token = await getAccessToken();
-    if (!token) {
-      set({ user: null, hydrated: true });
-      return;
-    }
-    try {
-      const data = await api.get('/auth/me');
-      set({ user: data.user, hydrated: true });
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      const token = await getAccessToken();
+      if (!token) {
+        set({ user: null, hydrated: true });
+        return;
+      }
+      try {
+        const data = await api.get('/auth/me');
+        set({ user: data.user, hydrated: true });
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      } catch (_err) {
+        await clearTokens();
+        await AsyncStorage.removeItem(USER_KEY);
+        set({ user: null, hydrated: true });
+      }
     } catch (_err) {
-      await clearTokens();
-      await AsyncStorage.removeItem(USER_KEY);
       set({ user: null, hydrated: true });
     }
   },
@@ -61,7 +65,7 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     await clearTokens();
     await AsyncStorage.removeItem(USER_KEY);
-    set({ user: null });
+    set({ user: null, hydrated: true });
   },
 
   refreshMe: async () => {
