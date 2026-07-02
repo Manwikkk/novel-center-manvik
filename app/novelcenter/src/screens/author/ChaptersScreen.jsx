@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import NCText from '@/components/primitives/Text';
 import Skeleton from '@/components/primitives/Skeleton';
 import EmptyState from '@/components/primitives/EmptyState';
+import AuthorGuard from '@/components/studio/AuthorGuard';
 import {
   StudioScreen,
   StudioHeader,
@@ -11,6 +12,7 @@ import {
   useAppTheme,
 } from '@/components/studio/StudioTheme';
 import { api } from '@/lib/api';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 import { useFocusEffect } from '@react-navigation/native';
 import { useUiStore } from '@/stores/uiStore';
 
@@ -36,8 +38,23 @@ function StatusPill({ label, accent }) {
 }
 
 export default function ChaptersScreen({ route, navigation }) {
-  const { colors: C } = useAppTheme();
   const { bookId, bookTitle } = route.params || {};
+  return (
+    <AuthorGuard navigation={navigation} title="Chapters">
+      <ChaptersContent bookId={bookId} bookTitle={bookTitle} navigation={navigation} />
+    </AuthorGuard>
+  );
+}
+
+function formatSchedule(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function ChaptersContent({ bookId, bookTitle, navigation }) {
+  const { colors: C } = useAppTheme();
   const pushToast = useUiStore((s) => s.pushToast);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,11 +121,20 @@ export default function ChaptersScreen({ route, navigation }) {
       <StudioHeader
         breadcrumb="Book"
         title={bookTitle || 'Chapters'}
-        onBack={() => navigation.goBack()}
+        onBack={() => exitAuthorStudioToProfile(navigation)}
         right={(
-          <Pressable onPress={onCreate} hitSlop={8} style={{ padding: 6 }}>
-            <Icon name="add" size={24} color={C.white} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            <Pressable
+              onPress={() => navigation.navigate('AuthorBookEdit', { mode: 'edit', bookId })}
+              hitSlop={8}
+              style={{ padding: 6 }}
+            >
+              <Icon name="edit" size={22} color={C.white} />
+            </Pressable>
+            <Pressable onPress={onCreate} hitSlop={8} style={{ padding: 6 }}>
+              <Icon name="add" size={24} color={C.white} />
+            </Pressable>
+          </View>
         )}
       />
 
@@ -152,6 +178,9 @@ export default function ChaptersScreen({ route, navigation }) {
                 ) : (
                   <StatusPill label="FREE" />
                 )}
+                {item.scheduledPublishAt ? (
+                  <StatusPill label={`SCHED · ${formatSchedule(item.scheduledPublishAt)}`} accent />
+                ) : null}
                 <StatusPill label={`${item.readingMinutes || 0} min`} />
               </View>
             </View>

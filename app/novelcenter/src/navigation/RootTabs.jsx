@@ -18,7 +18,17 @@ const TABS = [
   { name: 'AccountTab', component: AccountStack, label: 'Profile', icon: 'person' },
 ];
 
-const HIDE_TAB_ON = new Set(['BookDetail', 'Reader', 'AuthorProfile', 'CollectionDetail', 'AuthorStudio', 'Wallet', 'ReaderPrefs']);
+const HIDE_TAB_ON = new Set([
+  'BookDetail', 'Reader', 'AuthorProfile', 'CollectionDetail', 'AuthorStudio', 'Wallet', 'ReaderPrefs',
+  'AuthorDashboard', 'AuthorBooks', 'AuthorBookEdit', 'AuthorChapters', 'AuthorChapterEdit', 'AuthorEarnings', 'AuthorSettings',
+]);
+
+function shouldHideTabBar(route) {
+  const focused = getFocusedRouteNameFromRoute(route);
+  if (focused && HIDE_TAB_ON.has(focused)) return true;
+  if (focused?.startsWith?.('Author')) return true;
+  return false;
+}
 
 export default function RootTabs() {
   const { colors: C } = useAppTheme();
@@ -34,12 +44,9 @@ export default function RootTabs() {
     paddingBottom: tabBottomPadding,
   };
 
-  const hideTabBarOption = ({ route }) => {
-    const routeName = getFocusedRouteNameFromRoute(route);
-    return {
-      tabBarStyle: HIDE_TAB_ON.has(routeName) ? { display: 'none' } : defaultTabBarStyle,
-    };
-  };
+  const hideTabBarOption = ({ route }) => ({
+    tabBarStyle: shouldHideTabBar(route) ? { display: 'none' } : defaultTabBarStyle,
+  });
 
   return (
     <Tab.Navigator

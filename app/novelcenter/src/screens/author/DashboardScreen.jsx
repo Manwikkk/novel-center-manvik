@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, ScrollView, RefreshControl } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import NCText from '@/components/primitives/Text';
-import Skeleton from '@/components/primitives/Skeleton';
-import SignInModal from '@/components/featured/SignInModal';
+import AuthorGuard from '@/components/studio/AuthorGuard';
+import BookDashboardPanel from '@/components/studio/BookDashboardPanel';
+import StudioNavBar from '@/components/studio/StudioNavBar';
 import {
   StudioScreen,
   StudioHeader,
@@ -11,43 +11,59 @@ import {
   StudioStatCard,
   StudioMenuRow,
   StudioPrimaryButton,
+  StudioPillTabs,
   STUDIO_LAYOUT,
   useAppTheme,
 } from '@/components/studio/StudioTheme';
 import { DarkSurface } from '@/components/discover/DiscoverTheme';
-import { api } from '@/lib/api';
+import { authorApi } from '@/lib/author';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 import { useAuthStore } from '@/stores/authStore';
 
+const HEADER_TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'stories', label: 'Stories' },
+];
+
 export default function DashboardScreen({ navigation }) {
+  return (
+    <AuthorGuard navigation={navigation} title="Author Studio">
+      <DashboardContent navigation={navigation} />
+    </AuthorGuard>
+  );
+}
+
+function DashboardContent({ navigation }) {
   const { colors: C } = useAppTheme();
   const user = useAuthStore((s) => s.user);
   const [earnings, setEarnings] = useState(null);
+  const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [booksLoading, setBooksLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [signInOpen, setSignInOpen] = useState(false);
-
-  const isAuthor = user?.role === 'author' || user?.role === 'admin';
+  const [headerTab, setHeaderTab] = useState('overview');
 
   const load = useCallback(async () => {
-    if (!isAuthor) return;
     try {
-      const data = await api.get('/author/earnings');
-      setEarnings(data);
+      const [earn, bookData] = await Promise.all([
+        authorApi.earnings(),
+        authorApi.listBooks(user.id, { pageSize: 50 }),
+      ]);
+      setEarnings(earn);
+      setBooks(bookData?.items || []);
     } catch (_e) {
       setEarnings(null);
+      setBooks([]);
     }
-  }, [isAuthor]);
+  }, [user?.id]);
 
   useEffect(() => {
-    if (!isAuthor) {
-      setLoading(false);
-      return undefined;
-    }
     let active = true;
     setLoading(true);
-    load().finally(() => active && setLoading(false));
+    setBooksLoading(true);
+    load().finally(() => active && (setLoading(false), setBooksLoading(false)));
     return () => { active = false; };
-  }, [isAuthor, load]);
+  }, [load]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -57,47 +73,14 @@ export default function DashboardScreen({ navigation }) {
 
   const t1 = earnings?.totals;
 
-  if (!user) {
-    return (
-      <StudioScreen>
-        <StudioHeader breadcrumb="Author Studio" title="Sign in required" onBack={() => navigation.goBack()} />
-        <View style={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, gap: 16 }}>
-          <DarkSurface style={{ padding: 20, gap: 12 }}>
-            <NCText variant="bodySm" style={{ color: C.muted, lineHeight: 22 }}>
-              Sign in with an author account to manage books, chapters, and earnings.
-            </NCText>
-            <StudioPrimaryButton label="Sign in" onPress={() => setSignInOpen(true)} />
-          </DarkSurface>
-        </View>
-        <SignInModal visible={signInOpen} onClose={() => setSignInOpen(false)} />
-      </StudioScreen>
-    );
-  }
-
-  if (!isAuthor) {
-    return (
-      <StudioScreen>
-        <StudioHeader breadcrumb="Author Studio" title="Author access" onBack={() => navigation.goBack()} />
-        <View style={{ paddingHorizontal: STUDIO_LAYOUT.hPadding }}>
-          <DarkSurface style={{ padding: 20, gap: 10 }}>
-            <NCText variant="titleMd" style={{ color: C.white }}>This area is for authors</NCText>
-            <NCText variant="bodySm" style={{ color: C.muted, lineHeight: 22 }}>
-              Register as an author on the website or contact support to publish on Novel Centre.
-            </NCText>
-          </DarkSurface>
-        </View>
-      </StudioScreen>
-    );
-  }
-
   return (
-    <StudioScreen>
-      <StudioHeader breadcrumb="Author Studio" onBack={() => navigation.goBack()} />
+    <StudioScreen edges={['top']}>
+      <StudioHeader breadcrumb="Author Studio" onBack={() => exitAuthorStudioToProfile(navigation)} />
 
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: STUDIO_LAYOUT.hPadding,
-          paddingBottom: 64,
+          paddingBottom: 16,
           gap: 24,
         }}
         refreshControl={<RefreshControl tintColor={C.white} refreshing={refreshing} onRefresh={onRefresh} />}
@@ -110,74 +93,57 @@ export default function DashboardScreen({ navigation }) {
           </NCText>
         </View>
 
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {loading ? (
-              <>
-                <Skeleton width="48%" height={88} radius={12} />
-                <Skeleton width="48%" height={88} radius={12} />
-              </>
-            ) : (
-              <>
+        <StudioPillTabs tabs={HEADER_TABS} activeKey={headerTab} onChange={setHeaderTab} />
+
+        {headerTab === 'overview' ? (
+          <>
+            <View style={{ gap: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
                 <StudioStatCard
                   label="This month"
-                  value={t1?.monthTokens != null ? Number(t1.monthTokens).toLocaleString() : '—'}
+                  value={!loading && t1?.monthTokens != null ? Number(t1.monthTokens).toLocaleString() : '—'}
                   sub="tokens"
                 />
                 <StudioStatCard
                   label="Lifetime"
-                  value={t1?.lifetimeTokens != null ? Number(t1.lifetimeTokens).toLocaleString() : '—'}
+                  value={!loading && t1?.lifetimeTokens != null ? Number(t1.lifetimeTokens).toLocaleString() : '—'}
                   sub="tokens"
                 />
-              </>
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {loading ? (
-              <>
-                <Skeleton width="48%" height={88} radius={12} />
-                <Skeleton width="48%" height={88} radius={12} />
-              </>
-            ) : (
-              <>
-                <StudioStatCard label="Books" value={t1?.books != null ? `${t1.books}` : '—'} />
-                <StudioStatCard label="Readers" value={t1?.uniqueReaders != null ? `${t1.uniqueReaders}` : '—'} />
-              </>
-            )}
-          </View>
-        </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <StudioStatCard label="Books" value={!loading && t1?.books != null ? `${t1.books}` : '—'} />
+                <StudioStatCard label="Readers" value={!loading && t1?.uniqueReaders != null ? `${t1.uniqueReaders}` : '—'} />
+              </View>
+            </View>
 
-        <View style={{ gap: 10 }}>
-          <StudioSectionLabel>WORKSPACE</StudioSectionLabel>
-          <DarkSurface>
-            <StudioMenuRow
-              first
-              icon="library-books"
-              label="My books"
-              sub="Create, edit, and publish novels"
-              onPress={() => navigation.navigate('AuthorBooks')}
-            />
-            <StudioMenuRow
-              icon="trending-up"
-              label="Earnings"
-              sub="Unlocks and token income"
-              onPress={() => navigation.navigate('AuthorEarnings')}
-            />
-            <StudioMenuRow
-              icon="settings"
-              label="Settings"
-              sub="Public profile and bio"
-              onPress={() => navigation.navigate('AuthorSettings')}
-            />
-          </DarkSurface>
-        </View>
+            <View style={{ gap: 10 }}>
+              <StudioSectionLabel>WORKSPACE</StudioSectionLabel>
+              <DarkSurface>
+                <StudioMenuRow
+                  first
+                  icon="settings"
+                  label="Settings"
+                  sub="Public profile and bio"
+                  onPress={() => navigation.navigate('AuthorSettings')}
+                />
+              </DarkSurface>
+            </View>
 
-        <StudioPrimaryButton
-          label="New book"
-          icon="add"
-          onPress={() => navigation.navigate('AuthorBookEdit', { mode: 'create' })}
-        />
+            <StudioPrimaryButton
+              label="New book"
+              icon="add"
+              onPress={() => navigation.navigate('AuthorBookEdit', { mode: 'create' })}
+            />
+          </>
+        ) : (
+          <View style={{ gap: 12 }}>
+            <StudioSectionLabel>YOUR STORIES</StudioSectionLabel>
+            <BookDashboardPanel books={books} loading={booksLoading} navigation={navigation} />
+          </View>
+        )}
       </ScrollView>
+
+      <StudioNavBar navigation={navigation} activeRoute="AuthorDashboard" />
     </StudioScreen>
   );
 }

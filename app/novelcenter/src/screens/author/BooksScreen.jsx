@@ -4,6 +4,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import NCText from '@/components/primitives/Text';
 import EmptyState from '@/components/primitives/EmptyState';
 import Skeleton from '@/components/primitives/Skeleton';
+import AuthorGuard from '@/components/studio/AuthorGuard';
+import StudioNavBar from '@/components/studio/StudioNavBar';
 import {
   StudioScreen,
   StudioHeader,
@@ -13,6 +15,7 @@ import {
 } from '@/components/studio/StudioTheme';
 import { resolveImageUrl } from '@/lib/image';
 import { api } from '@/lib/api';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 import { useAuthStore } from '@/stores/authStore';
 import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,6 +30,14 @@ const STATUS_TABS = [
 ];
 
 export default function BooksScreen({ navigation }) {
+  return (
+    <AuthorGuard navigation={navigation} title="My books">
+      <BooksContent navigation={navigation} />
+    </AuthorGuard>
+  );
+}
+
+function BooksContent({ navigation }) {
   const { colors: C } = useAppTheme();
   const user = useAuthStore((s) => s.user);
   const pushToast = useUiStore((s) => s.pushToast);
@@ -68,7 +79,7 @@ export default function BooksScreen({ navigation }) {
   };
 
   const showBookMenu = (book) => {
-    Alert.alert(book.title, undefined, [
+    const actions = [
       {
         text: 'Edit book',
         onPress: () => navigation.navigate('AuthorBookEdit', { mode: 'edit', bookId: book.id }),
@@ -77,21 +88,30 @@ export default function BooksScreen({ navigation }) {
         text: 'Manage chapters',
         onPress: () => navigation.navigate('AuthorChapters', { bookId: book.id, bookTitle: book.title }),
       },
-      {
-        text: 'Delete book',
-        style: 'destructive',
-        onPress: () => onDelete(book),
-      },
+    ];
+    if (book.slug && book.status === 'published') {
+      actions.unshift({
+        text: 'View public page',
+        onPress: () =>
+          navigation.getParent()?.getParent()?.navigate('DiscoverTab', {
+            screen: 'BookDetail',
+            params: { slug: book.slug, id: book.id },
+          }),
+      });
+    }
+    actions.push(
+      { text: 'Delete book', style: 'destructive', onPress: () => onDelete(book) },
       { text: 'Cancel', style: 'cancel' },
-    ]);
+    );
+    Alert.alert(book.title, undefined, actions);
   };
 
   return (
-    <StudioScreen>
+    <StudioScreen edges={['top']}>
       <StudioHeader
         breadcrumb="Author Studio"
         title="My books"
-        onBack={() => navigation.goBack()}
+        onBack={() => exitAuthorStudioToProfile(navigation)}
         right={(
           <Pressable
             onPress={() => navigation.navigate('AuthorBookEdit', { mode: 'create' })}
@@ -191,6 +211,7 @@ export default function BooksScreen({ navigation }) {
           ) : null
         }
       />
+      <StudioNavBar navigation={navigation} activeRoute="AuthorBooks" />
     </StudioScreen>
   );
 }

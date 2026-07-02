@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import NCText from '@/components/primitives/Text';
 import Avatar from '@/components/primitives/Avatar';
+import AuthorGuard from '@/components/studio/AuthorGuard';
 import {
   StudioScreen,
   StudioHeader,
@@ -14,11 +15,20 @@ import {
 } from '@/components/studio/StudioTheme';
 import { DarkSurface } from '@/components/discover/DiscoverTheme';
 import { api } from '@/lib/api';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
 
 
 export default function SettingsScreen({ navigation }) {
+  return (
+    <AuthorGuard navigation={navigation} title="Settings">
+      <SettingsContent navigation={navigation} />
+    </AuthorGuard>
+  );
+}
+
+function SettingsContent({ navigation }) {
   const { colors: C } = useAppTheme();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -53,7 +63,7 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <StudioScreen>
-      <StudioHeader breadcrumb="Author Studio" title="Settings" onBack={() => navigation.goBack()} />
+      <StudioHeader breadcrumb="Author Studio" title="Settings" onBack={() => exitAuthorStudioToProfile(navigation)} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView

@@ -4,6 +4,8 @@ import NCText from '@/components/primitives/Text';
 import Skeleton from '@/components/primitives/Skeleton';
 import EmptyState from '@/components/primitives/EmptyState';
 import ErrorView from '@/components/primitives/ErrorView';
+import AuthorGuard from '@/components/studio/AuthorGuard';
+import StudioNavBar from '@/components/studio/StudioNavBar';
 import {
   StudioScreen,
   StudioHeader,
@@ -14,9 +16,18 @@ import {
 } from '@/components/studio/StudioTheme';
 import { DarkSurface } from '@/components/discover/DiscoverTheme';
 import { api } from '@/lib/api';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 
 
 export default function EarningsScreen({ navigation }) {
+  return (
+    <AuthorGuard navigation={navigation} title="Earnings">
+      <EarningsContent navigation={navigation} />
+    </AuthorGuard>
+  );
+}
+
+function EarningsContent({ navigation }) {
   const { colors: C } = useAppTheme();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,8 +58,8 @@ export default function EarningsScreen({ navigation }) {
   };
 
   return (
-    <StudioScreen>
-      <StudioHeader breadcrumb="Author Studio" title="Earnings" onBack={() => navigation.goBack()} />
+    <StudioScreen edges={['top']}>
+      <StudioHeader breadcrumb="Author Studio" title="Earnings" onBack={() => exitAuthorStudioToProfile(navigation)} />
 
       {error ? (
         <ErrorView error={error} onRetry={load} />
@@ -114,6 +125,7 @@ export default function EarningsScreen({ navigation }) {
           )}
         </ScrollView>
       )}
+      <StudioNavBar navigation={navigation} activeRoute="AuthorEarnings" />
     </StudioScreen>
   );
 }
