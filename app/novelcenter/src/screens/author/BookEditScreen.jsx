@@ -1,35 +1,89 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, ScrollView, Pressable, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Screen from '@/components/primitives/Screen';
 import NCText from '@/components/primitives/Text';
-import IconButton from '@/components/primitives/IconButton';
-import Input from '@/components/primitives/Input';
-import Button from '@/components/primitives/Button';
-import Cover from '@/components/primitives/Cover';
-import { useTheme } from '@/theme';
+import AuthorGuard from '@/components/studio/AuthorGuard';
+import ContentTagPicker from '@/components/studio/ContentTagPicker';
+import {
+  StudioScreen,
+  StudioHeader,
+  StudioInput,
+  StudioPrimaryButton,
+  StudioOutlineButton,
+  StudioChipGroup,
+  StudioSectionLabel,
+  STUDIO_LAYOUT,
+  useAppTheme,
+} from '@/components/studio/StudioTheme';
+import { DarkSurface } from '@/components/discover/DiscoverTheme';
 import { api, getAccessToken } from '@/lib/api';
+import { catalogApi } from '@/lib/catalog';
+import {
+  BOOK_TYPES,
+  LEADING_GENDERS,
+  GENRE_OPTIONS,
+  BOOK_LENGTHS,
+  WARNING_NOTICES,
+  PUBLISH_CHOICES,
+  emptyBookForm,
+  formToPayload,
+  TITLE_MAX,
+} from '@/lib/bookFormOptions';
 import { API_URL } from '@/config/env';
+import { resolveImageUrl } from '@/lib/image';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 import { useUiStore } from '@/stores/uiStore';
 
-const STATUSES = ['draft', 'published', 'archived'];
+const STATUSES = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'published', label: 'Published' },
+  { value: 'archived', label: 'Archive' },
+];
 
 export default function BookEditScreen({ route, navigation }) {
-  const t = useTheme();
   const { mode, bookId } = route.params || {};
   const isEdit = mode === 'edit' && bookId;
+
+  return (
+    <AuthorGuard navigation={navigation} title={isEdit ? 'Edit book' : 'New book'}>
+      <BookEditContent route={route} navigation={navigation} isEdit={isEdit} bookId={bookId} />
+    </AuthorGuard>
+  );
+}
+
+function BookEditContent({ route, navigation, isEdit, bookId }) {
+  const { colors: C } = useAppTheme();
   const pushToast = useUiStore((s) => s.pushToast);
 
-  const [title, setTitle] = useState('');
-  const [synopsis, setSynopsis] = useState('');
-  const [category, setCategory] = useState('');
-  const [language, setLanguage] = useState('en');
-  const [status, setStatus] = useState('draft');
-  const [coverUrl, setCoverUrl] = useState(null);
+  const [form, setForm] = useState(emptyBookForm());
   const [book, setBook] = useState(null);
+  const [coverUrl, setCoverUrl] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [languages, setLanguages] = useState([]);
+  const [contentTags, setContentTags] = useState([]);
+  const [status, setStatus] = useState('draft');
   const [busy, setBusy] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+
+  const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  useEffect(() => {
+    Promise.all([
+      catalogApi.categories().catch(() => ({ items: [] })),
+      catalogApi.languages().catch(() => ({ items: [] })),
+      catalogApi.contentTags().catch(() => ({ items: [] })),
+    ]).then(([cats, langs, tags]) => {
+      setCategories(cats?.items || []);
+      setLanguages(langs?.items || []);
+      setContentTags(tags?.items || []);
+      if (!isEdit) {
+        const en = (langs?.items || []).find((l) => l.code === 'en');
+        if (en) setForm((f) => ({ ...f, languageId: String(en.id) }));
+      }
+    }).finally(() => setCatalogLoading(false));
+  }, [isEdit]);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -37,10 +91,7 @@ export default function BookEditScreen({ route, navigation }) {
       try {
         const { book: b } = await api.get(`/books/by-id/${bookId}`);
         setBook(b);
-        setTitle(b.title || '');
-        setSynopsis(b.synopsis || '');
-        setCategory(b.category || '');
-        setLanguage(b.language || 'en');
+        setForm(emptyBookForm(b));
         setStatus(b.status || 'draft');
         setCoverUrl(b.coverUrl || null);
       } catch (err) {
@@ -50,36 +101,73 @@ export default function BookEditScreen({ route, navigation }) {
     })();
   }, [isEdit, bookId, navigation, pushToast]);
 
+  const genreOptions = useMemo(
+    () => GENRE_OPTIONS[form.leadingGender] || GENRE_OPTIONS.male,
+    [form.leadingGender],
+  );
+
+  const categoryOptions = categories.map((c) => ({
+    value: String(c.id),
+    label: c.label || c.name,
+  }));
+
+  const languageOptions = languages.map((l) => ({
+    value: String(l.id),
+    label: l.name || l.label || l.code,
+  }));
+
+  const validate = () => {
+    if (!form.title.trim()) return 'Title is required.';
+    if (form.title.trim().length > TITLE_MAX) return `Title must be ${TITLE_MAX} characters or fewer.`;
+    if (!form.synopsis.trim()) return 'Synopsis is required.';
+    if (!form.genre) return 'Genre is required.';
+    if (!form.languageId) return 'Language is required.';
+    if (!form.bookLength) return 'Book length is required.';
+    if (!form.warningNotice) return 'Warning notice is required.';
+    return null;
+  };
+
   const onSave = async () => {
-    if (!title.trim()) {
-      pushToast({ type: 'error', title: 'Title is required' });
+    const err = validate();
+    if (err) {
+      pushToast({ type: 'error', title: 'Missing fields', message: err });
       return;
     }
     setBusy(true);
     try {
+      const payload = formToPayload(form, { includeStatus: !isEdit });
       if (isEdit) {
-        const { book: updated } = await api.patch(`/books/${book.id}`, {
-          title: title.trim(),
-          synopsis: synopsis.trim() || null,
-          category: category.trim() || null,
-          language: language.trim() || 'en',
-          status,
-        });
+        const { book: updated } = await api.patch(`/books/${book.id}`, { ...payload, status });
         setBook(updated);
+        setStatus(updated.status);
         pushToast({ type: 'success', title: 'Saved' });
       } else {
-        const { book: created } = await api.post('/books', {
-          title: title.trim(),
-          synopsis: synopsis.trim() || null,
-          category: category.trim() || null,
-          language: language.trim() || 'en',
-          status,
-        });
-        pushToast({ type: 'success', title: 'Book created' });
+        const { book: created } = await api.post('/books', payload);
+        pushToast({ type: 'success', title: created.status === 'published' ? 'Published' : 'Draft saved' });
         navigation.replace('AuthorBookEdit', { mode: 'edit', bookId: created.id });
       }
-    } catch (err) {
-      pushToast({ type: 'error', title: 'Could not save', message: err.message });
+    } catch (e) {
+      pushToast({ type: 'error', title: 'Could not save', message: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPublishToggle = async () => {
+    if (!book?.id) return;
+    const next = status === 'published' ? 'draft' : 'published';
+    setBusy(true);
+    try {
+      const { book: updated } = await api.patch(`/books/${book.id}`, { status: next });
+      setBook(updated);
+      setStatus(updated.status);
+      setField('publishChoice', updated.status === 'published' ? 'published' : 'draft');
+      pushToast({
+        type: 'success',
+        title: next === 'published' ? 'Published' : 'Unpublished',
+      });
+    } catch (e) {
+      pushToast({ type: 'error', title: 'Could not update', message: e.message });
     } finally {
       setBusy(false);
     }
@@ -118,86 +206,222 @@ export default function BookEditScreen({ route, navigation }) {
       setCoverUrl(data.book.coverUrl);
       setBook(data.book);
       pushToast({ type: 'success', title: 'Cover updated' });
-    } catch (err) {
-      pushToast({ type: 'error', title: 'Could not upload cover', message: err.message });
+    } catch (e) {
+      pushToast({ type: 'error', title: 'Could not upload cover', message: e.message });
     } finally {
       setUploadingCover(false);
     }
   };
 
+  const coverUri = resolveImageUrl(coverUrl);
+
   return (
-    <Screen padded={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <IconButton name="arrow-back" onPress={() => navigation.goBack()} />
-          <NCText variant="uiLabelSm" tone="muted">{isEdit ? 'Edit book' : 'New book'}</NCText>
-        </View>
-        {isEdit ? (
-          <IconButton
-            name="menu-book"
-            onPress={() => navigation.navigate('AuthorChapters', { bookId: book.id, bookTitle: book.title })}
-          />
-        ) : null}
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 48, gap: 24 }}>
-          <NCText variant="headlineXl">{isEdit ? 'Edit book' : 'Create book'}</NCText>
-
-          <View style={{ alignItems: 'center', gap: 10 }}>
-            <Pressable onPress={onPickCover} style={{ alignItems: 'center', gap: 10 }}>
-              <Cover source={coverUrl} width={160} />
-              <NCText variant="uiLabelSm" tone="muted">
-                {uploadingCover ? 'Uploading…' : isEdit ? 'Tap to change cover' : 'Save book to upload cover'}
-              </NCText>
+    <StudioScreen edges={['top', 'bottom']}>
+      <StudioHeader
+        breadcrumb="Author Studio"
+        title={isEdit ? 'Edit book' : 'New book'}
+        onBack={() => exitAuthorStudioToProfile(navigation)}
+        right={
+          isEdit ? (
+            <Pressable
+              onPress={() => navigation.navigate('AuthorChapters', { bookId: book.id, bookTitle: book.title })}
+              hitSlop={8}
+              style={{ padding: 6 }}
+            >
+              <Icon name="menu-book" size={22} color={C.white} />
             </Pressable>
-          </View>
+          ) : null
+        }
+      />
 
-          <Input label="Title" value={title} onChangeText={setTitle} autoCapitalize="words" autoCorrect />
-          <Input
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, paddingBottom: 48, gap: 20 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {isEdit ? (
+            <DarkSurface style={{ padding: 14, gap: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ gap: 4 }}>
+                  <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 10, letterSpacing: 1 }}>
+                    VISIBILITY
+                  </NCText>
+                  <NCText variant="titleMd" style={{ color: C.white, textTransform: 'capitalize' }}>
+                    {status}
+                  </NCText>
+                </View>
+                <StudioOutlineButton
+                  label={status === 'published' ? 'Unpublish' : 'Publish now'}
+                  onPress={onPublishToggle}
+                />
+              </View>
+              {book?.slug && status === 'published' ? (
+                <Pressable
+                  onPress={() =>
+                    navigation.getParent()?.getParent()?.navigate('DiscoverTab', {
+                      screen: 'BookDetail',
+                      params: { slug: book.slug, id: book.id },
+                    })
+                  }
+                >
+                  <NCText variant="uiLabelSm" style={{ color: C.accent, fontSize: 12 }}>
+                    View public page →
+                  </NCText>
+                </Pressable>
+              ) : null}
+            </DarkSurface>
+          ) : null}
+
+          <Pressable onPress={onPickCover} style={{ alignItems: 'center', gap: 10 }}>
+            <View
+              style={{
+                width: 140,
+                height: 210,
+                borderRadius: 12,
+                overflow: 'hidden',
+                backgroundColor: C.inputBg,
+                borderWidth: 1,
+                borderColor: C.inputBorder,
+              }}
+            >
+              {coverUri ? (
+                <Image source={{ uri: coverUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              ) : (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="image" size={32} color={C.muted} />
+                </View>
+              )}
+            </View>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 12 }}>
+              {uploadingCover ? 'Uploading…' : isEdit ? 'Tap to change cover' : 'Save book to upload cover'}
+            </NCText>
+          </Pressable>
+
+          <StudioSectionLabel>NOVEL INFORMATION</StudioSectionLabel>
+          <StudioInput
+            label={`Title (${form.title.length}/${TITLE_MAX})`}
+            value={form.title}
+            onChangeText={(v) => setField('title', v.slice(0, TITLE_MAX))}
+            autoCapitalize="words"
+            placeholder="Book title"
+          />
+          <StudioInput
             label="Synopsis"
-            value={synopsis}
-            onChangeText={setSynopsis}
+            value={form.synopsis}
+            onChangeText={(v) => setField('synopsis', v)}
             multiline
             numberOfLines={6}
             autoCapitalize="sentences"
-            autoCorrect
+            placeholder="Tell readers what this story is about…"
           />
-          <Input label="Category" value={category} onChangeText={setCategory} autoCapitalize="words" autoCorrect />
-          <Input label="Language" value={language} onChangeText={setLanguage} placeholder="en" />
 
           <View style={{ gap: 8 }}>
-            <NCText variant="uiLabelSm" tone="muted">Status</NCText>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {STATUSES.map((s) => {
-                const active = status === s;
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => setStatus(s)}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      borderWidth: 1,
-                      borderColor: active ? t.colors.fg : t.colors.containerHigh,
-                      backgroundColor: active ? t.colors.surfaceLow : 'transparent',
-                      borderRadius: t.radii.sm,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <NCText variant="uiLabelXs">{s.toUpperCase()}</NCText>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+              Book type
+            </NCText>
+            <StudioChipGroup options={BOOK_TYPES} value={form.bookType} onChange={(v) => setField('bookType', v)} />
           </View>
 
-          <Button label={isEdit ? 'Save changes' : 'Create book'} onPress={onSave} loading={busy} full size="lg" />
+          <View style={{ gap: 8 }}>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+              Leading gender
+            </NCText>
+            <StudioChipGroup
+              options={LEADING_GENDERS}
+              value={form.leadingGender}
+              onChange={(v) => {
+                setField('leadingGender', v);
+                setField('genre', '');
+              }}
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+              Genre
+            </NCText>
+            <StudioChipGroup options={genreOptions} value={form.genre} onChange={(v) => setField('genre', v)} />
+          </View>
+
+          {categoryOptions.length ? (
+            <View style={{ gap: 8 }}>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                Category
+              </NCText>
+              <StudioChipGroup
+                options={categoryOptions}
+                value={form.categoryId}
+                onChange={(v) => setField('categoryId', v)}
+              />
+            </View>
+          ) : null}
+
+          {languageOptions.length ? (
+            <View style={{ gap: 8 }}>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                Language
+              </NCText>
+              <StudioChipGroup
+                options={languageOptions}
+                value={form.languageId}
+                onChange={(v) => setField('languageId', v)}
+              />
+            </View>
+          ) : null}
+
+          <StudioSectionLabel>STORY DETAILS</StudioSectionLabel>
+
+          <View style={{ gap: 8 }}>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+              Book length
+            </NCText>
+            <StudioChipGroup options={BOOK_LENGTHS} value={form.bookLength} onChange={(v) => setField('bookLength', v)} />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+              Warning notice
+            </NCText>
+            <StudioChipGroup
+              options={WARNING_NOTICES}
+              value={form.warningNotice}
+              onChange={(v) => setField('warningNotice', v)}
+            />
+          </View>
+
+          <ContentTagPicker
+            tags={contentTags}
+            selectedIds={form.contentTagIds}
+            onChange={(ids) => setField('contentTagIds', ids)}
+          />
+
+          {!isEdit ? (
+            <View style={{ gap: 8 }}>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                On create
+              </NCText>
+              <StudioChipGroup
+                options={PUBLISH_CHOICES}
+                value={form.publishChoice}
+                onChange={(v) => setField('publishChoice', v)}
+              />
+            </View>
+          ) : (
+            <View style={{ gap: 8 }}>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                Archive status
+              </NCText>
+              <StudioChipGroup options={STATUSES} value={status} onChange={setStatus} />
+            </View>
+          )}
+
+          <StudioPrimaryButton
+            label={isEdit ? 'Save changes' : 'Create book'}
+            onPress={onSave}
+            loading={busy || catalogLoading}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
-    </Screen>
+    </StudioScreen>
   );
 }

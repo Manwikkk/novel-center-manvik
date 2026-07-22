@@ -1,18 +1,35 @@
 import React, { useState } from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import Screen from '@/components/primitives/Screen';
 import NCText from '@/components/primitives/Text';
-import IconButton from '@/components/primitives/IconButton';
 import Avatar from '@/components/primitives/Avatar';
-import Input from '@/components/primitives/Input';
-import Button from '@/components/primitives/Button';
-import { useTheme } from '@/theme';
+import AuthorGuard from '@/components/studio/AuthorGuard';
+import {
+  StudioScreen,
+  StudioHeader,
+  StudioInput,
+  StudioPrimaryButton,
+  StudioOutlineButton,
+  StudioSectionLabel,
+  STUDIO_LAYOUT,
+  useAppTheme,
+} from '@/components/studio/StudioTheme';
+import { DarkSurface } from '@/components/discover/DiscoverTheme';
 import { api } from '@/lib/api';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
 
+
 export default function SettingsScreen({ navigation }) {
-  const t = useTheme();
+  return (
+    <AuthorGuard navigation={navigation} title="Settings">
+      <SettingsContent navigation={navigation} />
+    </AuthorGuard>
+  );
+}
+
+function SettingsContent({ navigation }) {
+  const { colors: C } = useAppTheme();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const pushToast = useUiStore((s) => s.pushToast);
@@ -38,46 +55,63 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
+  const reset = () => {
+    setDisplayName(user?.displayName || '');
+    setBio(user?.bio || '');
+    setAvatarUrl(user?.avatarUrl || '');
+  };
+
   return (
-    <Screen padded={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 }}>
-        <IconButton name="arrow-back" onPress={() => navigation.goBack()} />
-        <NCText variant="uiLabelSm" tone="muted">Studio</NCText>
-      </View>
+    <StudioScreen>
+      <StudioHeader breadcrumb="Author Studio" title="Settings" onBack={() => exitAuthorStudioToProfile(navigation)} />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 64, gap: 24 }}>
-          <NCText variant="headlineXl">Settings</NCText>
-
-          <View style={{ alignItems: 'center', gap: 10 }}>
-            <Avatar name={displayName} source={avatarUrl} size={88} />
-            <NCText variant="uiLabelSm" tone="muted">Avatar URL is optional.</NCText>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, paddingBottom: 64, gap: 20 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ gap: 10 }}>
+            <StudioSectionLabel>ACCOUNT</StudioSectionLabel>
+            <DarkSurface style={{ padding: 16, gap: 8 }}>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11 }}>Email</NCText>
+              <NCText variant="bodySm" style={{ color: C.white }}>{user?.email}</NCText>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, marginTop: 8 }}>Role</NCText>
+              <NCText variant="bodySm" style={{ color: C.white, textTransform: 'capitalize' }}>{user?.role}</NCText>
+            </DarkSurface>
           </View>
 
-          <Input label="Display name" value={displayName} onChangeText={setDisplayName} autoCapitalize="words" />
-          <Input
+          <View style={{ gap: 10 }}>
+            <StudioSectionLabel>PUBLIC PROFILE</StudioSectionLabel>
+            <View style={{ alignItems: 'center', gap: 8, paddingVertical: 8 }}>
+              <Avatar name={displayName} source={avatarUrl} size={88} />
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11 }}>
+                Avatar URL is optional
+              </NCText>
+            </View>
+          </View>
+
+          <StudioInput label="Display name" value={displayName} onChangeText={setDisplayName} autoCapitalize="words" />
+          <StudioInput
             label="Bio"
             value={bio}
             onChangeText={setBio}
             multiline
             numberOfLines={6}
             autoCapitalize="sentences"
-            autoCorrect
+            placeholder="Tell readers about yourself…"
           />
-          <Input
+          <StudioInput
             label="Avatar URL"
             value={avatarUrl}
             onChangeText={setAvatarUrl}
-            placeholder="https://..."
+            placeholder="https://…"
             autoCapitalize="none"
           />
 
-          <Button label="Save profile" onPress={save} loading={busy} full size="lg" />
+          <StudioPrimaryButton label="Save profile" onPress={save} loading={busy} />
+          <StudioOutlineButton label="Reset" onPress={reset} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </Screen>
+    </StudioScreen>
   );
 }

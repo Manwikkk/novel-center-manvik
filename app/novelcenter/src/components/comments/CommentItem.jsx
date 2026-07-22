@@ -5,8 +5,8 @@ import NCText from '@/components/primitives/Text';
 import { useTheme } from '@/theme';
 import { formatRelative } from '@/lib/format';
 
-export default function CommentItem({ comment, onReply, depth = 0 }) {
-  const t = useTheme();
+export default function CommentItem({ comment, onReply, depth = 0, readerScope = false }) {
+  const t = useTheme({ readerScope });
   const deleted = comment.status === 'deleted';
   return (
     <View style={{ flexDirection: 'row', gap: 10, paddingLeft: depth * 16 }}>
@@ -20,7 +20,7 @@ export default function CommentItem({ comment, onReply, depth = 0 }) {
           <NCText variant="titleMd">{comment.author?.displayName || 'Reader'}</NCText>
           <NCText variant="uiLabelXs" tone="muted">{formatRelative(comment.createdAt)}</NCText>
         </View>
-        <NCText variant="body" tone={deleted ? 'muted' : 'fg'} style={{ fontStyle: deleted ? 'italic' : 'normal' }}>
+        <NCText variant="body" tone={deleted ? 'muted' : 'fg'} reading={readerScope} style={{ fontStyle: deleted ? 'italic' : 'normal' }}>
           {deleted ? 'Comment removed.' : comment.body}
         </NCText>
         {onReply ? (

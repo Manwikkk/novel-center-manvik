@@ -1,128 +1,175 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Screen from '@/components/primitives/Screen';
 import NCText from '@/components/primitives/Text';
-import Card from '@/components/primitives/Card';
-import IconButton from '@/components/primitives/IconButton';
-import Button from '@/components/primitives/Button';
 import EmptyState from '@/components/primitives/EmptyState';
-import { useTheme } from '@/theme';
+import {
+  StudioScreen,
+  StudioHeader,
+  StudioSectionLabel,
+  STUDIO_LAYOUT,
+  useAppTheme,
+} from '@/components/studio/StudioTheme';
+import { DarkSurface } from '@/components/discover/DiscoverTheme';
 import { api } from '@/lib/api';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUiStore } from '@/stores/uiStore';
 import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { formatRelative } from '@/lib/format';
 
-const PACKS = [
-  { id: 'small',  tokens: 100,  price: '$1.99' },
-  { id: 'medium', tokens: 500,  price: '$8.99' },
-  { id: 'large',  tokens: 1200, price: '$18.99' },
-];
+
+const PACK_LABELS = {
+  small: { title: 'Quiet shelf', tokens: 100 },
+  medium: { title: 'Reading week', tokens: 500 },
+  large: { title: 'Slow attention', tokens: 1200 },
+};
 
 export default function WalletScreen({ navigation }) {
-  const t = useTheme();
+  const { colors: C } = useAppTheme();
   const balance = useWalletStore((s) => s.balance);
   const refresh = useWalletStore((s) => s.refresh);
   const setBalance = useWalletStore((s) => s.setBalance);
   const pushToast = useUiStore((s) => s.pushToast);
+  const [packs, setPacks] = useState({});
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+    api.get('/wallet')
+      .then((data) => {
+        if (data?.packs) setPacks(data.packs);
+      })
+      .catch(() => {});
+  }, [refresh]);
 
   const loader = useCallback(({ page, pageSize }) => api.get('/wallet/transactions', { query: { page, pageSize } }), []);
   const paged = usePagedQuery(loader, { pageSize: 20 });
 
-  const purchase = async (pack) => {
+  const purchase = async (packKey) => {
+    if (busy) return;
+    setBusy(true);
     try {
-      const data = await api.post('/wallet/purchase', { pack });
+      const data = await api.post('/wallet/purchase', { pack: packKey });
       if (data?.balance != null) setBalance(data.balance);
       pushToast({ type: 'success', title: 'Top-up complete', message: `+${data.creditedTokens} tokens` });
       paged.refresh();
+      refresh();
     } catch (err) {
       pushToast({ type: 'error', title: 'Top-up failed', message: err.message });
+    } finally {
+      setBusy(false);
     }
   };
 
+  const packKeys = ['small', 'medium', 'large'];
+
   return (
-    <Screen padded={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 }}>
-        <IconButton name="arrow-back" onPress={() => navigation.goBack()} />
-        <NCText variant="uiLabelSm" tone="muted">Account</NCText>
-      </View>
+    <StudioScreen>
+      <StudioHeader breadcrumb="Profile" title="Wallet" onBack={() => navigation.goBack()} />
 
       <FlatList
         data={paged.items}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 64 }}
+        contentContainerStyle={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, paddingBottom: 64 }}
         ListHeaderComponent={
-          <View style={{ gap: 18 }}>
-            <NCText variant="headlineXl">Wallet</NCText>
-            <Card padded>
-              <NCText variant="uiLabelSm" tone="muted">Current balance</NCText>
-              <NCText variant="displayLg" style={{ marginTop: 4 }}>{balance.toLocaleString()}</NCText>
-              <NCText variant="bodySm" tone="muted">tokens</NCText>
-            </Card>
+          <View style={{ gap: 20, paddingBottom: 8 }}>
+            <View style={{ gap: 4 }}>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 13 }}>Your wallet</NCText>
+              <NCText variant="headlineXl" style={{ color: C.white, fontWeight: '700', fontSize: 26, lineHeight: 32 }}>
+                Tokens for unlocking chapters.
+              </NCText>
+            </View>
+
+            <DarkSurface style={{ padding: 18, gap: 6 }}>
+              <NCText variant="uiLabelSm" style={{ color: C.muted, letterSpacing: 1, fontSize: 10 }}>
+                CURRENT BALANCE
+              </NCText>
+              <NCText variant="headlineXl" style={{ color: C.white, fontWeight: '700', fontSize: 40 }}>
+                {balance.toLocaleString()}
+              </NCText>
+              <NCText variant="bodySm" style={{ color: C.muted }}>tokens</NCText>
+            </DarkSurface>
 
             <View style={{ gap: 12 }}>
-              <NCText variant="uiLabelSm" tone="muted">TOP UP</NCText>
+              <StudioSectionLabel>TOP UP</StudioSectionLabel>
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                {PACKS.map((p) => (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => purchase(p.id)}
-                    style={{
-                      flex: 1,
-                      padding: 14,
-                      borderWidth: 1,
-                      borderColor: t.colors.containerHigh,
-                      borderRadius: t.radii.md,
-                      alignItems: 'center',
-                      backgroundColor: t.colors.surfaceLow,
-                      gap: 4,
-                    }}
-                  >
-                    <NCText variant="titleLg">{p.tokens}</NCText>
-                    <NCText variant="uiLabelXs" tone="muted">tokens</NCText>
-                    <NCText variant="uiLabelSm">{p.price}</NCText>
-                  </Pressable>
-                ))}
+                {packKeys.map((key) => {
+                  const pack = packs[key];
+                  const label = PACK_LABELS[key];
+                  const tokens = pack?.tokens ?? label.tokens;
+                  const priceCents = pack?.price;
+                  const price = priceCents != null ? `$${(priceCents / 100).toFixed(2)}` : '';
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => purchase(key)}
+                      disabled={busy}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        padding: 14,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: C.inputBorder,
+                        backgroundColor: C.sheet,
+                        alignItems: 'center',
+                        gap: 4,
+                        opacity: busy ? 0.6 : pressed ? 0.88 : 1,
+                      })}
+                    >
+                      <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 9, letterSpacing: 0.5 }}>
+                        {label.title.toUpperCase()}
+                      </NCText>
+                      <NCText variant="titleLg" style={{ color: C.white, fontSize: 22 }}>
+                        {tokens}
+                      </NCText>
+                      <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 10 }}>tokens</NCText>
+                      {price ? (
+                        <NCText variant="uiLabelSm" style={{ color: C.white, fontSize: 12, marginTop: 4 }}>
+                          {price}
+                        </NCText>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
-            <NCText variant="uiLabelSm" tone="muted" style={{ marginTop: 12 }}>
-              RECENT ACTIVITY
-            </NCText>
+            <StudioSectionLabel>RECENT ACTIVITY</StudioSectionLabel>
           </View>
         }
-        ItemSeparatorComponent={() => (
-          <View style={{ height: 1, backgroundColor: t.colors.containerHigh, marginVertical: 4 }} />
-        )}
+        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: C.inputBorder, marginVertical: 4 }} />}
         renderItem={({ item }) => (
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 }}>
             <Icon
               name={item.type === 'unlock' ? 'lock-open' : item.type === 'purchase' ? 'add-circle-outline' : 'sync'}
               size={22}
-              color={t.colors.fg}
+              color={C.white}
             />
             <View style={{ flex: 1 }}>
-              <NCText variant="titleMd" style={{ textTransform: 'capitalize' }}>{item.type}</NCText>
-              <NCText variant="uiLabelXs" tone="muted">{formatRelative(item.createdAt)}</NCText>
+              <NCText variant="titleMd" style={{ color: C.white, textTransform: 'capitalize', fontSize: 15 }}>
+                {item.type}
+              </NCText>
+              <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 11 }}>
+                {formatRelative(item.createdAt)}
+              </NCText>
             </View>
             <NCText
               variant="titleMd"
-              style={{ color: item.tokensDelta > 0 ? '#2c7a3a' : t.colors.error, fontVariant: ['tabular-nums'] }}
+              style={{ color: item.tokensDelta > 0 ? '#6ee7a0' : C.error, fontSize: 15 }}
             >
               {item.tokensDelta > 0 ? '+' : ''}{item.tokensDelta}
             </NCText>
           </View>
         )}
-        refreshControl={<RefreshControl tintColor={t.colors.fg} refreshing={paged.loading && paged.items.length > 0} onRefresh={paged.refresh} />}
+        refreshControl={
+          <RefreshControl tintColor={C.white} refreshing={paged.loading && paged.items.length > 0} onRefresh={paged.refresh} />
+        }
         onEndReachedThreshold={0.4}
         onEndReached={paged.loadMore}
         ListEmptyComponent={
           paged.loading ? (
             <View style={{ paddingVertical: 24 }}>
-              <ActivityIndicator color={t.colors.fg} />
+              <ActivityIndicator color={C.white} />
             </View>
           ) : (
             <EmptyState
@@ -135,11 +182,11 @@ export default function WalletScreen({ navigation }) {
         ListFooterComponent={
           paged.items.length > 0 && paged.items.length < paged.total ? (
             <View style={{ paddingVertical: 16 }}>
-              <ActivityIndicator color={t.colors.fg} />
+              <ActivityIndicator color={C.white} />
             </View>
           ) : null
         }
       />
-    </Screen>
+    </StudioScreen>
   );
 }

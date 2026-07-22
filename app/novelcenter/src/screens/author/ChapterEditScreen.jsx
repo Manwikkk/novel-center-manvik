@@ -1,45 +1,119 @@
-import React, { useEffect, useState } from 'react';
-import { View, KeyboardAvoidingView, Platform, ScrollView, Pressable, Switch } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Pressable,
+  Switch,
+  TextInput,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
-import Screen from '@/components/primitives/Screen';
 import NCText from '@/components/primitives/Text';
-import IconButton from '@/components/primitives/IconButton';
-import Input from '@/components/primitives/Input';
-import Button from '@/components/primitives/Button';
 import Spinner from '@/components/primitives/Spinner';
-import { useTheme } from '@/theme';
+import AuthorGuard from '@/components/studio/AuthorGuard';
+import {
+  StudioScreen,
+  StudioHeader,
+  StudioInput,
+  StudioOutlineButton,
+  STUDIO_LAYOUT,
+  useAppTheme,
+} from '@/components/studio/StudioTheme';
 import { api } from '@/lib/api';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 import { useUiStore } from '@/stores/uiStore';
 
-const STATUSES = ['draft', 'published'];
+const PUBLISH_MODES = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'publishNow', label: 'Publish now' },
+  { value: 'schedule', label: 'Schedule' },
+];
+
+const SERVER_DEBOUNCE_MS = 3000;
+
+function derivePublishMode(chapter) {
+  if (!chapter) return 'draft';
+  if (chapter.status === 'published') return 'publishNow';
+  if (chapter.scheduledPublishAt) return 'schedule';
+  return 'draft';
+}
+
+function toDatetimeLocalValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocalValue(value) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function buildPayload({ title, html, idx, isPaid, tokenPrice, authorThought, publishMode, scheduleInput }) {
+  let status = 'draft';
+  let scheduledPublishAt = null;
+  if (publishMode === 'publishNow') {
+    status = 'published';
+  } else if (publishMode === 'schedule') {
+    scheduledPublishAt = fromDatetimeLocalValue(scheduleInput);
+  }
+  const price = Math.max(0, Math.floor(Number(tokenPrice) || 0));
+  return {
+    title: title.trim() || 'Untitled chapter',
+    contentHtml: html,
+    idx: Math.max(1, Math.floor(Number(idx) || 1)),
+    status,
+    scheduledPublishAt,
+    isPaid,
+    tokenPrice: isPaid ? price : 0,
+    authorThought: authorThought?.trim() || null,
+  };
+}
 
 export default function ChapterEditScreen({ route, navigation }) {
-  const t = useTheme();
-  const { chapterId } = route.params || {};
+  const { chapterId, bookId } = route.params || {};
+  return (
+    <AuthorGuard navigation={navigation} title="Chapter editor">
+      <ChapterEditContent chapterId={chapterId} bookId={bookId} navigation={navigation} />
+    </AuthorGuard>
+  );
+}
+
+function ChapterEditContent({ chapterId, bookId, navigation }) {
+  const { colors: C } = useAppTheme();
   const pushToast = useUiStore((s) => s.pushToast);
 
   const [title, setTitle] = useState('');
-  const [status, setStatus] = useState('draft');
+  const [idx, setIdx] = useState('1');
+  const [authorThought, setAuthorThought] = useState('');
+  const [publishMode, setPublishMode] = useState('draft');
+  const [scheduleInput, setScheduleInput] = useState('');
   const [isPaid, setIsPaid] = useState(false);
   const [tokenPrice, setTokenPrice] = useState('0');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
-  const [chapter, setChapter] = useState(null);
   const [initialContent, setInitialContent] = useState(null);
+  const [saveStatus, setSaveStatus] = useState('saved');
+  const autosaveTimer = useRef(null);
 
   const editor = useEditorBridge({
     autofocus: false,
     avoidIosKeyboard: true,
     initialContent: '',
     theme: {
-      webview: { backgroundColor: t.colors.bg },
+      webview: { backgroundColor: C.bg },
       toolbar: {
-        toolbarBody: { backgroundColor: t.colors.surface, borderTopColor: t.colors.containerHigh },
+        toolbarBody: { backgroundColor: C.sheet, borderTopColor: C.inputBorder },
       },
       colorKeyboard: {
-        keyboardRootColor: t.colors.surface,
+        keyboardRootColor: C.sheet,
       },
     },
   });
@@ -50,9 +124,11 @@ export default function ChapterEditScreen({ route, navigation }) {
       try {
         const { chapter: c } = await api.get(`/chapters/${chapterId}`);
         if (!active) return;
-        setChapter(c);
         setTitle(c.title || '');
-        setStatus(c.status || 'draft');
+        setIdx(String(c.idx || 1));
+        setAuthorThought(c.authorThought || '');
+        setPublishMode(derivePublishMode(c));
+        setScheduleInput(toDatetimeLocalValue(c.scheduledPublishAt));
         setIsPaid(!!c.isPaid);
         setTokenPrice(String(c.tokenPrice ?? 0));
         setInitialContent(c.contentHtml || '<p></p>');
@@ -66,15 +142,16 @@ export default function ChapterEditScreen({ route, navigation }) {
     return () => { active = false; };
   }, [chapterId, navigation, pushToast]);
 
-  // Push initial HTML once we have it.
   useEffect(() => {
     if (initialContent != null && editor?.setContent) {
       editor.setContent(initialContent);
     }
   }, [initialContent, editor]);
 
-  const onSave = async () => {
-    setBusy(true);
+  const persist = useCallback(async ({ silent = false, andNew = false } = {}) => {
+    if (busy && !silent) return null;
+    if (!silent) setBusy(true);
+    setSaveStatus('saving');
     try {
       let html = '';
       try {
@@ -82,136 +159,234 @@ export default function ChapterEditScreen({ route, navigation }) {
       } catch (_e) {
         html = initialContent || '';
       }
-      const price = Math.max(0, Math.floor(Number(tokenPrice) || 0));
-      const { chapter: updated } = await api.patch(`/chapters/${chapterId}`, {
-        title: title.trim() || 'Untitled chapter',
-        contentHtml: html,
-        status,
+      const payload = buildPayload({
+        title,
+        html,
+        idx,
         isPaid,
-        tokenPrice: isPaid ? price : 0,
+        tokenPrice,
+        authorThought,
+        publishMode,
+        scheduleInput,
       });
-      setChapter(updated);
-      pushToast({ type: 'success', title: 'Saved', message: status === 'published' ? 'Published' : 'Draft saved' });
+      await api.patch(`/chapters/${chapterId}`, payload);
+      setSaveStatus('saved');
+      if (!silent) {
+        pushToast({ type: 'success', title: 'Saved', message: payload.status === 'published' ? 'Published' : 'Draft saved' });
+      }
+      if (andNew && bookId) {
+        const { chapter } = await api.post(`/books/${bookId}/chapters`, {
+          title: 'Untitled chapter',
+          contentHtml: '<p>Start writing here…</p>',
+          status: 'draft',
+          isPaid: false,
+          tokenPrice: 0,
+        });
+        navigation.replace('AuthorChapterEdit', { chapterId: chapter.id, bookId });
+      }
+      return true;
     } catch (err) {
-      pushToast({ type: 'error', title: 'Could not save', message: err.message });
+      setSaveStatus('error');
+      if (!silent) pushToast({ type: 'error', title: 'Could not save', message: err.message });
+      return false;
     } finally {
-      setBusy(false);
+      if (!silent) setBusy(false);
     }
-  };
+  }, [
+    authorThought,
+    bookId,
+    busy,
+    chapterId,
+    editor,
+    idx,
+    initialContent,
+    isPaid,
+    navigation,
+    publishMode,
+    pushToast,
+    scheduleInput,
+    title,
+    tokenPrice,
+  ]);
+
+  const queueAutosave = useCallback(() => {
+    setSaveStatus('dirty');
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      persist({ silent: true });
+    }, SERVER_DEBOUNCE_MS);
+  }, [persist]);
+
+  useEffect(() => () => {
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+  }, []);
+
+  const onSave = () => persist({ silent: false });
+  const onSaveAndNew = () => persist({ silent: false, andNew: true });
+
+  const statusLabel =
+    saveStatus === 'saving' ? 'Saving…'
+      : saveStatus === 'dirty' ? 'Unsaved changes'
+        : saveStatus === 'error' ? 'Save failed'
+          : 'Saved';
 
   return (
-    <Screen padded={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <IconButton name="arrow-back" onPress={() => navigation.goBack()} />
-          <NCText variant="uiLabelSm" tone="muted">Chapters</NCText>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 4 }}>
-          <IconButton name={showPanel ? 'expand-less' : 'tune'} onPress={() => setShowPanel((p) => !p)} />
-          <Pressable
-            onPress={onSave}
-            disabled={busy}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              backgroundColor: t.colors.fg,
-              borderRadius: t.radii.sm,
-              opacity: busy ? 0.6 : 1,
-            }}
-          >
-            <NCText variant="uiLabelSm" style={{ color: t.colors.cream100 }}>
-              {busy ? 'Saving…' : 'Save'}
-            </NCText>
-          </Pressable>
-        </View>
-      </View>
+    <StudioScreen>
+      <StudioHeader
+        breadcrumb="Chapters"
+        title="Chapter editor"
+        onBack={() => exitAuthorStudioToProfile(navigation)}
+        right={(
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Pressable onPress={() => setShowPanel((p) => !p)} hitSlop={8} style={{ padding: 6 }}>
+              <Icon name={showPanel ? 'expand-less' : 'tune'} size={22} color={C.white} />
+            </Pressable>
+            <Pressable
+              onPress={onSave}
+              disabled={busy}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                backgroundColor: C.white,
+                borderRadius: 999,
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              <NCText variant="uiLabelSm" style={{ color: C.bg, fontWeight: '700' }}>
+                {busy ? 'Saving…' : 'Save'}
+              </NCText>
+            </Pressable>
+          </View>
+        )}
+      />
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Spinner />
         </View>
       ) : (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
-          <View style={{ paddingHorizontal: 20, paddingBottom: 12, gap: 8 }}>
-            <Input
-              label={null}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, paddingBottom: 4, gap: 4 }}>
+            <TextInput
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(v) => { setTitle(v); queueAutosave(); }}
               placeholder="Chapter title"
-              autoCapitalize="sentences"
-              autoCorrect
-              inputStyle={{ ...t.typography.headlineSm, paddingVertical: 14, minHeight: 50, backgroundColor: 'transparent', borderWidth: 0 }}
+              placeholderTextColor={C.muted}
+              style={{
+                color: C.white,
+                fontSize: 20,
+                fontWeight: '700',
+                paddingVertical: 10,
+              }}
             />
+            <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 10 }}>{statusLabel}</NCText>
           </View>
 
           {showPanel ? (
             <ScrollView
-              horizontal={false}
               style={{
-                paddingHorizontal: 20,
+                paddingHorizontal: STUDIO_LAYOUT.hPadding,
                 paddingVertical: 14,
-                backgroundColor: t.colors.surfaceLow,
+                backgroundColor: C.sheet,
                 borderTopWidth: 1,
                 borderBottomWidth: 1,
-                borderColor: t.colors.containerHigh,
-                maxHeight: 240,
+                borderColor: C.inputBorder,
+                maxHeight: 360,
               }}
-              contentContainerStyle={{ gap: 14 }}
+              contentContainerStyle={{ gap: 16 }}
             >
+              <StudioInput
+                label="Chapter order"
+                value={String(idx)}
+                onChangeText={(v) => { setIdx(v); queueAutosave(); }}
+                keyboardType="number-pad"
+                placeholder="1"
+              />
+
               <View style={{ gap: 8 }}>
-                <NCText variant="uiLabelSm" tone="muted">Status</NCText>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {STATUSES.map((s) => {
-                    const active = status === s;
+                <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                  Publish
+                </NCText>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {PUBLISH_MODES.map((mode) => {
+                    const active = publishMode === mode.value;
                     return (
                       <Pressable
-                        key={s}
-                        onPress={() => setStatus(s)}
+                        key={mode.value}
+                        onPress={() => { setPublishMode(mode.value); queueAutosave(); }}
                         style={{
-                          flex: 1,
-                          paddingVertical: 10,
-                          borderRadius: t.radii.sm,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 8,
                           borderWidth: 1,
-                          borderColor: active ? t.colors.fg : t.colors.containerHigh,
-                          backgroundColor: active ? t.colors.surface : 'transparent',
-                          alignItems: 'center',
+                          borderColor: active ? C.white : C.inputBorder,
+                          backgroundColor: active ? C.pillBg : 'transparent',
                         }}
                       >
-                        <NCText variant="uiLabelXs">{s.toUpperCase()}</NCText>
+                        <NCText variant="uiLabelXs" style={{ color: active ? C.white : C.muted, fontSize: 11 }}>
+                          {mode.label}
+                        </NCText>
                       </Pressable>
                     );
                   })}
                 </View>
               </View>
 
+              {publishMode === 'schedule' ? (
+                <StudioInput
+                  label="Schedule (YYYY-MM-DDTHH:mm)"
+                  value={scheduleInput}
+                  onChangeText={(v) => { setScheduleInput(v); queueAutosave(); }}
+                  placeholder="2026-07-15T09:00"
+                  autoCapitalize="none"
+                />
+              ) : null}
+
               <View style={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <NCText variant="uiLabelSm" tone="muted">Paid chapter</NCText>
-                  <Switch value={isPaid} onValueChange={setIsPaid} />
+                  <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 11, letterSpacing: 0.8 }}>
+                    Paid chapter
+                  </NCText>
+                  <Switch
+                    value={isPaid}
+                    onValueChange={(v) => { setIsPaid(v); queueAutosave(); }}
+                    trackColor={{ false: C.inputBorder, true: C.pillBg }}
+                    thumbColor={C.white}
+                  />
                 </View>
                 {isPaid ? (
-                  <Input
+                  <StudioInput
                     label="Token price"
                     value={String(tokenPrice)}
-                    onChangeText={setTokenPrice}
+                    onChangeText={(v) => { setTokenPrice(v); queueAutosave(); }}
                     keyboardType="number-pad"
                     placeholder="e.g. 5"
                   />
                 ) : null}
               </View>
+
+              <StudioInput
+                label="Author's thought"
+                value={authorThought}
+                onChangeText={(v) => { setAuthorThought(v); queueAutosave(); }}
+                multiline
+                numberOfLines={4}
+                placeholder="A short note for readers…"
+                autoCapitalize="sentences"
+              />
+
+              {bookId ? (
+                <StudioOutlineButton label="Save & new chapter" onPress={onSaveAndNew} />
+              ) : null}
             </ScrollView>
           ) : null}
 
-          <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
-            <RichText editor={editor} style={{ flex: 1, backgroundColor: t.colors.bg }} />
+          <View style={{ flex: 1, backgroundColor: C.bg }}>
+            <RichText editor={editor} style={{ flex: 1, backgroundColor: C.bg }} />
             <Toolbar editor={editor} />
           </View>
         </KeyboardAvoidingView>
       )}
-    </Screen>
+    </StudioScreen>
   );
 }

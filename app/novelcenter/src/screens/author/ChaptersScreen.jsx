@@ -1,20 +1,60 @@
 import React, { useCallback, useState } from 'react';
 import { View, FlatList, Pressable, RefreshControl, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Screen from '@/components/primitives/Screen';
 import NCText from '@/components/primitives/Text';
-import IconButton from '@/components/primitives/IconButton';
-import Pill from '@/components/primitives/Pill';
 import Skeleton from '@/components/primitives/Skeleton';
 import EmptyState from '@/components/primitives/EmptyState';
-import { useTheme } from '@/theme';
+import AuthorGuard from '@/components/studio/AuthorGuard';
+import {
+  StudioScreen,
+  StudioHeader,
+  STUDIO_LAYOUT,
+  useAppTheme,
+} from '@/components/studio/StudioTheme';
 import { api } from '@/lib/api';
+import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
 import { useFocusEffect } from '@react-navigation/native';
 import { useUiStore } from '@/stores/uiStore';
 
+
+function StatusPill({ label, accent }) {
+  const { colors: C } = useAppTheme();
+  return (
+    <View
+      style={{
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 4,
+        backgroundColor: accent ? C.pillBg : C.inputBg,
+        borderWidth: 1,
+        borderColor: C.inputBorder,
+      }}
+    >
+      <NCText variant="uiLabelXs" style={{ color: accent ? C.white : C.muted, fontSize: 9, letterSpacing: 0.5 }}>
+        {label}
+      </NCText>
+    </View>
+  );
+}
+
 export default function ChaptersScreen({ route, navigation }) {
-  const t = useTheme();
   const { bookId, bookTitle } = route.params || {};
+  return (
+    <AuthorGuard navigation={navigation} title="Chapters">
+      <ChaptersContent bookId={bookId} bookTitle={bookTitle} navigation={navigation} />
+    </AuthorGuard>
+  );
+}
+
+function formatSchedule(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function ChaptersContent({ bookId, bookTitle, navigation }) {
+  const { colors: C } = useAppTheme();
   const pushToast = useUiStore((s) => s.pushToast);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +76,11 @@ export default function ChaptersScreen({ route, navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId]));
 
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
 
   const onCreate = async () => {
     try {
@@ -73,65 +117,83 @@ export default function ChaptersScreen({ route, navigation }) {
   };
 
   return (
-    <Screen padded={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <IconButton name="arrow-back" onPress={() => navigation.goBack()} />
-          <NCText variant="uiLabelSm" tone="muted">Book</NCText>
-        </View>
-        <IconButton name="add" onPress={onCreate} />
-      </View>
+    <StudioScreen>
+      <StudioHeader
+        breadcrumb="Book"
+        title={bookTitle || 'Chapters'}
+        onBack={() => exitAuthorStudioToProfile(navigation)}
+        right={(
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            <Pressable
+              onPress={() => navigation.navigate('AuthorBookEdit', { mode: 'edit', bookId })}
+              hitSlop={8}
+              style={{ padding: 6 }}
+            >
+              <Icon name="edit" size={22} color={C.white} />
+            </Pressable>
+            <Pressable onPress={onCreate} hitSlop={8} style={{ padding: 6 }}>
+              <Icon name="add" size={24} color={C.white} />
+            </Pressable>
+          </View>
+        )}
+      />
 
-      <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
-        <NCText variant="headlineXl" numberOfLines={2}>{bookTitle}</NCText>
-        <NCText variant="uiLabelSm" tone="muted">{items.length} chapters</NCText>
+      <View style={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, paddingBottom: 8 }}>
+        <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 12 }}>
+          {items.length} {items.length === 1 ? 'chapter' : 'chapters'}
+        </NCText>
       </View>
 
       <FlatList
         data={items}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 64 }}
-        ItemSeparatorComponent={() => (
-          <View style={{ height: 1, backgroundColor: t.colors.containerHigh, marginVertical: 4 }} />
-        )}
+        contentContainerStyle={{ paddingHorizontal: STUDIO_LAYOUT.hPadding, paddingBottom: 64 }}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => navigation.navigate('AuthorChapterEdit', { chapterId: item.id, bookId })}
             style={({ pressed }) => ({
-              paddingVertical: 14,
+              padding: 14,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: C.inputBorder,
+              backgroundColor: C.sheet,
               flexDirection: 'row',
               alignItems: 'center',
               gap: 12,
-              opacity: pressed ? 0.85 : 1,
+              opacity: pressed ? 0.88 : 1,
             })}
           >
-            <NCText variant="uiLabelSm" tone="muted" style={{ width: 32 }}>
+            <NCText variant="uiLabelSm" style={{ color: C.muted, width: 28, fontSize: 12 }}>
               {String(item.idx).padStart(2, '0')}
             </NCText>
             <View style={{ flex: 1, gap: 6 }}>
-              <NCText variant="titleLg" numberOfLines={2}>{item.title}</NCText>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <Pill label={(item.status || 'DRAFT').toUpperCase()} />
-                {item.isPaid ? <Pill label={`PAID · ${item.tokenPrice}t`} /> : <Pill label="FREE" />}
-                <Pill label={`${item.readingMinutes || 0} min`} />
+              <NCText variant="titleMd" numberOfLines={2} style={{ color: C.white, fontSize: 15 }}>
+                {item.title}
+              </NCText>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                <StatusPill label={(item.status || 'draft').toUpperCase()} accent={item.status === 'published'} />
+                {item.isPaid ? (
+                  <StatusPill label={`PAID · ${item.tokenPrice}t`} />
+                ) : (
+                  <StatusPill label="FREE" />
+                )}
+                {item.scheduledPublishAt ? (
+                  <StatusPill label={`SCHED · ${formatSchedule(item.scheduledPublishAt)}`} accent />
+                ) : null}
+                <StatusPill label={`${item.readingMinutes || 0} min`} />
               </View>
             </View>
-            <Pressable hitSlop={8} onPress={() => onDelete(item)}>
-              <Icon name="delete-outline" size={22} color={t.colors.muted} />
+            <Pressable hitSlop={8} onPress={() => onDelete(item)} style={{ padding: 4 }}>
+              <Icon name="delete-outline" size={20} color={C.muted} />
             </Pressable>
           </Pressable>
         )}
         ListEmptyComponent={
           loading ? (
-            <View style={{ paddingTop: 8, gap: 14 }}>
+            <View style={{ gap: 10 }}>
               {Array.from({ length: 5 }).map((_, i) => (
-                <View key={i} style={{ flexDirection: 'row', gap: 14 }}>
-                  <Skeleton width={32} height={20} />
-                  <View style={{ flex: 1, gap: 6 }}>
-                    <Skeleton height={16} width="80%" />
-                    <Skeleton height={10} width="40%" />
-                  </View>
-                </View>
+                <Skeleton key={i} width="100%" height={72} radius={12} />
               ))}
             </View>
           ) : (
@@ -144,8 +206,8 @@ export default function ChaptersScreen({ route, navigation }) {
             />
           )
         }
-        refreshControl={<RefreshControl tintColor={t.colors.fg} refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl tintColor={C.white} refreshing={refreshing} onRefresh={onRefresh} />}
       />
-    </Screen>
+    </StudioScreen>
   );
 }

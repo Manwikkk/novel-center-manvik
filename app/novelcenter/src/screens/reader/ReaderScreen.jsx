@@ -237,7 +237,7 @@ export default function ReaderScreen({ route, navigation }) {
 
           {chapter?.id ? (
             <View style={{ marginTop: 40 }}>
-              <CommentThread chapterId={chapter.id} />
+              <CommentThread chapterId={chapter.id} readerScope />
             </View>
           ) : null}
         </ScrollView>

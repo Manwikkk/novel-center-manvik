@@ -1,47 +1,79 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View, RefreshControl } from 'react-native';
-import Screen from '@/components/primitives/Screen';
+import {
+  View,
+  ScrollView,
+  RefreshControl,
+  StatusBar,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import NCText from '@/components/primitives/Text';
-import SectionHeader from '@/components/primitives/SectionHeader';
-import LandingHero from '@/components/home/LandingHero';
-import ContinueReadingCard from '@/components/home/ContinueReadingCard';
-import RecentlyOpenedRow from '@/components/home/RecentlyOpenedRow';
-import HorizontalBookList from '@/components/book/HorizontalBookList';
-import EmptyState from '@/components/primitives/EmptyState';
 import Skeleton from '@/components/primitives/Skeleton';
-import Button from '@/components/primitives/Button';
-import IconButton from '@/components/primitives/IconButton';
-import Avatar from '@/components/primitives/Avatar';
-import { useTheme } from '@/theme';
+import ErrorView from '@/components/primitives/ErrorView';
+import WeeklyBookHero, { MeetNovelCentre } from '@/components/home/mobile/WeeklyBookHero';
+import DarkRankingSection, {
+  BecomeAuthorCTA,
+  DarkContinueReading,
+} from '@/components/home/mobile/HomeSections';
+import { SectionHeader, DarkBookCarousel } from '@/components/discover/DiscoverTheme';
+import { useAuthStore } from '@/stores/authStore';
 import { api } from '@/lib/api';
 import { readingApi } from '@/lib/reading';
-import { useAuthStore } from '@/stores/authStore';
+import { useAppTheme, DISCOVER_LAYOUT } from '@/theme/discoverColors';
+const EMPTY_HOME = {
+  weekly_featured: [],
+  new_arrivals: [],
+  potential_starlet: [],
+  rising_fictions: [],
+  cheering_reads: [],
+  editors_choice: [],
+  completed_novel: [],
+  originals: [],
+  pageSections: {},
+};
+
+function pickTopRated(...lists) {
+  const merged = lists.flat().filter(Boolean);
+  const seen = new Set();
+  const scored = [];
+  for (const b of merged) {
+    const key = b.id ?? b.slug ?? b.title;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const s = typeof b.score === 'number' ? b.score : Number.parseFloat(b.score);
+    if (Number.isFinite(s) && s > 0) scored.push({ b, s });
+  }
+  scored.sort((a, b) => b.s - a.s);
+  return scored.slice(0, 5).map((x) => x.b);
+}
 
 export default function HomeScreen({ navigation }) {
-  const t = useTheme();
+  const insets = useSafeAreaInsets();
+  const { colors: C, statusBarStyle } = useAppTheme();
   const user = useAuthStore((s) => s.user);
 
-  const [books, setBooks] = useState([]);
-  const [reading, setReading] = useState([]);
+  const [home, setHome] = useState(EMPTY_HOME);
+  const [continueReading, setContinueReading] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
+    setError(null);
     try {
-      const data = await api.get('/books', { query: { pageSize: 12, page: 1 } });
-      setBooks(data?.items || []);
-    } catch (_e) {
-      setBooks([]);
-    }
-    if (user) {
-      try {
-        const data = await readingApi.recent(6);
-        setReading(data?.items || []);
-      } catch (_e) {
-        setReading([]);
+      const data = await api.get('/home');
+      setHome({ ...EMPTY_HOME, ...data });
+      if (user) {
+        try {
+          const recent = await readingApi.recent(1);
+          setContinueReading(recent?.items?.[0] || null);
+        } catch (_e) {
+          setContinueReading(null);
+        }
+      } else {
+        setContinueReading(null);
       }
-    } else {
-      setReading([]);
+    } catch (err) {
+      setError(err);
     }
   }, [user]);
 
@@ -58,127 +90,118 @@ export default function HomeScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  const goBook = (book) => navigation.navigate('BookDetail', { slug: book.slug, id: book.id });
+  const goBook = (book) => {
+    if (!book) return;
+    navigation.navigate('BookDetail', { slug: book.slug, id: book.id });
+  };
 
-  const featured = books[0] || null;
-  const curated = books.slice(1, 7);
-  const forYou = books.slice(0, 8);
-  const continueReading = reading[0] || null;
-  const recents = reading.slice(1, 5);
+  const goDiscover = () => navigation.getParent()?.navigate('DiscoverTab');
+  const goAuthor = () => navigation.getParent()?.navigate('AccountTab', { screen: 'AuthorStudio' });
+
+  const ps = home.pageSections || {};
+  const show = (key) => ps[key] !== false;
+  const highlyRated = pickTopRated(home.new_arrivals, home.completed_novel);
 
   return (
-    <Screen padded={false}>
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 64, gap: 28 }}
-        refreshControl={<RefreshControl tintColor={t.colors.fg} refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View>
-            <NCText variant="uiLabelSm" tone="muted">Novel Centre</NCText>
-            <NCText variant="headlineXl">
-              {user ? `Hi, ${user.displayName?.split(' ')[0] || 'reader'}.` : 'Reading lives, written down.'}
-            </NCText>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <IconButton name="search" onPress={() => navigation.getParent()?.navigate('DiscoverTab')} />
-            {user ? <Avatar name={user.displayName} source={user.avatarUrl} size={36} /> : null}
-          </View>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
+      <StatusBar barStyle={statusBarStyle} backgroundColor={C.bg} />
+
+      <View style={{ paddingHorizontal: DISCOVER_LAYOUT.hPadding, paddingTop: 8, paddingBottom: 12 }}>
+        <NCText variant="uiLabelSm" style={{ color: C.muted, fontSize: 13 }}>
+          Novel Centre
+        </NCText>
+        <NCText variant="headlineXl" style={{ color: C.white, fontWeight: '700', fontSize: 28, marginTop: 2 }}>
+          {user ? `Hi, ${user.displayName?.split(' ')[0] || 'reader'}.` : 'Home'}
+        </NCText>
+      </View>
+
+      {error ? (
+        <ErrorView error={error} onRetry={onRefresh} />
+      ) : loading ? (
+        <View style={{ paddingHorizontal: DISCOVER_LAYOUT.hPadding, gap: 16 }}>
+          <Skeleton width="100%" height={280} radius={16} />
+          <Skeleton width="100%" height={120} radius={16} />
+          <Skeleton width="100%" height={160} radius={16} />
         </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: DISCOVER_LAYOUT.hPadding,
+            paddingBottom: Math.max(insets.bottom, 24) + 72,
+            gap: 28,
+          }}
+          refreshControl={
+            <RefreshControl tintColor={C.white} refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {show('weekly_book') ? (
+            <WeeklyBookHero items={home.weekly_featured} onPressBook={goBook} onPressDiscover={goDiscover} />
+          ) : null}
 
-        {/* Hero */}
-        {loading && !featured ? (
-          <Skeleton width="100%" height={220} radius={t.radii.lg} />
-        ) : featured ? (
-          <LandingHero book={featured} onPress={() => goBook(featured)} />
-        ) : null}
+          {show('meet_webnovel') ? <MeetNovelCentre onPressDiscover={goDiscover} /> : null}
 
-        {/* Continue reading */}
-        <View style={{ gap: 12 }}>
-          <SectionHeader
-            title="Continue reading"
-            subtitle="Pick up where you left off"
-          />
-          {!user ? (
-            <View style={{ padding: 24, borderWidth: 1, borderColor: t.colors.containerHigh, borderRadius: t.radii.lg, gap: 12 }}>
-              <NCText variant="titleMd">Sign in to track your reading</NCText>
-              <NCText variant="bodySm" tone="muted">
-                Your shelf, your highlights, and where you stopped — saved as you read.
-              </NCText>
-            </View>
-          ) : loading ? (
-            <Skeleton width="100%" height={180} radius={t.radii.lg} />
-          ) : continueReading ? (
-            <ContinueReadingCard
+          {show('continue_reading') && continueReading ? (
+            <DarkContinueReading
               entry={continueReading}
-              onPress={() =>
-                navigation.navigate('Reader', { chapterId: continueReading.chapter?.id })
-              }
+              onPress={() => navigation.navigate('Reader', { chapterId: continueReading.chapter?.id })}
             />
-          ) : (
-            <EmptyState
-              icon="auto_stories"
-              title="Nothing in flight"
-              description="Open a chapter to start tracking your progress."
-            />
-          )}
-        </View>
+          ) : null}
 
-        {/* Recently opened */}
-        {user && recents.length > 0 ? (
-          <View style={{ gap: 12 }}>
-            <SectionHeader title="Recently opened" subtitle="Last few you cracked open" />
+          {show('recommended') && home.new_arrivals?.length ? (
             <View>
-              {recents.map((entry, i) => (
-                <View key={`${entry.chapter?.id}-${i}`}>
-                  <RecentlyOpenedRow
-                    entry={entry}
-                    onPress={() => navigation.navigate('Reader', { chapterId: entry.chapter?.id })}
-                  />
-                  {i < recents.length - 1 ? (
-                    <View style={{ height: 1, backgroundColor: t.colors.containerHigh, marginVertical: 4 }} />
-                  ) : null}
-                </View>
-              ))}
+              <SectionHeader title="Recommended" action="View all" onAction={goDiscover} />
+              <DarkBookCarousel books={home.new_arrivals} onPressBook={goBook} />
             </View>
-          </View>
-        ) : null}
+          ) : null}
 
-        {/* Curated */}
-        <View style={{ gap: 12 }}>
-          <SectionHeader title="Curated this week" subtitle="Editorial picks" />
-          <HorizontalBookList
-            books={curated}
-            loading={loading && curated.length === 0}
-            onPressBook={goBook}
-          />
-        </View>
+          {show('new_arrivals') && home.weekly_featured?.length ? (
+            <View>
+              <SectionHeader title="New Arrivals" action="View all" onAction={goDiscover} />
+              <DarkBookCarousel books={home.weekly_featured} onPressBook={goBook} />
+            </View>
+          ) : null}
 
-        {/* For you */}
-        <View style={{ gap: 12 }}>
-          <SectionHeader
-            title="For you"
-            subtitle="New arrivals and quiet favourites"
-            action="See all"
-            onAction={() => navigation.getParent()?.navigate('DiscoverTab')}
-          />
-          <HorizontalBookList
-            books={forYou}
-            loading={loading && forYou.length === 0}
-            onPressBook={goBook}
-            width={150}
-          />
-        </View>
+          {show('ranking_novels') ? (
+            <DarkRankingSection
+              mostRead={home.potential_starlet}
+              trending={home.rising_fictions}
+              highlyRated={highlyRated}
+              onPressBook={goBook}
+            />
+          ) : null}
 
-        {!user ? (
-          <View style={{ padding: 24, borderWidth: 1, borderColor: t.colors.containerHigh, borderRadius: t.radii.lg, gap: 12, alignItems: 'flex-start' }}>
-            <NCText variant="headlineSm">Build your reading shelf</NCText>
-            <NCText variant="bodySm" tone="muted">
-              Sign in to save books to your library, track progress, and unlock paid chapters.
-            </NCText>
-            <Button label="Sign in" onPress={() => useAuthStore.setState({ user: null })} />
-          </View>
-        ) : null}
-      </ScrollView>
-    </Screen>
+          {show('updated_today') && home.cheering_reads?.length ? (
+            <View>
+              <SectionHeader title="Updated Today" action="View all" onAction={goDiscover} />
+              <DarkBookCarousel books={home.cheering_reads} onPressBook={goBook} />
+            </View>
+          ) : null}
+
+          {show('completed_novels') && home.completed_novel?.length ? (
+            <View>
+              <SectionHeader title="Completed Novels" />
+              <DarkBookCarousel books={home.completed_novel} onPressBook={goBook} />
+            </View>
+          ) : null}
+
+          {show('editors_choice') && home.editors_choice?.length ? (
+            <View>
+              <SectionHeader title="Editor's Choice" />
+              <DarkBookCarousel books={home.editors_choice} onPressBook={goBook} />
+            </View>
+          ) : null}
+
+          {show('gs_originals') && home.originals?.length ? (
+            <View>
+              <SectionHeader title="Novel Centre Originals" />
+              <DarkBookCarousel books={home.originals} onPressBook={goBook} />
+            </View>
+          ) : null}
+
+          <BecomeAuthorCTA onPressStart={goAuthor} />
+        </ScrollView>
+      )}
+    </View>
   );
 }
