@@ -38,7 +38,7 @@ async function main() {
       }
       meta = meta || {};
       const packKey = meta.pack || 'custom';
-      const pack = finance.PACKS[packKey];
+      const pack = finance.getPack(packKey) || finance.PACKS[packKey];
       const tokens = Number(row.tokens_delta) || (pack ? pack.tokens : 100);
       const price = pack ? pack.price : tokens;
       const name = pack ? pack.name : `${tokens} Coin Pack`;

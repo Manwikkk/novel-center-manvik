@@ -5,6 +5,7 @@ const { errors } = require('../utils/HttpError');
 const { sanitizeChapterHtml, sanitizeAuthorThought } = require('../utils/htmlSanitize');
 const booksService = require('./books.service');
 const { htmlToWordCount, minutesFromWords } = require('./reading.service');
+const { pricingFromContent, getSplitWarning } = require('./chapterPricing.service');
 const { resolveUserRow, hasRestriction, assertRestriction } = require('./suspension.service');
 
 function isPaidChapter(row) {
@@ -40,6 +41,7 @@ function rowToChapter(row, { includeContent = false, isUnlocked = false, canRead
     wordCount,
     readingMinutes: minutesFromWords(wordCount, 100),
     authorThought: row.author_thought || '',
+    pricingNote: getSplitWarning(wordCount),
   };
   if (includeContent && canRead) out.contentHtml = row.content_html || '';
   return out;
@@ -192,10 +194,13 @@ async function createInBook(bookId, body, user) {
     ? schedulePatch.scheduled_publish_at
     : null;
 
+  const isPaid = !!body.isPaid;
+  const { tokenPrice } = pricingFromContent(isPaid, html);
+
   const [r] = await pool.execute(
     `INSERT INTO chapters (book_id, idx, title, content_html, author_thought, is_paid, token_price, status, scheduled_publish_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [bookId, idx, body.title, html, thought || null, body.isPaid ? 1 : 0, body.tokenPrice || 0, chapterStatus, scheduledAt],
+    [bookId, idx, body.title, html, thought || null, isPaid ? 1 : 0, tokenPrice, chapterStatus, scheduledAt],
   );
   const created = await getRawById(r.insertId);
   return rowToChapter(created, { includeContent: true, isUnlocked: true, canRead: true });
@@ -224,7 +229,6 @@ async function update(id, patch, user) {
     params.push(t || null);
   }
   if (patch.isPaid != null)        { fields.push('is_paid = ?');       params.push(patch.isPaid ? 1 : 0); }
-  if (patch.tokenPrice != null)    { fields.push('token_price = ?');   params.push(patch.tokenPrice); }
   if (patch.idx != null)           { fields.push('idx = ?');           params.push(patch.idx); }
 
   const schedulePatch = applyScheduleFields(patch, { existingScheduledAt: row.scheduled_publish_at });
@@ -238,6 +242,14 @@ async function update(id, patch, user) {
   if (schedulePatch.scheduled_publish_at !== undefined) {
     fields.push('scheduled_publish_at = ?');
     params.push(schedulePatch.scheduled_publish_at);
+  }
+
+  const nextIsPaid = patch.isPaid != null ? !!patch.isPaid : !!row.is_paid;
+  const nextHtml = patch.contentHtml != null ? sanitizeChapterHtml(patch.contentHtml) : row.content_html;
+  if (patch.isPaid != null || patch.contentHtml != null) {
+    const { tokenPrice } = pricingFromContent(nextIsPaid, nextHtml);
+    fields.push('token_price = ?');
+    params.push(tokenPrice);
   }
 
   if (fields.length === 0) return rowToChapter(row, { includeContent: true, isUnlocked: true, canRead: true });

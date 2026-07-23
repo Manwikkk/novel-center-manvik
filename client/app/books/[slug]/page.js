@@ -3,6 +3,7 @@ import Link from 'next/link';
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
 import Icon from '@/components/ui/Icon';
+import Avatar from '@/components/ui/Avatar';
 import BookDetailClient from './BookDetailClient';
 import BookTabsClient from './BookTabsClient';
 import BookActionsMenu from '@/components/book/BookActionsMenu';
@@ -232,13 +233,7 @@ function AuthorCard({ authorId, name, avatarUrl, location, bio }) {
         About the Author
       </h4>
       <div className="flex items-center gap-4 mb-4">
-        <div className="w-16 h-16 rounded-full overflow-hidden border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center">
-          {avatarUrl ? (
-            <img alt={name} src={avatarUrl} className="w-full h-full object-cover" />
-          ) : (
-            <Icon name="person" size={28} className="text-ink-500 dark:text-neutral-500" />
-          )}
-        </div>
+        <Avatar name={name} src={avatarUrl} size={64} className="border border-neutral-300 dark:border-neutral-700" />
         <div>
           {profileHref ? (
             <Link

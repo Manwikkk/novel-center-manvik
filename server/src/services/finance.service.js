@@ -7,10 +7,24 @@ const DEFAULT_ROYALTY = 70;
 const TOKEN_INR_RATE = 1; // 1 token ≈ ₹1 for royalty valuation in mock economy
 
 const PACKS = {
-  small: { tokens: 100, price: 199, name: '₹199 Coin Pack', bonus: 0 },
-  medium: { tokens: 500, price: 899, name: '₹899 Coin Pack', bonus: 25 },
-  large: { tokens: 1200, price: 1899, name: '₹1899 Coin Pack', bonus: 100 },
+  pack_99: { tokens: 50, price: 99, name: '₹99 Coin Pack', bonus: 0 },
+  pack_249: { tokens: 125, price: 249, name: '₹249 Coin Pack', bonus: 6 },
+  pack_499: { tokens: 250, price: 499, name: '₹499 Coin Pack', bonus: 25 },
+  pack_999: { tokens: 500, price: 999, name: '₹999 Coin Pack', bonus: 75 },
+  pack_1999: { tokens: 1000, price: 1999, name: '₹1999 Coin Pack', bonus: 200 },
+  pack_2999: { tokens: 1500, price: 2999, name: '₹2999 Coin Pack', bonus: 375 },
 };
+
+const LEGACY_PACK_ALIASES = {
+  small: 'pack_99',
+  medium: 'pack_499',
+  large: 'pack_1999',
+};
+
+function getPack(packKey) {
+  const key = LEGACY_PACK_ALIASES[packKey] || packKey;
+  return PACKS[key] || null;
+}
 
 async function getFinanceSettings(conn = pool) {
   try {
@@ -233,6 +247,7 @@ async function debitWalletBuckets(conn, userId, amount) {
 
 module.exports = {
   PACKS,
+  getPack,
   TOKEN_INR_RATE,
   getFinanceSettings,
   invoiceNo,

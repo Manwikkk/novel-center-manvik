@@ -23,6 +23,7 @@ import {
 } from '@/components/studio/StudioTheme';
 import { api } from '@/lib/api';
 import { exitAuthorStudioToProfile } from '@/lib/authorNavigation';
+import { pricingFromContent } from '@/lib/chapterPricing';
 import { useUiStore } from '@/stores/uiStore';
 
 const PUBLISH_MODES = [
@@ -55,7 +56,7 @@ function fromDatetimeLocalValue(value) {
   return d.toISOString();
 }
 
-function buildPayload({ title, html, idx, isPaid, tokenPrice, authorThought, publishMode, scheduleInput }) {
+function buildPayload({ title, html, idx, isPaid, authorThought, publishMode, scheduleInput }) {
   let status = 'draft';
   let scheduledPublishAt = null;
   if (publishMode === 'publishNow') {
@@ -63,7 +64,6 @@ function buildPayload({ title, html, idx, isPaid, tokenPrice, authorThought, pub
   } else if (publishMode === 'schedule') {
     scheduledPublishAt = fromDatetimeLocalValue(scheduleInput);
   }
-  const price = Math.max(0, Math.floor(Number(tokenPrice) || 0));
   return {
     title: title.trim() || 'Untitled chapter',
     contentHtml: html,
@@ -71,7 +71,6 @@ function buildPayload({ title, html, idx, isPaid, tokenPrice, authorThought, pub
     status,
     scheduledPublishAt,
     isPaid,
-    tokenPrice: isPaid ? price : 0,
     authorThought: authorThought?.trim() || null,
   };
 }
@@ -95,7 +94,7 @@ function ChapterEditContent({ chapterId, bookId, navigation }) {
   const [publishMode, setPublishMode] = useState('draft');
   const [scheduleInput, setScheduleInput] = useState('');
   const [isPaid, setIsPaid] = useState(false);
-  const [tokenPrice, setTokenPrice] = useState('0');
+  const [pricingPreview, setPricingPreview] = useState({ wordCount: 0, tokenPrice: 0, pricingNote: null });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
@@ -130,8 +129,8 @@ function ChapterEditContent({ chapterId, bookId, navigation }) {
         setPublishMode(derivePublishMode(c));
         setScheduleInput(toDatetimeLocalValue(c.scheduledPublishAt));
         setIsPaid(!!c.isPaid);
-        setTokenPrice(String(c.tokenPrice ?? 0));
         setInitialContent(c.contentHtml || '<p></p>');
+        setPricingPreview(pricingFromContent(!!c.isPaid, c.contentHtml || ''));
       } catch (err) {
         pushToast({ type: 'error', title: 'Could not load chapter', message: err.message });
         navigation.goBack();
@@ -147,6 +146,24 @@ function ChapterEditContent({ chapterId, bookId, navigation }) {
       editor.setContent(initialContent);
     }
   }, [initialContent, editor]);
+
+  const refreshPricingPreview = useCallback(async () => {
+    if (!isPaid) {
+      setPricingPreview({ wordCount: 0, tokenPrice: 0, pricingNote: null });
+      return;
+    }
+    let html = '';
+    try {
+      html = await editor.getHTML();
+    } catch (_e) {
+      html = initialContent || '';
+    }
+    setPricingPreview(pricingFromContent(true, html));
+  }, [editor, initialContent, isPaid]);
+
+  useEffect(() => {
+    if (showPanel) refreshPricingPreview();
+  }, [showPanel, isPaid, refreshPricingPreview]);
 
   const persist = useCallback(async ({ silent = false, andNew = false } = {}) => {
     if (busy && !silent) return null;
@@ -164,12 +181,14 @@ function ChapterEditContent({ chapterId, bookId, navigation }) {
         html,
         idx,
         isPaid,
-        tokenPrice,
         authorThought,
         publishMode,
         scheduleInput,
       });
-      await api.patch(`/chapters/${chapterId}`, payload);
+      const saved = await api.patch(`/chapters/${chapterId}`, payload);
+      if (saved?.chapter) {
+        setPricingPreview(pricingFromContent(!!saved.chapter.isPaid, html));
+      }
       setSaveStatus('saved');
       if (!silent) {
         pushToast({ type: 'success', title: 'Saved', message: payload.status === 'published' ? 'Published' : 'Draft saved' });
@@ -180,7 +199,6 @@ function ChapterEditContent({ chapterId, bookId, navigation }) {
           contentHtml: '<p>Start writing here…</p>',
           status: 'draft',
           isPaid: false,
-          tokenPrice: 0,
         });
         navigation.replace('AuthorChapterEdit', { chapterId: chapter.id, bookId });
       }
@@ -206,7 +224,6 @@ function ChapterEditContent({ chapterId, bookId, navigation }) {
     pushToast,
     scheduleInput,
     title,
-    tokenPrice,
   ]);
 
   const queueAutosave = useCallback(() => {
@@ -355,13 +372,19 @@ function ChapterEditContent({ chapterId, bookId, navigation }) {
                   />
                 </View>
                 {isPaid ? (
-                  <StudioInput
-                    label="Token price"
-                    value={String(tokenPrice)}
-                    onChangeText={(v) => { setTokenPrice(v); queueAutosave(); }}
-                    keyboardType="number-pad"
-                    placeholder="e.g. 5"
-                  />
+                  <View style={{ gap: 6 }}>
+                    <NCText variant="bodySm" style={{ color: C.white, fontWeight: '600' }}>
+                      {`${pricingPreview.tokenPrice} coins (based on ${pricingPreview.wordCount.toLocaleString()} words)`}
+                    </NCText>
+                    <NCText variant="bodySm" style={{ color: C.muted, fontSize: 11, lineHeight: 16 }}>
+                      Price is calculated automatically from word count when you save.
+                    </NCText>
+                    {pricingPreview.pricingNote ? (
+                      <NCText variant="bodySm" style={{ color: '#d97706', fontSize: 11, lineHeight: 16 }}>
+                        {pricingPreview.pricingNote}
+                      </NCText>
+                    ) : null}
+                  </View>
                 ) : null}
               </View>
 

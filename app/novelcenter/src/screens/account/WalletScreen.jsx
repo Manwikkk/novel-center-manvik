@@ -18,12 +18,6 @@ import { usePagedQuery } from '@/hooks/usePagedQuery';
 import { formatRelative } from '@/lib/format';
 
 
-const PACK_LABELS = {
-  small: { title: 'Quiet shelf', tokens: 100 },
-  medium: { title: 'Reading week', tokens: 500 },
-  large: { title: 'Slow attention', tokens: 1200 },
-};
-
 export default function WalletScreen({ navigation }) {
   const { colors: C } = useAppTheme();
   const balance = useWalletStore((s) => s.balance);
@@ -61,7 +55,7 @@ export default function WalletScreen({ navigation }) {
     }
   };
 
-  const packKeys = ['small', 'medium', 'large'];
+  const packEntries = Object.entries(packs).sort(([, a], [, b]) => (a?.price || 0) - (b?.price || 0));
 
   return (
     <StudioScreen>
@@ -92,20 +86,17 @@ export default function WalletScreen({ navigation }) {
 
             <View style={{ gap: 12 }}>
               <StudioSectionLabel>TOP UP</StudioSectionLabel>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {packKeys.map((key) => {
-                  const pack = packs[key];
-                  const label = PACK_LABELS[key];
-                  const tokens = pack?.tokens ?? label.tokens;
-                  const priceCents = pack?.price;
-                  const price = priceCents != null ? `$${(priceCents / 100).toFixed(2)}` : '';
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                {packEntries.map(([key, pack]) => {
+                  const totalCoins = (pack?.tokens || 0) + (pack?.bonus || 0);
+                  const price = pack?.price != null ? `₹${Number(pack.price).toLocaleString('en-IN')}` : '';
                   return (
                     <Pressable
                       key={key}
                       onPress={() => purchase(key)}
                       disabled={busy}
                       style={({ pressed }) => ({
-                        flex: 1,
+                        width: '47%',
                         padding: 14,
                         borderRadius: 12,
                         borderWidth: 1,
@@ -116,13 +107,18 @@ export default function WalletScreen({ navigation }) {
                         opacity: busy ? 0.6 : pressed ? 0.88 : 1,
                       })}
                     >
-                      <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 9, letterSpacing: 0.5 }}>
-                        {label.title.toUpperCase()}
+                      <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 9, letterSpacing: 0.5, textAlign: 'center' }}>
+                        {(pack?.name || key).toUpperCase()}
                       </NCText>
                       <NCText variant="titleLg" style={{ color: C.white, fontSize: 22 }}>
-                        {tokens}
+                        {totalCoins}
                       </NCText>
-                      <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 10 }}>tokens</NCText>
+                      <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 10 }}>coins</NCText>
+                      {pack?.bonus ? (
+                        <NCText variant="uiLabelXs" style={{ color: C.muted, fontSize: 9, textAlign: 'center' }}>
+                          {`${pack.tokens} + ${pack.bonus} bonus`}
+                        </NCText>
+                      ) : null}
                       {price ? (
                         <NCText variant="uiLabelSm" style={{ color: C.white, fontSize: 12, marginTop: 4 }}>
                           {price}

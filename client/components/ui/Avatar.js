@@ -1,19 +1,11 @@
+'use client';
+
+import { useState } from 'react';
 import { initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { resolveImageUrl } from '@/lib/image';
 
-export default function Avatar({ name, src, size = 36, className }) {
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={name || 'avatar'}
-        width={size}
-        height={size}
-        className={cn('rounded-full object-cover', className)}
-        style={{ width: size, height: size }}
-      />
-    );
-  }
+function InitialsAvatar({ name, size, className }) {
   return (
     <div
       className={cn(
@@ -26,4 +18,25 @@ export default function Avatar({ name, src, size = 36, className }) {
       {initials(name) || '·'}
     </div>
   );
+}
+
+export default function Avatar({ name, src, size = 36, className }) {
+  const [failed, setFailed] = useState(false);
+  const resolved = resolveImageUrl(src);
+
+  if (resolved && !failed) {
+    return (
+      <img
+        src={resolved}
+        alt={name || 'avatar'}
+        width={size}
+        height={size}
+        className={cn('rounded-full object-cover', className)}
+        style={{ width: size, height: size }}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return <InitialsAvatar name={name} size={size} className={className} />;
 }

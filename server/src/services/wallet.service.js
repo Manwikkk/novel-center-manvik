@@ -58,10 +58,10 @@ async function listTransactions(userId, { page, pageSize, type }) {
 }
 
 async function purchase(userId, { pack, tokens, couponCode }) {
-  const packKey = pack || 'small';
-  const packDef = PACKS[packKey] || {
-    tokens: tokens || 100,
-    price: tokens || 100,
+  const packKey = pack || 'pack_99';
+  const packDef = finance.getPack(packKey) || {
+    tokens: tokens || 50,
+    price: tokens || 99,
     name: 'Custom Coin Pack',
     bonus: 0,
   };

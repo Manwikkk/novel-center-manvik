@@ -15,6 +15,7 @@ import { formatDateTime } from '@/lib/format';
 import { useUiStore } from '@/stores/uiStore';
 import { useChapterDraft } from '@/lib/useChapterDraft';
 import { cn } from '@/lib/cn';
+import { pricingFromContent } from '@/lib/chapterPricing';
 
 const SERVER_DEBOUNCE_MS = 3000;
 const DEFAULT_CHAPTER_TITLE = 'Untitled chapter';
@@ -96,6 +97,7 @@ function resolveScheduleAt(publishMode, chapter, scheduleLocal, scheduleLocalRef
 
 function buildPersistPayload(snapshot, publishMode, scheduleAt = null) {
   const payload = normalizeChapterPayload({ ...snapshot });
+  delete payload.tokenPrice;
   const at = publishMode === 'schedule' ? scheduleAt : null;
   if (at && new Date(at).getTime() > Date.now()) {
     payload.scheduledPublishAt = at;
@@ -197,6 +199,11 @@ function ChapterEditInner() {
     if (!chapter) return null;
     return buildSnapshotFromChapter(chapter, content, publishMode);
   }, [chapter, content, publishMode]);
+
+  const chapterPricing = useMemo(
+    () => pricingFromContent(!!chapter?.isPaid, content),
+    [chapter?.isPaid, content],
+  );
 
   useEffect(() => {
     let cancel = false;
@@ -713,15 +720,23 @@ function ChapterEditInner() {
               </div>
             </div>
             {chapter.isPaid && (
-              <TextInput
-                label="Token price"
-                variant="dashboard"
-                type="number"
-                value={chapter.tokenPrice}
-                onChange={(e) => update('tokenPrice', e.target.value)}
-                hint="Tokens deducted on first unlock."
-                inputClassName="no-spin"
-              />
+              <div className="space-y-2">
+                <p className="label-sm uppercase text-on-surface-variant">Chapter price</p>
+                <p className="text-[14px] text-on-surface font-semibold">
+                  {chapterPricing.tokenPrice} coins
+                  <span className="font-normal text-on-surface-variant">
+                    {' '}(based on {chapterPricing.wordCount.toLocaleString()} words)
+                  </span>
+                </p>
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  Price is calculated automatically from word count when you save.
+                </p>
+                {chapterPricing.pricingNote && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed border border-amber-600/30 rounded-md px-3 py-2">
+                    {chapterPricing.pricingNote}
+                  </p>
+                )}
+              </div>
             )}
 
             <div className="pt-4 border-t border-surface-variant space-y-2">

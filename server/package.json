@@ -30,6 +30,8 @@
     "db:migrate:google-auth": "node src/db/runSql.js src/db/migrations/020_google_auth_onboarding.sql",
     "db:migrate:finance": "node src/db/runSql.js src/db/migrations/021_finance_foundation.sql",
     "db:backfill:finance": "node scripts/backfill-finance-orders.js",
+    "db:backfill:chapter-prices": "node scripts/backfill-chapter-prices.js",
+    "db:seed:pricing-demo": "node scripts/seed-pricing-demo.js",
     "db:seed": "node src/db/runSql.js src/db/seed.sql",
     "db:import:webnovel": "node scripts/import-webnovel-books.js",
     "db:seed:webnovel": "node scripts/seed-webnovel-home.js",
