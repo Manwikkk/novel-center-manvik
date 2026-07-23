@@ -1,6 +1,9 @@
 # Novel Center – deploy on push to main (or manual).
 # Frontend and backend run on different hosts; one SSH private key can be installed on both.
 #
+# IMPORTANT: Restart apps via CloudPanel *site-user* PM2 (novelcentre / instabizweb-api-novel),
+# not root PM2 — otherwise you get EADDRINUSE crash loops against the live process.
+#
 # GitHub Actions → Secrets and variables → Actions (repository secrets):
 #   DEPLOY_SSH_KEY          Multiline PEM (-----BEGIN ... PRIVATE KEY-----)
 #   FRONTEND_SSH_HOST       e.g. 62.72.30.96
@@ -28,8 +31,11 @@ permissions:
 
 env:
   NODE_VERSION: '18'
-  FRONTEND_PM2_NAME: novel-center-web
-  BACKEND_PM2_NAME: novel-center-api
+  # Must match CloudPanel site-user PM2 process names (not root PM2).
+  FRONTEND_PM2_NAME: novelcentre
+  FRONTEND_SITE_USER: novelcentre
+  BACKEND_PM2_NAME: server
+  BACKEND_SITE_USER: instabizweb-api-novel
 
 jobs:
   deploy:
@@ -90,10 +96,13 @@ jobs:
             PATH_F="/home/novelcentre/htdocs/novelcentre.com"
           fi
           RSYNC_SSH='ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+          # Preserve production .env and build output; --delete otherwise wipes them.
           rsync -az --delete \
             --exclude node_modules \
             --exclude .git \
             --exclude .next \
+            --exclude .env \
+            --exclude .env.local \
             -e "$RSYNC_SSH" \
             "client/" "${USER}@${FRONTEND_SSH_HOST}:${PATH_F}/"
 
@@ -110,6 +119,8 @@ jobs:
           rsync -az \
             --exclude node_modules \
             --exclude .git \
+            --exclude .env \
+            --exclude .env.local \
             -e "$RSYNC_SSH" \
             "server/" "${USER}@${BACKEND_SSH_HOST}:${PATH_B}/"
 
@@ -119,6 +130,7 @@ jobs:
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           FRONTEND_DEPLOY_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}
           FRONTEND_PM2_NAME: ${{ env.FRONTEND_PM2_NAME }}
+          FRONTEND_SITE_USER: ${{ env.FRONTEND_SITE_USER }}
         run: |
           set -euo pipefail
           USER="${DEPLOY_SSH_USER:-root}"
@@ -127,9 +139,20 @@ jobs:
             PATH_F="/home/novelcentre/htdocs/novelcentre.com"
           fi
           NAME="${FRONTEND_PM2_NAME}"
+          SITE_USER="${FRONTEND_SITE_USER}"
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
             "${USER}@${FRONTEND_SSH_HOST}" \
-            "set -euo pipefail; cd $(printf %q "$PATH_F"); export CI=true; npm ci --no-audit; npm run build; pm2 delete $(printf %q "$NAME") 2>/dev/null || true; pm2 start npm --name $(printf %q "$NAME") -- start; pm2 save"
+            "set -euo pipefail
+             PATH_F=$(printf %q "$PATH_F")
+             NAME=$(printf %q "$NAME")
+             SITE_USER=$(printf %q "$SITE_USER")
+             chown -R \"\$SITE_USER:\$SITE_USER\" \"\$PATH_F\"
+             sudo -u \"\$SITE_USER\" bash -lc \"set -euo pipefail; cd \$PATH_F; export CI=true; npm ci --no-audit; npm run build\"
+             sudo -u \"\$SITE_USER\" bash -lc \"pm2 stop \$NAME 2>/dev/null || true\"
+             fuser -k 5053/tcp 2>/dev/null || true
+             sleep 2
+             sudo -u \"\$SITE_USER\" bash -lc \"set -euo pipefail; cd \$PATH_F; pm2 delete \$NAME 2>/dev/null || true; pm2 start ./node_modules/next/dist/bin/next --name \$NAME -- start -p 5053; pm2 save\"
+            "
 
       - name: Install and restart backend on server
         env:
@@ -137,11 +160,23 @@ jobs:
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           BACKEND_DEPLOY_PATH: ${{ secrets.BACKEND_DEPLOY_PATH }}
           BACKEND_PM2_NAME: ${{ env.BACKEND_PM2_NAME }}
+          BACKEND_SITE_USER: ${{ env.BACKEND_SITE_USER }}
         run: |
           set -euo pipefail
           USER="${DEPLOY_SSH_USER:-root}"
           PATH_B="${BACKEND_DEPLOY_PATH:-/home/instabizweb-api-novel/htdocs/api-novel.instabizweb.com}"
           NAME="${BACKEND_PM2_NAME}"
+          SITE_USER="${BACKEND_SITE_USER}"
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
             "${USER}@${BACKEND_SSH_HOST}" \
-            "set -euo pipefail; cd $(printf %q "$PATH_B"); npm ci --omit=dev --no-audit; pm2 delete $(printf %q "$NAME") 2>/dev/null || true; pm2 start npm --name $(printf %q "$NAME") -- start; pm2 save"
+            "set -euo pipefail
+             PATH_B=$(printf %q "$PATH_B")
+             NAME=$(printf %q "$NAME")
+             SITE_USER=$(printf %q "$SITE_USER")
+             chown -R \"\$SITE_USER:\$SITE_USER\" \"\$PATH_B\"
+             sudo -u \"\$SITE_USER\" bash -lc \"set -euo pipefail; cd \$PATH_B; npm ci --omit=dev --no-audit\"
+             sudo -u \"\$SITE_USER\" bash -lc \"pm2 stop \$NAME 2>/dev/null || true\"
+             fuser -k 3016/tcp 2>/dev/null || true
+             sleep 2
+             sudo -u \"\$SITE_USER\" bash -lc \"set -euo pipefail; cd \$PATH_B; pm2 delete \$NAME 2>/dev/null || true; pm2 start server.js --name \$NAME; pm2 save\"
+            "
