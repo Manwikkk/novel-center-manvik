@@ -5,9 +5,9 @@
 #   DEPLOY_SSH_KEY          Multiline PEM (-----BEGIN ... PRIVATE KEY-----)
 #   FRONTEND_SSH_HOST       e.g. 62.72.30.96
 #   BACKEND_SSH_HOST        e.g. 69.62.78.149
-# Optional (defaults match InstaBizWeb paths below):
+# Optional (defaults match CloudPanel paths below):
 #   DEPLOY_SSH_USER         default root
-#   FRONTEND_DEPLOY_PATH    default /home/instabizweb-novelcenter/htdocs/novelcenter.instabizweb.com
+#   FRONTEND_DEPLOY_PATH    default /home/novelcentre/htdocs/novelcentre.com
 #   BACKEND_DEPLOY_PATH     default /home/instabizweb-api-novel/htdocs/api-novel.instabizweb.com
 # Optional:
 #   NEXT_PUBLIC_API_URL     if set, used only for the CI frontend build; tracked client/.env is also read by Next when present
@@ -84,7 +84,11 @@ jobs:
         run: |
           set -euo pipefail
           USER="${DEPLOY_SSH_USER:-root}"
-          PATH_F="${FRONTEND_DEPLOY_PATH:-/home/instabizweb-novelcenter/htdocs/novelcenter.instabizweb.com}"
+          PATH_F="${FRONTEND_DEPLOY_PATH:-/home/novelcentre/htdocs/novelcentre.com}"
+          # Old hosting path no longer exists on CloudPanel (novelcentre.com).
+          if [[ "$PATH_F" == *"instabizweb-novelcenter"* ]] || [[ -z "$PATH_F" ]]; then
+            PATH_F="/home/novelcentre/htdocs/novelcentre.com"
+          fi
           RSYNC_SSH='ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
           rsync -az --delete \
             --exclude node_modules \
@@ -118,7 +122,10 @@ jobs:
         run: |
           set -euo pipefail
           USER="${DEPLOY_SSH_USER:-root}"
-          PATH_F="${FRONTEND_DEPLOY_PATH:-/home/instabizweb-novelcenter/htdocs/novelcenter.instabizweb.com}"
+          PATH_F="${FRONTEND_DEPLOY_PATH:-/home/novelcentre/htdocs/novelcentre.com}"
+          if [[ "$PATH_F" == *"instabizweb-novelcenter"* ]] || [[ -z "$PATH_F" ]]; then
+            PATH_F="/home/novelcentre/htdocs/novelcentre.com"
+          fi
           NAME="${FRONTEND_PM2_NAME}"
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
             "${USER}@${FRONTEND_SSH_HOST}" \
