@@ -15,7 +15,7 @@ export const STAFF_ROLE_TEMPLATES = [
     key: 'finance_staff',
     label: 'Finance Staff',
     summary: 'View transactions, purchases, and refunds. Generate reports. No content or user management.',
-    permissions: ['transactions', 'transactions.view', 'transactions.reports'],
+    permissions: ['transactions', 'reports', 'transactions.view', 'transactions.reports', 'transactions.refund', 'authors.payouts'],
   },
   {
     key: 'author_relations',

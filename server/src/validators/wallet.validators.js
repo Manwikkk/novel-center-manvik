@@ -14,6 +14,7 @@ module.exports = {
     body: Joi.object({
       pack: Joi.string().valid('small', 'medium', 'large').default('small'),
       tokens: Joi.number().integer().min(1).max(100000),
+      couponCode: Joi.string().trim().max(64).allow('', null),
     }),
   },
 };

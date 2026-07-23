@@ -5,6 +5,7 @@ export const ADMIN_PAGE_DEFS = [
   { key: 'users', label: 'User Management', href: '/admin/users', icon: 'group' },
   { key: 'comments', label: 'Moderation', href: '/admin/comments', icon: 'gavel' },
   { key: 'transactions', label: 'Transactions', href: '/admin/transactions', icon: 'monitoring' },
+  { key: 'reports', label: 'Reports', href: '/admin/reports', icon: 'assessment' },
   { key: 'books', label: 'Books', href: '/admin/books', icon: 'menu_book' },
 ];
 

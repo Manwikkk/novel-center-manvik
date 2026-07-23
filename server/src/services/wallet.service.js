@@ -5,17 +5,25 @@ const { withTransaction } = require('../db/tx');
 const { errors } = require('../utils/HttpError');
 const { clampPagination } = require('../utils/pagination');
 const { resolveUserRow, assertRestriction } = require('./suspension.service');
+const finance = require('./finance.service');
 
-const PACKS = {
-  small: { tokens: 100, price: 199 },
-  medium: { tokens: 500, price: 899 },
-  large: { tokens: 1200, price: 1899 },
-};
+const PACKS = finance.PACKS;
 
 async function getMine(userId) {
-  const [rows] = await pool.execute('SELECT user_id, balance, updated_at FROM wallets WHERE user_id = ?', [userId]);
+  const [rows] = await pool.execute(
+    `SELECT user_id, balance, purchased_balance, bonus_balance, promo_balance, updated_at
+       FROM wallets WHERE user_id = ?`,
+    [userId],
+  );
   if (!rows[0]) throw errors.notFound('Wallet not found');
-  return { userId: rows[0].user_id, balance: Number(rows[0].balance), updatedAt: rows[0].updated_at };
+  return {
+    userId: rows[0].user_id,
+    balance: Number(rows[0].balance),
+    purchasedBalance: Number(rows[0].purchased_balance) || 0,
+    bonusBalance: Number(rows[0].bonus_balance) || 0,
+    promoBalance: Number(rows[0].promo_balance) || 0,
+    updatedAt: rows[0].updated_at,
+  };
 }
 
 async function listTransactions(userId, { page, pageSize, type }) {
@@ -25,7 +33,7 @@ async function listTransactions(userId, { page, pageSize, type }) {
   const { page: safePage, pageSize: safePageSize, offset } = clampPagination(page, pageSize);
 
   const [rows] = await pool.execute(
-    `SELECT id, user_id, type, tokens_delta, ref_chapter_id, meta, created_at
+    `SELECT id, user_id, type, tokens_delta, ref_chapter_id, payment_order_id, meta, created_at
      FROM transactions WHERE ${where.join(' AND ')}
      ORDER BY created_at DESC LIMIT ${safePageSize} OFFSET ${offset}`,
     params,
@@ -41,6 +49,7 @@ async function listTransactions(userId, { page, pageSize, type }) {
       type: r.type,
       tokensDelta: Number(r.tokens_delta),
       refChapterId: r.ref_chapter_id,
+      paymentOrderId: r.payment_order_id,
       meta: r.meta,
       createdAt: r.created_at,
     })),
@@ -48,21 +57,52 @@ async function listTransactions(userId, { page, pageSize, type }) {
   };
 }
 
-// Mock purchase: credits the wallet by the pack's tokens and logs a transaction.
-async function purchase(userId, { pack, tokens }) {
-  const tokensToCredit = tokens || (PACKS[pack || 'small'].tokens);
+async function purchase(userId, { pack, tokens, couponCode }) {
+  const packKey = pack || 'small';
+  const packDef = PACKS[packKey] || {
+    tokens: tokens || 100,
+    price: tokens || 100,
+    name: 'Custom Coin Pack',
+    bonus: 0,
+  };
+  const tokensToCredit = tokens || packDef.tokens;
+  const bonusCoins = packDef.bonus || 0;
+
   return withTransaction(async (conn) => {
+    const order = await finance.createSuccessfulOrder(conn, {
+      userId,
+      packKey,
+      productName: packDef.name || `${tokensToCredit} Coin Pack`,
+      unitPrice: packDef.price ?? tokensToCredit,
+      coinsAdded: tokensToCredit,
+      bonusCoins,
+      couponCode: couponCode || null,
+      paymentMethod: 'mock',
+      gateway: 'mock',
+      platform: 'web',
+      createdBy: 'system',
+      remarks: 'Mock coin purchase',
+    });
+
+    await finance.creditWalletBuckets(conn, userId, {
+      purchased: tokensToCredit,
+      bonus: bonusCoins,
+      promo: 0,
+    });
+
     await conn.execute(
-      'UPDATE wallets SET balance = balance + ? WHERE user_id = ?',
-      [tokensToCredit, userId],
+      `INSERT INTO transactions (user_id, type, tokens_delta, payment_order_id, meta)
+       VALUES (?, 'purchase', ?, ?, JSON_OBJECT('pack', ?, 'mock', true, 'invoiceNo', ?, 'bonusCoins', ?))`,
+      [userId, tokensToCredit + bonusCoins, order.orderId, packKey, order.invoiceNo, bonusCoins],
     );
-    await conn.execute(
-      `INSERT INTO transactions (user_id, type, tokens_delta, meta)
-       VALUES (?, 'purchase', ?, JSON_OBJECT('pack', ?, 'mock', true))`,
-      [userId, tokensToCredit, pack || 'custom'],
-    );
+
     const [w] = await conn.execute('SELECT balance FROM wallets WHERE user_id = ?', [userId]);
-    return { balance: Number(w[0].balance), creditedTokens: tokensToCredit };
+    return {
+      balance: Number(w[0].balance),
+      creditedTokens: tokensToCredit + bonusCoins,
+      orderId: order.orderId,
+      invoiceNo: order.invoiceNo,
+    };
   });
 }
 
@@ -71,9 +111,9 @@ async function unlockChapter(userId, chapterId) {
   assertRestriction(userRow, 'reading', 'Reading is restricted on your account');
 
   return withTransaction(async (conn) => {
-    // Lock chapter and wallet rows for update
     const [cRows] = await conn.execute(
-      `SELECT c.id, c.is_paid, c.token_price, c.status, c.book_id, b.status AS book_status
+      `SELECT c.id, c.is_paid, c.token_price, c.status, c.book_id, c.title,
+              b.status AS book_status, b.author_id, b.title AS book_title
        FROM chapters c JOIN books b ON b.id = c.book_id
        WHERE c.id = ? FOR UPDATE`,
       [chapterId],
@@ -84,8 +124,7 @@ async function unlockChapter(userId, chapterId) {
       throw errors.notFound('Chapter not available');
     }
 
-    const [bookRows] = await conn.execute('SELECT author_id FROM books WHERE id = ? LIMIT 1', [chapter.book_id]);
-    const bookAuthorId = bookRows[0] ? Number(bookRows[0].author_id) : null;
+    const bookAuthorId = Number(chapter.author_id);
     if (bookAuthorId === Number(userId)) {
       await conn.execute(
         `INSERT IGNORE INTO chapter_unlocks (user_id, chapter_id, tokens_spent)
@@ -97,7 +136,6 @@ async function unlockChapter(userId, chapterId) {
     }
 
     if (!chapter.is_paid || Number(chapter.token_price) === 0) {
-      // Free chapter - record unlock idempotently and return.
       await conn.execute(
         `INSERT IGNORE INTO chapter_unlocks (user_id, chapter_id, tokens_spent)
          VALUES (?, ?, 0)`,
@@ -116,22 +154,31 @@ async function unlockChapter(userId, chapterId) {
       return { balance: Number(w[0].balance), tokensSpent: 0, alreadyUnlocked: true };
     }
 
-    const [wRows] = await conn.execute('SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE', [userId]);
-    const balance = wRows[0] ? Number(wRows[0].balance) : 0;
     const price = Number(chapter.token_price);
-    if (balance < price) throw errors.payment('Insufficient tokens');
+    const debit = await finance.debitWalletBuckets(conn, userId, price);
+    if (!debit) throw errors.payment('Insufficient tokens');
 
-    await conn.execute('UPDATE wallets SET balance = balance - ? WHERE user_id = ?', [price, userId]);
     await conn.execute(
       `INSERT INTO chapter_unlocks (user_id, chapter_id, tokens_spent) VALUES (?, ?, ?)`,
       [userId, chapterId, price],
     );
     await conn.execute(
       `INSERT INTO transactions (user_id, type, tokens_delta, ref_chapter_id, meta)
-       VALUES (?, 'unlock', ?, ?, JSON_OBJECT('chapterId', ?))`,
-      [userId, -price, chapterId, chapterId],
+       VALUES (?, 'unlock', ?, ?, JSON_OBJECT(
+         'chapterId', ?, 'bookId', ?, 'bookTitle', ?, 'chapterTitle', ?, 'authorId', ?
+       ))`,
+      [
+        userId,
+        -price,
+        chapterId,
+        chapterId,
+        chapter.book_id,
+        chapter.book_title || '',
+        chapter.title || '',
+        bookAuthorId,
+      ],
     );
-    return { balance: balance - price, tokensSpent: price, alreadyUnlocked: false };
+    return { balance: debit.balance, tokensSpent: price, alreadyUnlocked: false };
   });
 }
 

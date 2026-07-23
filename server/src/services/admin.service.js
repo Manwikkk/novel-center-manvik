@@ -172,14 +172,45 @@ async function updateUser(id, patch, actor) {
       );
     }
     if (patch.walletDelta !== undefined && patch.walletDelta !== 0) {
-      await conn.execute(
-        'UPDATE wallets SET balance = GREATEST(CAST(balance AS SIGNED) + ?, 0) WHERE user_id = ?',
-        [patch.walletDelta, id],
-      );
+      const delta = Number(patch.walletDelta);
+      if (delta > 0) {
+        await conn.execute(
+          `UPDATE wallets
+              SET balance = balance + ?,
+                  purchased_balance = purchased_balance + ?
+            WHERE user_id = ?`,
+          [delta, delta, id],
+        );
+      } else {
+        const amt = Math.abs(delta);
+        const [wRows] = await conn.execute(
+          'SELECT balance, purchased_balance, bonus_balance, promo_balance FROM wallets WHERE user_id = ? FOR UPDATE',
+          [id],
+        );
+        if (!wRows[0] || Number(wRows[0].balance) < amt) {
+          throw errors.badRequest('Insufficient wallet balance for deduction');
+        }
+        let remaining = amt;
+        let promo = Number(wRows[0].promo_balance);
+        let bonus = Number(wRows[0].bonus_balance);
+        let purchased = Number(wRows[0].purchased_balance);
+        const takePromo = Math.min(promo, remaining);
+        promo -= takePromo; remaining -= takePromo;
+        const takeBonus = Math.min(bonus, remaining);
+        bonus -= takeBonus; remaining -= takeBonus;
+        purchased = Math.max(0, purchased - remaining);
+        await conn.execute(
+          `UPDATE wallets
+              SET balance = GREATEST(CAST(balance AS SIGNED) - ?, 0),
+                  purchased_balance = ?, bonus_balance = ?, promo_balance = ?
+            WHERE user_id = ?`,
+          [amt, purchased, bonus, promo, id],
+        );
+      }
       await conn.execute(
         `INSERT INTO transactions (user_id, type, tokens_delta, meta)
-         VALUES (?, 'admin_adjust', ?, JSON_OBJECT('reason', 'admin_panel'))`,
-        [id, patch.walletDelta],
+         VALUES (?, 'admin_adjust', ?, JSON_OBJECT('reason', 'admin_panel', 'coinSource', ?))`,
+        [id, delta, delta > 0 ? 'admin_credit' : 'admin_debit'],
       );
     }
     const [rows] = await conn.execute(

@@ -126,12 +126,46 @@ async function request(path, { method = 'GET', body, query, headers, formData, s
   return data;
 }
 
+async function downloadBlob(path, { query } = {}, _retry = false) {
+  let url = `${BASE}${path}`;
+  if (query && typeof query === 'object') {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(query)) {
+      if (v === undefined || v === null || v === '') continue;
+      qs.append(k, String(v));
+    }
+    const s = qs.toString();
+    if (s) url += `?${s}`;
+  }
+  const headers = {};
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(url, { method: 'GET', headers });
+  if (res.status === 401 && !_retry) {
+    const refreshed = await tryRefresh();
+    if (refreshed) return downloadBlob(path, { query }, true);
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const err = new Error(data?.error?.message || `Download failed: ${res.status}`);
+    err.status = res.status;
+    err.code = data?.error?.code;
+    throw err;
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('content-disposition') || '';
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  return { blob, filename: match?.[1] || 'report.xlsx' };
+}
+
 export const api = {
   get:    (path, opts) => request(path, { method: 'GET',    ...opts }),
   post:   (path, body, opts) => request(path, { method: 'POST',   body, ...opts }),
   patch:  (path, body, opts) => request(path, { method: 'PATCH',  body, ...opts }),
   delete: (path, opts) => request(path, { method: 'DELETE', ...opts }),
   upload: (path, formData, opts) => request(path, { method: 'POST', formData, ...opts }),
+  downloadBlob,
 };
 
 export const ApiBaseUrl = BASE;

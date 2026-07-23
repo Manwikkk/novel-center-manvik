@@ -14,10 +14,24 @@ const {
 } = require('../../middleware/requireAdminAccess');
 const ctrl = require('../../controllers/admin.controller');
 const catCtrl = require('../../controllers/adminCatalog.controller');
+const finCtrl = require('../../controllers/financeAdmin.controller');
 const v = require('../../validators/admin.validators');
 const catv = require('../../validators/adminCatalog.validators');
 
 const idParam = Joi.object({ id: Joi.number().integer().positive().required() });
+const reportTypeParam = Joi.object({
+  type: Joi.string().valid(
+    'wallet-coin',
+    'transaction',
+    'sales',
+    'revenue',
+    'tax',
+    'promotion-coupon',
+    'reconciliation',
+    'author-payout',
+    'financial-audit',
+  ).required(),
+});
 
 router.use(authRequired, requireAdminPanel(), loadAdminPermissions);
 
@@ -37,6 +51,20 @@ router.get('/recycle', requireAdminPermission('books'), validate(v.listRecycle),
 router.post('/recycle/:id/restore', requireAdminPermission('books'), requireAdminCapability('books.delete'), validate({ params: idParam }), ctrl.restoreRecycle);
 
 router.get('/transactions', requireAdminPermission('transactions'), validate(v.listTransactions), ctrl.listTransactions);
+
+router.get('/campaigns', requireAdminPermission('transactions'), finCtrl.listCampaigns);
+router.post('/campaigns', requireAdminPermission('transactions'), requireAdminCapability('transactions.reports'), validate(v.createCampaign), finCtrl.createCampaign);
+router.get('/coupons', requireAdminPermission('transactions'), finCtrl.listCoupons);
+router.post('/coupons', requireAdminPermission('transactions'), requireAdminCapability('transactions.reports'), validate(v.createCoupon), finCtrl.createCoupon);
+router.patch('/coupons/:id', requireAdminPermission('transactions'), requireAdminCapability('transactions.reports'), validate({ params: idParam, body: v.updateCoupon.body }), finCtrl.updateCoupon);
+router.post('/refunds', requireAdminPermission('transactions'), requireAdminCapability('transactions.refund'), validate(v.createRefund), finCtrl.createRefund);
+router.post('/author-payouts/generate', requireAdminPermission('transactions'), requireAdminCapability('authors.payouts'), validate(v.generatePayout), finCtrl.generatePayout);
+router.patch('/author-payouts/:id', requireAdminPermission('transactions'), requireAdminCapability('authors.payouts'), validate({ params: idParam, body: v.updatePayout.body }), finCtrl.updatePayout);
+router.get('/reconciliation', requireAdminPermission('transactions'), validate(v.listReconciliation), finCtrl.listReconciliation);
+router.patch('/reconciliation/:id', requireAdminPermission('transactions'), requireAdminCapability('transactions.reports'), validate({ params: idParam, body: v.updateReconciliation.body }), finCtrl.updateReconciliation);
+
+router.get('/reports', requireAdminPermission('reports'), requireAdminCapability('transactions.reports'), finCtrl.listReports);
+router.get('/reports/:type', requireAdminPermission('reports'), requireAdminCapability('transactions.reports'), validate({ params: reportTypeParam, query: v.downloadReport.query }), finCtrl.downloadReport);
 
 router.get('/comments/by-book', requireAdminPermission('comments'), validate(v.commentsByBook), ctrl.commentsByBook);
 router.get('/comments/by-chapter', requireAdminPermission('comments'), validate(v.commentsByChapter), ctrl.commentsByChapter);

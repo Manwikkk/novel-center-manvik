@@ -153,4 +153,80 @@ module.exports = {
       gs_originals: Joi.boolean(),
     }).min(1),
   },
+  createCampaign: {
+    body: Joi.object({
+      name: Joi.string().trim().min(1).max(160).required(),
+      campaignType: Joi.string().trim().max(64).default('promo'),
+      startAt: Joi.date().iso().allow(null),
+      endAt: Joi.date().iso().allow(null),
+      status: Joi.string().valid('draft', 'active', 'ended').default('active'),
+    }),
+  },
+  createCoupon: {
+    body: Joi.object({
+      code: Joi.string().trim().min(2).max(64).required(),
+      name: Joi.string().trim().min(1).max(160).required(),
+      discountType: Joi.string().valid('percent', 'fixed').default('percent'),
+      discountValue: Joi.number().min(0).required(),
+      campaignId: Joi.number().integer().positive().allow(null),
+      startAt: Joi.date().iso().allow(null),
+      endAt: Joi.date().iso().allow(null),
+      status: Joi.string().valid('active', 'inactive', 'expired').default('active'),
+    }),
+  },
+  updateCoupon: {
+    body: Joi.object({
+      name: Joi.string().trim().min(1).max(160),
+      discountType: Joi.string().valid('percent', 'fixed'),
+      discountValue: Joi.number().min(0),
+      campaignId: Joi.number().integer().positive().allow(null),
+      startAt: Joi.date().iso().allow(null),
+      endAt: Joi.date().iso().allow(null),
+      status: Joi.string().valid('active', 'inactive', 'expired'),
+    }).min(1),
+  },
+  createRefund: {
+    body: Joi.object({
+      paymentOrderId: Joi.number().integer().positive().required(),
+      refundAmount: Joi.number().positive(),
+      reason: Joi.string().trim().max(500).allow('', null),
+      gatewayReference: Joi.string().trim().max(120).allow('', null),
+      notes: Joi.string().trim().max(500).allow('', null),
+    }),
+  },
+  generatePayout: {
+    body: Joi.object({
+      authorId: Joi.number().integer().positive().required(),
+      periodStart: Joi.date().iso().required(),
+      periodEnd: Joi.date().iso().required(),
+    }),
+  },
+  updatePayout: {
+    body: Joi.object({
+      status: Joi.string().valid('draft', 'approved', 'paid', 'cancelled'),
+      paymentMethod: Joi.string().trim().max(64).allow('', null),
+      bankReference: Joi.string().trim().max(120).allow('', null),
+      notes: Joi.string().trim().max(500).allow('', null),
+    }).min(1),
+  },
+  listReconciliation: {
+    query: Joi.object({
+      status: Joi.string().valid('matched', 'pending', 'mismatch', 'resolved'),
+      page: Joi.number().integer().min(1).default(1),
+      pageSize: Joi.number().integer().min(1).max(100).default(20),
+    }),
+  },
+  updateReconciliation: {
+    body: Joi.object({
+      reconciliationStatus: Joi.string().valid('matched', 'pending', 'mismatch', 'resolved'),
+      settlementStatus: Joi.string().valid('pending', 'settled', 'failed'),
+      notes: Joi.string().trim().max(500).allow('', null),
+    }).min(1),
+  },
+  downloadReport: {
+    query: Joi.object({
+      from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+      to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    }),
+  },
 };

@@ -31,8 +31,11 @@ const STAFF_ROLE_TEMPLATES = {
     summary: 'View transactions, purchases, and refunds. Generate reports. No content or user management.',
     permissions: [
       'transactions',
+      'reports',
       'transactions.view',
       'transactions.reports',
+      'transactions.refund',
+      'authors.payouts',
     ],
   },
   author_relations: {
