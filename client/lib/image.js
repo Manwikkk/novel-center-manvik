@@ -5,10 +5,14 @@
 export function resolveImageUrl(src) {
   if (!src) return null;
   if (typeof src !== 'string') return null;
-  if (/^https?:\/\//i.test(src)) return src;
-  if (src.startsWith('/')) {
+  const trimmed = src.trim();
+  if (!trimmed) return null;
+  // Protocol-relative CDN URLs (common from imports)
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('/')) {
     const base = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
-    return `${base}${src}`;
+    return `${base}${trimmed}`;
   }
-  return src;
+  return trimmed;
 }

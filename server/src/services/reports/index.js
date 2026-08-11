@@ -1,67 +1,12 @@
 'use strict';
 
 const pool = require('../../db/pool');
-const h = require('./helpers');
-
-const CATALOG = [
-  {
-    id: 'wallet-coin',
-    title: 'Wallet & Coin Report',
-    description: 'Coin ledger, wallet balances, sources, and outstanding liability.',
-    tabs: ['Summary', 'Coin Ledger', 'Wallet Balances', 'Coin Sources & Usage', 'Liability Summary', 'Report Information'],
-  },
-  {
-    id: 'transaction',
-    title: 'Transaction Report',
-    description: 'Payment orders, refunds, payouts, and gateway summary.',
-    tabs: ['Summary', 'Transactions', 'Refunds', 'Payouts', 'Payment Gateway Summary', 'Metadata'],
-  },
-  {
-    id: 'sales',
-    title: 'Sales Report',
-    description: 'Sales ledger, monetization performance, and customer insights.',
-    tabs: ['Summary', 'Sales Ledger', 'Monetization Performance', 'Customer Insights', 'Report Information'],
-  },
-  {
-    id: 'revenue',
-    title: 'Revenue Report',
-    description: 'Daily revenue, sources, payment methods, and top products.',
-    tabs: ['Summary', 'Daily Revenue', 'Revenue Sources', 'Payment Methods', 'Top Selling Products'],
-  },
-  {
-    id: 'tax',
-    title: 'Tax Report',
-    description: 'GST tax lines by transaction, jurisdiction, and product.',
-    tabs: ['Tax Transactions', 'Tax Summary', 'Tax by Jurisdiction', 'Product Tax Summary', 'Metadata'],
-  },
-  {
-    id: 'promotion-coupon',
-    title: 'Promotion & Coupon Report',
-    description: 'Coupon redemptions and campaign performance.',
-    tabs: ['Promotion Transactions', 'Promotion Summary', 'Coupon Performance', 'Campaign Performance', 'Metadata'],
-  },
-  {
-    id: 'reconciliation',
-    title: 'Reconciliation Report',
-    description: 'Gateway settlement matching and exceptions.',
-    tabs: ['Reconciliation Records', 'Reconciliation Summary', 'Gateway Settlement Summary', 'Exceptions & Mismatches', 'Metadata'],
-  },
-  {
-    id: 'author-payout',
-    title: 'Author Payout Report',
-    description: 'Author payouts, royalty breakdown, and contract payments.',
-    tabs: ['Summary', 'Payout Ledger', 'Royalty Breakdown', 'Contract Payments', 'Report Information'],
-  },
-  {
-    id: 'financial-audit',
-    title: 'Financial Audit Report',
-    description: 'Admin financial actions and high-risk activity.',
-    tabs: ['Financial Audit Log', 'Audit Summary', 'Admin Activity Summary', 'High-Risk Activities', 'Metadata'],
-  },
-];
+const baseH = require('./helpers');
+const { catalogFromSchemas } = require('./schemas');
+const { parseReportFilters, createReportHelpers } = require('./filters');
 
 function catalog() {
-  return CATALOG.map((c) => ({ ...c, status: 'ready' }));
+  return catalogFromSchemas();
 }
 
 function parseMeta(meta) {
@@ -70,7 +15,7 @@ function parseMeta(meta) {
   try { return JSON.parse(meta); } catch (_e) { return {}; }
 }
 
-async function walletCoin({ from, to, generatedBy }) {
+async function walletCoin({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const params = [];
   const range = h.rangeClause('t.created_at', from, to, params);
@@ -185,7 +130,7 @@ async function walletCoin({ from, to, generatedBy }) {
   return wb;
 }
 
-async function transactionReport({ from, to, generatedBy }) {
+async function transactionReport({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const p = [];
   const range = h.rangeClause('o.created_at', from, to, p);
@@ -323,7 +268,7 @@ async function transactionReport({ from, to, generatedBy }) {
   return wb;
 }
 
-async function salesReport({ from, to, generatedBy }) {
+async function salesReport({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const p = [];
   const range = h.rangeClause('o.created_at', from, to, p);
@@ -380,7 +325,7 @@ async function salesReport({ from, to, generatedBy }) {
   return wb;
 }
 
-async function revenueReport({ from, to, generatedBy }) {
+async function revenueReport({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const p = [];
   const range = h.rangeClause('o.created_at', from, to, p);
@@ -452,7 +397,7 @@ async function revenueReport({ from, to, generatedBy }) {
   return wb;
 }
 
-async function taxReport({ from, to, generatedBy }) {
+async function taxReport({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const p = [];
   const range = h.rangeClause('o.created_at', from, to, p);
@@ -535,7 +480,7 @@ async function taxReport({ from, to, generatedBy }) {
   return wb;
 }
 
-async function promotionCoupon({ from, to, generatedBy }) {
+async function promotionCoupon({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const p = [];
   const range = h.rangeClause('o.created_at', from, to, p);
@@ -643,7 +588,7 @@ async function promotionCoupon({ from, to, generatedBy }) {
   return wb;
 }
 
-async function reconciliationReport({ from, to, generatedBy }) {
+async function reconciliationReport({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const p = [];
   const range = h.rangeClause('r.created_at', from, to, p);
@@ -737,7 +682,7 @@ async function reconciliationReport({ from, to, generatedBy }) {
   return wb;
 }
 
-async function authorPayoutReport({ from, to, generatedBy }) {
+async function authorPayoutReport({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const p = [];
   const range = h.rangeClause('ap.created_at', from, to, p);
@@ -817,7 +762,7 @@ const HIGH_RISK = new Set([
   'finance.reconciliation_update', 'user.suspend',
 ]);
 
-async function financialAudit({ from, to, generatedBy }) {
+async function financialAudit({ from, to, generatedBy, h = baseH }) {
   const wb = await h.newWorkbook();
   const p = [];
   const range = h.rangeClause('a.created_at', from, to, p);
@@ -911,22 +856,24 @@ const GENERATORS = {
   'financial-audit': financialAudit,
 };
 
-async function generate(type, { from, to, generatedBy }) {
+async function generate(type, { from, to, generatedBy, tabs, fields }) {
   const fn = GENERATORS[type];
   if (!fn) {
     const err = new Error('Unknown report type');
     err.status = 404;
     throw err;
   }
-  const fromD = h.dateOnly(from);
-  const toD = h.dateOnly(to);
+  const fromD = baseH.dateOnly(from);
+  const toD = baseH.dateOnly(to);
   if (!fromD || !toD) {
     const err = new Error('Invalid date range');
     err.status = 400;
     throw err;
   }
-  const wb = await fn({ from: fromD, to: toD, generatedBy });
-  const buffer = await h.toBuffer(wb);
+  const filters = parseReportFilters(type, { tabs, fields });
+  const reportH = createReportHelpers(type, filters);
+  const wb = await fn({ from: fromD, to: toD, generatedBy, h: reportH });
+  const buffer = await baseH.toBuffer(wb);
   const filename = `${type}-report_${fromD}_to_${toD}.xlsx`;
   return {
     buffer,
@@ -935,4 +882,7 @@ async function generate(type, { from, to, generatedBy }) {
   };
 }
 
-module.exports = { catalog, generate, CATALOG };
+const { preview } = require('./preview');
+const { generatePdf } = require('./pdf');
+
+module.exports = { catalog, generate, preview, generatePdf };

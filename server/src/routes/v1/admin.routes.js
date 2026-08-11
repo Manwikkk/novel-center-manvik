@@ -64,6 +64,9 @@ router.get('/reconciliation', requireAdminPermission('transactions'), validate(v
 router.patch('/reconciliation/:id', requireAdminPermission('transactions'), requireAdminCapability('transactions.reports'), validate({ params: idParam, body: v.updateReconciliation.body }), finCtrl.updateReconciliation);
 
 router.get('/reports', requireAdminPermission('reports'), requireAdminCapability('transactions.reports'), finCtrl.listReports);
+router.get('/reports/:type/preview', requireAdminPermission('reports'), requireAdminCapability('transactions.reports'), validate({ params: reportTypeParam, query: v.previewReport.query }), finCtrl.previewReport);
+router.get('/reports/:type/export/pdf', requireAdminPermission('reports'), requireAdminCapability('transactions.reports'), validate({ params: reportTypeParam, query: v.exportReport.query }), finCtrl.exportReportPdf);
+router.get('/reports/:type/export/xlsx', requireAdminPermission('reports'), requireAdminCapability('transactions.reports'), validate({ params: reportTypeParam, query: v.exportReport.query }), finCtrl.exportReportXlsx);
 router.get('/reports/:type', requireAdminPermission('reports'), requireAdminCapability('transactions.reports'), validate({ params: reportTypeParam, query: v.downloadReport.query }), finCtrl.downloadReport);
 
 router.get('/comments/by-book', requireAdminPermission('comments'), validate(v.commentsByBook), ctrl.commentsByBook);

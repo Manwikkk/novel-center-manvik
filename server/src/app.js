@@ -26,6 +26,7 @@ app.use(
       return cb(new Error(`CORS: origin not allowed: ${origin}`));
     },
     credentials: true,
+    exposedHeaders: ['Content-Disposition'],
   }),
 );
 

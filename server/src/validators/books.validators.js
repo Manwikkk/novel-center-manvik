@@ -21,6 +21,9 @@ const homeBrowseTag = Joi.string().valid(
   'cheering_reads',
   'editors_choice',
   'ranking',
+  'potential_starlet',
+  'rising_fictions',
+  'highly_rated',
 );
 
 const categoryId = Joi.number().integer().positive().allow(null);

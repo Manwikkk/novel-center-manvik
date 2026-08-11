@@ -104,6 +104,11 @@ async function add(userId, bookId, readingStatus = 'active') {
     [userId, bookId, status],
   );
 
+  try {
+    const profileSvc = require('./profile.service');
+    await profileSvc.syncAchievements(userId);
+  } catch (_e) { /* non-fatal */ }
+
   const [rows] = await pool.execute(
     'SELECT user_id, book_id, added_at, reading_status FROM library WHERE user_id = ? AND book_id = ? LIMIT 1',
     [userId, bookId],

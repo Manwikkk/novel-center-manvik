@@ -223,10 +223,29 @@ module.exports = {
       notes: Joi.string().trim().max(500).allow('', null),
     }).min(1),
   },
+  exportReport: {
+    query: Joi.object({
+      from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+      to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+      tabs: Joi.string().trim().max(2000).allow('').optional(),
+      fields: Joi.string().trim().max(8000).allow('').optional(),
+    }),
+  },
   downloadReport: {
     query: Joi.object({
       from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
       to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+      tabs: Joi.string().trim().max(2000).allow('').optional(),
+      fields: Joi.string().trim().max(8000).allow('').optional(),
+      format: Joi.string().valid('xlsx', 'pdf').default('xlsx'),
+    }),
+  },
+  previewReport: {
+    query: Joi.object({
+      from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+      to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+      tabs: Joi.string().trim().max(2000).allow('').optional(),
+      fields: Joi.string().trim().max(8000).allow('').optional(),
     }),
   },
 };

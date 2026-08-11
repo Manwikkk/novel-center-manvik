@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import SectionViewAllLink from '@/components/home/SectionViewAllLink';
 
 function normalizeCover(url) {
   if (!url) return url;
@@ -43,11 +42,19 @@ function RibbonTitle({ children }) {
   );
 }
 
-function RankList({ title, items, seed = 0 }) {
+function RankList({ title, items, seed = 0, viewAllHref }) {
   return (
     <div className="min-w-0">
-      <div className="mb-3">
+      <div className="mb-3 flex items-end justify-between gap-3">
         <RibbonTitle>{title}</RibbonTitle>
+        {viewAllHref ? (
+          <Link
+            href={viewAllHref}
+            className="shrink-0 mb-0.5 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-700 dark:text-neutral-300 border-b border-ink-700/50 dark:border-neutral-500 pb-0.5 hover:text-ink-900 dark:hover:text-white hover:border-ink-900 dark:hover:border-white transition-colors"
+          >
+            View all
+          </Link>
+        ) : null}
       </div>
       <div className="space-y-2">
         {items.slice(0, 5).map((b, idx) => {
@@ -125,17 +132,16 @@ export default function RankingNovelsSection({ mostRead = [], trending = [], hig
 
   return (
     <section className="max-w-[1280px] mx-auto px-4 md:px-edge mt-14 md:mt-16">
-      <div className="flex items-end justify-between mb-6">
+      <div className="mb-6">
         <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100">
           Ranking Novels
         </h2>
-        <SectionViewAllLink href="/sections/ranking" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
-        <RankList title="Most Read" items={mostRead} seed={1} />
-        <RankList title="Trending" items={trending} seed={2} />
-        <RankList title="Highly Rated" items={highlyRated} seed={3} />
+        <RankList title="Most Read" items={mostRead} seed={1} viewAllHref="/sections/most-read" />
+        <RankList title="Trending" items={trending} seed={2} viewAllHref="/sections/trending" />
+        <RankList title="Highly Rated" items={highlyRated} seed={3} viewAllHref="/sections/highly-rated" />
       </div>
     </section>
   );

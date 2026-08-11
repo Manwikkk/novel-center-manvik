@@ -14,6 +14,7 @@ router.use('/collections', require('./collections.routes'));
 router.use('/authors',  require('./authors.routes'));
 router.use('/reading',  require('./reading.routes'));
 router.use('/author',   require('./author.routes'));
+router.use('/profiles', require('./profile.routes'));
 router.use('/admin',    require('./admin.routes'));
 
 module.exports = router;

@@ -42,7 +42,10 @@ function requireAdminPermission(permission) {
     if (req.user.role === 'admin') return next();
     if (req.user.role !== 'staff') return next(errors.forbidden('Insufficient role'));
     const perms = req.adminPermissions || [];
-    if (!perms.includes(permission)) {
+    const allowed = perms.includes(permission)
+      || (permission === 'novels' && perms.includes('books'))
+      || (permission === 'books' && perms.includes('novels'));
+    if (!allowed) {
       return next(errors.forbidden('Insufficient permission'));
     }
     return next();

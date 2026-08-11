@@ -9,6 +9,7 @@ const PAGE_PERMISSION_DEFS = [
   { key: 'comments', label: 'Moderation', kind: 'page' },
   { key: 'transactions', label: 'Transactions', kind: 'page' },
   { key: 'reports', label: 'Reports', kind: 'page' },
+  { key: 'novels', label: 'Novels', kind: 'page' },
   { key: 'books', label: 'Books', kind: 'page' },
 ];
 

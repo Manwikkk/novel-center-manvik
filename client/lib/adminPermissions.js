@@ -6,6 +6,7 @@ export const ADMIN_PAGE_DEFS = [
   { key: 'comments', label: 'Moderation', href: '/admin/comments', icon: 'gavel' },
   { key: 'transactions', label: 'Transactions', href: '/admin/transactions', icon: 'monitoring' },
   { key: 'reports', label: 'Reports', href: '/admin/reports', icon: 'assessment' },
+  { key: 'novels', label: 'Novels', href: '/admin/novels', icon: 'auto_stories' },
   { key: 'books', label: 'Books', href: '/admin/books', icon: 'menu_book' },
 ];
 
@@ -52,7 +53,12 @@ export function hasAdminPermission(user, permission) {
   if (!user) return false;
   if (user.role === 'admin') return true;
   if (user.role !== 'staff') return false;
-  return (user.adminPermissions || []).includes(permission);
+  const perms = user.adminPermissions || [];
+  if (perms.includes(permission)) return true;
+  // Novels browse shares access with the Books management page.
+  if (permission === 'novels' && perms.includes('books')) return true;
+  if (permission === 'books' && perms.includes('novels')) return true;
+  return false;
 }
 
 export function hasAdminCapability(user, capability) {
@@ -76,7 +82,12 @@ export function navItemsForUser(user) {
     })), ADMIN_SETTINGS_NAV, ADMIN_ACCESS_NAV];
   }
   if (user?.role === 'staff') {
-    return ADMIN_PAGE_DEFS.filter((item) => hasAdminPermission(user, item.key));
+    return ADMIN_PAGE_DEFS.filter((item) => {
+      if (item.key === 'novels') {
+        return hasAdminPermission(user, 'novels') || hasAdminPermission(user, 'books');
+      }
+      return hasAdminPermission(user, item.key);
+    });
   }
   return [];
 }

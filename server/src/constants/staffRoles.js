@@ -44,6 +44,7 @@ const STAFF_ROLE_TEMPLATES = {
     summary: 'View authors, revenue shares, contracts, and payout requests. Cannot manage users or staff.',
     permissions: [
       'users',
+      'novels',
       'books',
       'users.view',
       'authors.view',

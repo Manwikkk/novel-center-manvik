@@ -246,6 +246,18 @@ async function create({ bookId, chapterId, parentId, body, isSpoiler, reviewRati
      VALUES (?, ?, ?, ?, ?, ?, ?, 'visible')`,
     [bookId, chapterId || null, userId, parentId || null, clean, spoiler ? 1 : 0, ratingsJson],
   );
+
+  try {
+    const profileSvc = require('./profile.service');
+    if (ratingsJson && !chapterId && !parentId) {
+      await profileSvc.awardXp(userId, 'reviews', 15, { bookId });
+      await profileSvc.tryGrantAchievement(userId, 'first_review');
+    } else {
+      await profileSvc.awardXp(userId, 'comments', 5, { bookId, chapterId });
+      await profileSvc.tryGrantAchievement(userId, 'first_comment');
+    }
+  } catch (_e) { /* non-fatal */ }
+
   return getById(ins.insertId, { id: userId });
 }
 

@@ -12,8 +12,13 @@ function isPaidChapter(row) {
   return !!row.is_paid && Number(row.token_price) > 0;
 }
 
+function isAdminOrStaff(viewer) {
+  return viewer?.role === 'admin' || viewer?.role === 'staff';
+}
+
 function canReadChapter(row, { viewer, bookAuthorId, unlocked, viewerRow }) {
-  if (viewer?.role === 'admin') return true;
+  // Super-admins and staff can preview/read all novels for free in the admin panel.
+  if (isAdminOrStaff(viewer)) return true;
   if (viewerRow && hasRestriction(viewerRow, 'reading')) return false;
   if (viewer && bookAuthorId && viewer.id === bookAuthorId) return true;
   if (!isPaidChapter(row)) return true;
@@ -115,7 +120,7 @@ async function listForBook(bookId, viewer) {
   if (!book) throw errors.notFound('Book not found');
 
   const viewerRow = viewer ? await resolveUserRow(viewer.id) : null;
-  const showDrafts = viewer && (viewer.role === 'admin' || viewer.id === book.author_id);
+  const showDrafts = viewer && (isAdminOrStaff(viewer) || viewer.id === book.author_id);
 
   const where = ['book_id = ?', 'recycled_at IS NULL'];
   const params = [bookId];
@@ -159,7 +164,7 @@ async function getById(id, viewer) {
   const book = await booksService.getById(row.book_id);
   if (!book || book.recycled_at) throw errors.notFound('Chapter not found');
   const viewerRow = viewer ? await resolveUserRow(viewer.id) : null;
-  const isAuthor = viewer && (viewer.role === 'admin' || viewer.id === book.author_id);
+  const isAuthor = viewer && (isAdminOrStaff(viewer) || viewer.id === book.author_id);
 
   if (viewerRow && !isAuthor) {
     assertRestriction(viewerRow, 'reading', 'Reading is restricted on your account');

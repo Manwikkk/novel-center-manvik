@@ -135,6 +135,11 @@ async function list({ q, author, category, status, tag, page, pageSize }, viewer
       `EXISTS (SELECT 1 FROM book_tags btx WHERE btx.book_id = b.id AND btx.tag IN (${ph}))`,
     );
     params.push(...RANKING_HOME_TAGS);
+  } else if (tag === 'highly_rated') {
+    // Same pool as home Ranking → Highly Rated (new arrivals + completed).
+    where.push(
+      `EXISTS (SELECT 1 FROM book_tags btx WHERE btx.book_id = b.id AND btx.tag IN ('new_arrivals', 'completed_novel'))`,
+    );
   } else if (tag) {
     where.push(
       'EXISTS (SELECT 1 FROM book_tags btx WHERE btx.book_id = b.id AND btx.tag = ?)',
@@ -144,7 +149,7 @@ async function list({ q, author, category, status, tag, page, pageSize }, viewer
 
   const { page: safePage, pageSize: safePageSize, offset } = clampPagination(page, pageSize);
   const orderBy =
-    tag === 'ranking'
+    tag === 'ranking' || tag === 'highly_rated'
       ? '(b.score IS NULL) ASC, b.score DESC, b.updated_at DESC'
       : 'b.updated_at DESC';
   const sql =
@@ -178,14 +183,30 @@ async function getBySlug(slug, viewer) {
   );
   const row = rows[0];
   if (!row) throw errors.notFound('Book not found');
-  if (row.status !== 'published' && !(viewer && (viewer.role === 'admin' || viewer.id === row.author_id))) {
+  if (
+    row.status !== 'published'
+    && !(viewer && (viewer.role === 'admin' || viewer.role === 'staff' || viewer.id === row.author_id))
+  ) {
     throw errors.notFound('Book not found');
   }
   const [tags, isOriginal] = await Promise.all([
     catalog.getContentTagsForBook(row.id),
     hasBookTag(row.id, 'originals'),
   ]);
-  return rowToBook(row, { contentTags: tags, isOriginal });
+
+  // Count a page view for published books (best-effort).
+  if (row.status === 'published') {
+    pool.execute(
+      'UPDATE books SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?',
+      [row.id],
+    ).then(() => {
+      row.view_count = Number(row.view_count || 0) + 1;
+    }).catch(() => { /* ignore */ });
+  }
+
+  const book = rowToBook(row, { contentTags: tags, isOriginal });
+  book.viewCount = Number(row.view_count || 0);
+  return book;
 }
 
 async function getById(id) {
@@ -203,7 +224,10 @@ async function getByIdForViewer(id, viewer) {
   );
   const row = rows[0];
   if (!row) throw errors.notFound('Book not found');
-  if (row.status !== 'published' && !(viewer && (viewer.role === 'admin' || viewer.id === row.author_id))) {
+  if (
+    row.status !== 'published'
+    && !(viewer && (viewer.role === 'admin' || viewer.role === 'staff' || viewer.id === row.author_id))
+  ) {
     throw errors.notFound('Book not found');
   }
   const [tags, isOriginal] = await Promise.all([
@@ -288,6 +312,12 @@ async function create(body, authorId, user) {
   if (Array.isArray(contentTagIds) && contentTagIds.length) {
     await catalog.setBookContentTags(newId, contentTagIds, { allowInactive: user.role === 'admin' });
   }
+  if ((status || 'draft') === 'published') {
+    try {
+      const profileSvc = require('./profile.service');
+      await profileSvc.tryGrantAchievement(authorId, 'first_novel');
+    } catch (_e) { /* non-fatal */ }
+  }
   const [b] = await pool.execute('SELECT slug FROM books WHERE id = ?', [newId]);
   return getBySlug(b[0].slug, user);
 }
@@ -368,6 +398,12 @@ async function update(id, patch, user) {
   }
 
   const row = await getById(id);
+  if (patch.status === 'published' || row.status === 'published') {
+    try {
+      const profileSvc = require('./profile.service');
+      await profileSvc.tryGrantAchievement(row.author_id || row.authorId, 'first_novel');
+    } catch (_e) { /* non-fatal */ }
+  }
   return getBySlug(row.slug, user);
 }
 

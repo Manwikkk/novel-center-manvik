@@ -15,7 +15,7 @@ import { useReaderStore } from '@/stores/readerStore';
 import { readingApi } from '@/lib/reading';
 import { formatTokens } from '@/lib/format';
 import { openAuthModal } from '@/lib/authModal';
-import { isChapterLocked } from '@/lib/chapterAccess';
+import { isChapterLocked, isStaffFreeReader } from '@/lib/chapterAccess';
 import {
   hasReadingRestriction,
   READING_RESTRICTED_MESSAGE,
@@ -47,6 +47,8 @@ export default function ReadingInterfacePage() {
 
   const articleRef = useRef(null);
   const user = useAuthStore((s) => s.user);
+  const authHydrated = useAuthStore((s) => s.hydrated);
+  const [persistReady, setPersistReady] = useState(false);
   const balance = useWalletStore((s) => s.balance);
   const setBalance = useWalletStore((s) => s.setBalance);
   const refreshWallet = useWalletStore((s) => s.refresh);
@@ -55,7 +57,25 @@ export default function ReadingInterfacePage() {
 
   useEffect(() => { apply?.(); }, [apply]);
 
+  // Wait for zustand persist to restore user from localStorage before fetching,
+  // so the first chapter request includes admin/staff free-read context.
   useEffect(() => {
+    const finish = () => setPersistReady(true);
+    if (useAuthStore.persist?.hasHydrated?.()) {
+      finish();
+      return undefined;
+    }
+    const unsub = useAuthStore.persist?.onFinishHydration?.(finish);
+    // Fallback if persist API is unavailable
+    const t = setTimeout(finish, 50);
+    return () => {
+      unsub?.();
+      clearTimeout(t);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!persistReady) return undefined;
     let cancel = false;
     setChapter(null);
     setBook(null);
@@ -86,7 +106,7 @@ export default function ReadingInterfacePage() {
     }
     load();
     return () => { cancel = true; };
-  }, [chapterId, user, refreshWallet]);
+  }, [chapterId, user, refreshWallet, persistReady]);
 
   useEffect(() => {
     if (!chapter?.id) return;
@@ -221,7 +241,7 @@ export default function ReadingInterfacePage() {
       </div>
     );
   }
-  if (!chapter || Number(chapter.id) !== Number(chapterId)) {
+  if (!persistReady || !chapter || Number(chapter.id) !== Number(chapterId)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--reader-bg)] text-[var(--reader-fg)] font-ui-label-sm uppercase tracking-widest opacity-70">
         Loading…
@@ -229,9 +249,11 @@ export default function ReadingInterfacePage() {
     );
   }
 
-  const locked = isChapterLocked(chapter);
-  const readingBlocked = hasReadingRestriction(user) && !chapter.canRead;
-  const isPaidLocked = locked && !readingBlocked && chapter.isPaid && Number(chapter.tokenPrice) > 0;
+  const freeReader = isStaffFreeReader(user);
+  const locked = isChapterLocked(chapter, user);
+  const readingBlocked = hasReadingRestriction(user) && !chapter.canRead && !freeReader;
+  const awaitingFreeContent = freeReader && !chapter.contentHtml;
+  const isPaidLocked = locked && !readingBlocked && !freeReader && chapter.isPaid && Number(chapter.tokenPrice) > 0;
   const showTitlePage = chapter.idx === 1 && book?.isOriginal;
 
   return (
@@ -272,6 +294,7 @@ export default function ReadingInterfacePage() {
               bookSlug={book?.slug}
               onClose={closePanel}
               railPx={RAIL_W}
+              user={user}
             />
           ) : null}
           {rightPanel === 'comments' && chapter?.id ? (
@@ -317,6 +340,10 @@ export default function ReadingInterfacePage() {
                 Back to book
               </Link>
             </div>
+          ) : awaitingFreeContent || (!authHydrated && !chapter.contentHtml) ? (
+            <p className="py-16 text-center font-ui-label-sm uppercase tracking-widest opacity-70">
+              Loading chapter…
+            </p>
           ) : locked && isPaidLocked ? (
             <div className="border border-[var(--reader-rule)] rounded-lg p-8 text-center bg-[var(--reader-bg)]/60">
               <p className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest opacity-70">
@@ -672,7 +699,7 @@ function ThemeSwatch({ theme, current, onPick, label, moon }) {
   );
 }
 
-function TocPanel({ chapters, currentId, bookSlug, onClose, railPx }) {
+function TocPanel({ chapters, currentId, bookSlug, onClose, railPx, user }) {
   return (
     <div
       className="fixed top-0 bottom-0 z-[48] w-[min(100vw-3.5rem,20rem)] bg-[var(--reader-bg)] text-[var(--reader-fg)] shadow-2xl border-l border-[var(--reader-rule)] flex flex-col"
@@ -688,7 +715,7 @@ function TocPanel({ chapters, currentId, bookSlug, onClose, railPx }) {
         <ul className="space-y-0.5">
           {chapters.map((ch) => {
             const isCurrent = ch.id === currentId;
-            const locked = isChapterLocked(ch);
+            const locked = isChapterLocked(ch, user);
             return (
               <li key={ch.id}>
                 {locked ? (

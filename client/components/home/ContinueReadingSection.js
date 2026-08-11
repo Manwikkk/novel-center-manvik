@@ -26,7 +26,17 @@ export default function ContinueReadingSection() {
       .recent(LIMIT)
       .then((res) => {
         if (cancelled) return;
-        setItems(Array.isArray(res?.items) ? res.items : []);
+        const raw = Array.isArray(res?.items) ? res.items : [];
+        // Dedupe by book (API should already be 1/book; keep latest-first).
+        const seen = new Set();
+        const unique = [];
+        for (const entry of raw) {
+          const id = entry?.book?.id;
+          if (id == null || seen.has(id)) continue;
+          seen.add(id);
+          unique.push(entry);
+        }
+        setItems(unique);
       })
       .catch(() => {
         if (!cancelled) setItems([]);
@@ -61,7 +71,7 @@ export default function ContinueReadingSection() {
             const pct = Math.max(0, Math.min(100, Math.round(entry.percent || 0)));
             return (
               <CompactBookTile
-                key={entry.book.id}
+                key={`${entry.book.id}-${entry.chapter?.id || i}`}
                 book={entry.book}
                 href={`/read/${entry.chapter.id}`}
                 subtitle={`Ch. ${entry.chapter.idx} · ${pct}%`}

@@ -136,75 +136,97 @@ export default function GSOriginalsSection({ items = [] }) {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6 lg:gap-8 items-stretch max-h-[70vh] pb-8">
-              <div className="relative">
-                <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 p-4 sm:p-5 h-full">
-                  <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 sm:gap-5 items-start">
+            {/* Featured + More originals share one row on all breakpoints */}
+            <div className="grid grid-cols-2 lg:grid-cols-[1.1fr_0.9fr] gap-3 sm:gap-5 lg:gap-8 items-stretch lg:max-h-[70vh]">
+              <div className="relative min-w-0">
+                <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 p-3 sm:p-5 h-full flex flex-col">
+                  <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-3 sm:gap-5 items-start flex-1">
 
                     {/* ── Featured cover with ORIGINAL badge ── */}
-                    <Link href={href} className="block w-fit mx-auto sm:mx-0 group">
-                      <div className="relative h-[196px] w-[132px] sm:h-[208px] sm:w-[140px] rounded-2xl overflow-hidden bg-white dark:bg-black ring-1 ring-black/10 dark:ring-white/10 shadow-book">
-                        {/* ORIGINAL badge — top-left corner */}
+                    <Link href={href} className="block w-fit mx-auto md:mx-0 group">
+                      <div className="relative h-[150px] w-[100px] sm:h-[180px] sm:w-[120px] md:h-[208px] md:w-[140px] rounded-xl md:rounded-2xl overflow-hidden bg-white dark:bg-black ring-1 ring-black/10 dark:ring-white/10 shadow-book">
                         <OriginalBadge />
                         <Cover src={cover} alt={title} sizes="140px" blurClass="opacity-35" mode="fill" />
                       </div>
                     </Link>
 
-                    <div className="min-w-0 text-center sm:text-left">
-                      <p className="font-ui-label-sm text-[11px] uppercase tracking-[0.22em] text-ink-500 dark:text-neutral-500">
+                    <div className="min-w-0 text-center md:text-left">
+                      <p className="font-ui-label-sm text-[9px] sm:text-[11px] uppercase tracking-[0.18em] sm:tracking-[0.22em] text-ink-500 dark:text-neutral-500">
                         Featured story
                       </p>
-                      <h3 className="mt-2 font-serif text-xl md:text-2xl font-semibold leading-snug text-ink-900 dark:text-white">
+                      <h3 className="mt-1.5 sm:mt-2 font-serif text-[15px] sm:text-xl md:text-2xl font-semibold leading-snug text-ink-900 dark:text-white line-clamp-2">
                         {title}
                       </h3>
 
-                      <div className="mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 text-sm text-ink-600 dark:text-neutral-400">
+                      <div className="mt-1.5 sm:mt-2.5 flex flex-wrap items-center justify-center md:justify-start gap-x-2 sm:gap-x-4 gap-y-1 text-[11px] sm:text-sm text-ink-600 dark:text-neutral-400">
                         <span>{category}</span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className="text-[12px] leading-none">★</span>
+                        <span className="inline-flex items-center gap-1">
+                          <span className="text-[11px] leading-none">★</span>
                           <span>{rating.toFixed(1)}</span>
                         </span>
-                        {chapterNum ? <span className="text-ink-500 dark:text-neutral-500">{chapterNum} chapters</span> : null}
+                        {chapterNum ? (
+                          <span className="hidden sm:inline text-ink-500 dark:text-neutral-500">{chapterNum} chapters</span>
+                        ) : null}
                       </div>
 
-                      <p className="mt-3 text-sm md:text-[15px] leading-relaxed text-ink-600 dark:text-neutral-400 line-clamp-4">
+                      <p className="mt-2 sm:mt-3 hidden sm:block text-sm md:text-[15px] leading-relaxed text-ink-600 dark:text-neutral-400 line-clamp-3 md:line-clamp-4">
                         {description}
                       </p>
 
-                      <div className="mt-4 flex items-center justify-center sm:justify-start gap-3">
+                      <div className="mt-3 sm:mt-4 flex items-center justify-center md:justify-start gap-2 sm:gap-3">
                         <Link
                           href={href}
-                          className="inline-flex items-center justify-center gap-2 rounded-full bg-ink-900 text-white dark:bg-white dark:text-black px-5 py-2 font-ui-label-sm text-ui-label-sm uppercase tracking-widest hover:opacity-90 transition-opacity"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-ink-900 text-white dark:bg-white dark:text-black px-3 sm:px-5 py-1.5 sm:py-2 font-ui-label-sm text-[10px] sm:text-ui-label-sm uppercase tracking-widest hover:opacity-90 transition-opacity"
                         >
-                          Read original
+                          Read
+                          <span className="hidden sm:inline"> original</span>
                         </Link>
                         <button
                           type="button"
-                          className="h-10 w-10 rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/40 text-ink-900 dark:text-white grid place-items-center hover:bg-neutral-50 dark:hover:bg-neutral-900/60 transition-colors"
+                          className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/40 text-ink-900 dark:text-white grid place-items-center hover:bg-neutral-50 dark:hover:bg-neutral-900/60 transition-colors"
                           aria-label="Add to library"
                         >
-                          <span className="text-lg leading-none">+</span>
+                          <span className="text-base sm:text-lg leading-none">+</span>
                         </button>
                       </div>
                     </div>
                   </div>
+
+                  {list.length > 1 ? (
+                    <div className="mt-3 sm:mt-5 flex items-center justify-center gap-1.5 sm:gap-2">
+                      {list.map((_, i) => (
+                        <button
+                          key={String(i)}
+                          type="button"
+                          onClick={() => setActive(i)}
+                          aria-label={`Show original ${i + 1}`}
+                          aria-current={i === safeIdx}
+                          className={`h-1.5 rounded-full transition-all ${
+                            i === safeIdx
+                              ? 'w-5 sm:w-8 bg-ink-900 dark:bg-white'
+                              : 'w-1.5 sm:w-2 bg-ink-900/25 dark:bg-white/25 hover:bg-ink-900/40 dark:hover:bg-white/40'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="lg:pl-1 min-h-0">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="font-ui-label-sm text-[11px] uppercase tracking-[0.22em] text-ink-500 dark:text-neutral-500">
+              <div className="min-w-0 min-h-0 flex flex-col lg:pl-1">
+                <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3 shrink-0">
+                  <p className="font-ui-label-sm text-[9px] sm:text-[11px] uppercase tracking-[0.16em] sm:tracking-[0.22em] text-ink-500 dark:text-neutral-500 truncate">
                     More originals
                   </p>
                   <Link
                     href="/discover"
-                    className="text-[12px] uppercase tracking-widest text-ink-700 dark:text-neutral-300 hover:opacity-80"
+                    className="shrink-0 text-[9px] sm:text-[12px] uppercase tracking-widest text-ink-700 dark:text-neutral-300 hover:opacity-80"
                   >
                     Browse all
                   </Link>
                 </div>
 
-                <div className="space-y-2 max-h-[calc(70vh-180px)] overflow-auto pr-1">
+                <div className="space-y-1.5 sm:space-y-2 flex-1 max-h-[280px] sm:max-h-[340px] lg:max-h-[calc(70vh-140px)] overflow-y-auto overscroll-contain pr-0.5">
                   {list.map((b, idx) => {
                     const t = b?.title || 'Untitled';
                     const c = b?.category || 'Original';
@@ -217,20 +239,18 @@ export default function GSOriginalsSection({ items = [] }) {
                         type="button"
                         onClick={() => setActive(idx)}
                         className={[
-                          'group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all border',
+                          'group flex w-full items-center gap-1.5 sm:gap-3 rounded-lg sm:rounded-xl px-1.5 sm:px-3 py-2 sm:py-3 text-left transition-all border',
                           isActive
                             ? 'bg-neutral-50 dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-700'
                             : 'bg-transparent border-neutral-200/60 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900/40',
                         ].join(' ')}
                       >
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-900 text-[11px] font-bold tabular-nums text-ink-700 dark:text-neutral-300">
+                        <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-900 text-[9px] sm:text-[11px] font-bold tabular-nums text-ink-700 dark:text-neutral-300">
                           {String(idx + 1).padStart(2, '0')}
                         </div>
 
-                        {/* Mini cover — also gets the badge */}
-                        <div className="relative h-[52px] w-[40px] shrink-0 overflow-hidden rounded-md bg-white dark:bg-black ring-1 ring-black/10 dark:ring-white/10">
-                          {/* mini Original badge */}
-                          <span className="absolute -left-1 top-0 z-10 inline-flex items-center gap-0.5 rounded-br-md rounded-tl-md bg-gold px-1 py-px text-[7px] font-bold uppercase leading-none tracking-wider text-ink-900 ring-1 ring-ink-900/15 dark:text-black dark:ring-black/25">
+                        <div className="relative h-[40px] w-[30px] sm:h-[52px] sm:w-[40px] shrink-0 overflow-hidden rounded-md bg-white dark:bg-black ring-1 ring-black/10 dark:ring-white/10">
+                          <span className="absolute -left-1 top-0 z-10 hidden sm:inline-flex items-center gap-0.5 rounded-br-md rounded-tl-md bg-gold px-1 py-px text-[7px] font-bold uppercase leading-none tracking-wider text-ink-900 ring-1 ring-ink-900/15 dark:text-black dark:ring-black/25">
                             <span className="text-[6px] leading-none text-ink-900 dark:text-black" aria-hidden>
                               ★
                             </span>
@@ -241,43 +261,23 @@ export default function GSOriginalsSection({ items = [] }) {
                           </div>
                         </div>
 
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 py-0.5">
                           <p
-                            className={`font-sans text-sm font-semibold leading-snug line-clamp-1 ${
+                            className={`font-sans text-[11px] sm:text-sm font-semibold leading-snug line-clamp-2 sm:line-clamp-1 ${
                               isActive ? 'text-ink-900 dark:text-white' : 'text-ink-800 dark:text-neutral-200'
                             }`}
                           >
                             {t}
                           </p>
-                          <p className="mt-0.5 text-xs text-ink-500 dark:text-neutral-500 line-clamp-1">{c}</p>
+                          <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs text-ink-500 dark:text-neutral-400 line-clamp-1">{c}</p>
                         </div>
                         {isActive ? (
-                          <span aria-hidden className="text-ink-900 dark:text-white text-lg leading-none">›</span>
+                          <span aria-hidden className="hidden sm:inline text-ink-900 dark:text-white text-lg leading-none shrink-0">›</span>
                         ) : null}
                       </button>
                     );
                   })}
                 </div>
-              </div>
-            </div>
-
-            {/* Dot indicators */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-              <div className="pointer-events-auto flex items-center justify-center gap-2">
-                {list.map((_, i) => (
-                  <button
-                    key={String(i)}
-                    type="button"
-                    onClick={() => setActive(i)}
-                    aria-label={`Show original ${i + 1}`}
-                    aria-current={i === safeIdx}
-                    className={`h-1.5 rounded-full transition-all ${
-                      i === safeIdx
-                        ? 'w-8 bg-ink-900 dark:bg-white'
-                        : 'w-2 bg-ink-900/25 dark:bg-white/25 hover:bg-ink-900/40 dark:hover:bg-white/40'
-                    }`}
-                  />
-                ))}
               </div>
             </div>
           </div>

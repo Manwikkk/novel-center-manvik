@@ -26,6 +26,21 @@ const SECTION_CONFIG = {
     description:
       'Most read, trending, and highly rated picks from the home ranking rails — search and browse the full set.',
   },
+  'most-read': {
+    tag: 'potential_starlet',
+    title: 'Most Read',
+    description: 'The most-read ranking from the home page — search and browse the full list.',
+  },
+  trending: {
+    tag: 'rising_fictions',
+    title: 'Trending',
+    description: 'Rising and trending titles from the home ranking rail — search and browse the full list.',
+  },
+  'highly-rated': {
+    tag: 'highly_rated',
+    title: 'Highly Rated',
+    description: 'Top-rated titles from the home ranking rail — search and browse the full list sorted by score.',
+  },
   'updated-today': {
     tag: 'cheering_reads',
     title: 'Updated Today',

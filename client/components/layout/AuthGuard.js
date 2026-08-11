@@ -36,8 +36,11 @@ export default function AuthGuard({ children, roles, permission }) {
 
   if (!hydrated || !user || !allowed) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-on-surface-variant">
-        <span className="label-sm uppercase">Loading…</span>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-[#f3f3f3] text-on-surface-variant dark:bg-neutral-950">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-neutral-300 border-t-[#1e80ff] dark:border-neutral-700 dark:border-t-[#1e80ff]" />
+        <span className="text-[12px] font-semibold uppercase tracking-widest text-ink-500 dark:text-neutral-400">
+          Loading…
+        </span>
       </div>
     );
   }

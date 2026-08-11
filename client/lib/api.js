@@ -126,7 +126,7 @@ async function request(path, { method = 'GET', body, query, headers, formData, s
   return data;
 }
 
-async function downloadBlob(path, { query } = {}, _retry = false) {
+async function downloadBlob(path, { query, fallbackFilename } = {}, _retry = false) {
   let url = `${BASE}${path}`;
   if (query && typeof query === 'object') {
     const qs = new URLSearchParams();
@@ -144,7 +144,7 @@ async function downloadBlob(path, { query } = {}, _retry = false) {
   const res = await fetch(url, { method: 'GET', headers });
   if (res.status === 401 && !_retry) {
     const refreshed = await tryRefresh();
-    if (refreshed) return downloadBlob(path, { query }, true);
+    if (refreshed) return downloadBlob(path, { query, fallbackFilename }, true);
   }
   if (!res.ok) {
     const data = await res.json().catch(() => null);
@@ -153,10 +153,15 @@ async function downloadBlob(path, { query } = {}, _retry = false) {
     err.code = data?.error?.code;
     throw err;
   }
-  const blob = await res.blob();
+  const contentType = res.headers.get('content-type') || '';
   const disposition = res.headers.get('content-disposition') || '';
-  const match = disposition.match(/filename="?([^"]+)"?/i);
-  return { blob, filename: match?.[1] || 'report.xlsx' };
+  const match = disposition.match(/filename="?([^";\n]+)"?/i);
+  let filename = match?.[1] || fallbackFilename || '';
+  if (!filename) {
+    filename = contentType.includes('pdf') ? 'report.pdf' : 'report.xlsx';
+  }
+  const blob = await res.blob();
+  return { blob, filename, contentType };
 }
 
 export const api = {

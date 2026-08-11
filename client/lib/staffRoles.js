@@ -21,7 +21,7 @@ export const STAFF_ROLE_TEMPLATES = [
     key: 'author_relations',
     label: 'Author Relations',
     summary: 'View authors, revenue shares, contracts, and payout requests. Cannot manage users or staff.',
-    permissions: ['users', 'books', 'users.view', 'authors.view', 'authors.payouts', 'authors.contracts', 'books.view'],
+    permissions: ['users', 'novels', 'books', 'users.view', 'authors.view', 'authors.payouts', 'authors.contracts', 'books.view'],
   },
 ];
 

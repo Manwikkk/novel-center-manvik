@@ -8,12 +8,14 @@ import { api } from '@/lib/api';
 import { libraryApi } from '@/lib/library';
 import Icon from '@/components/ui/Icon';
 import UnlockModal from '@/components/book/UnlockModal';
+import AddToCollectionModal from '@/components/book/AddToCollectionModal';
+import LibraryCollectionPrompt from '@/components/book/LibraryCollectionPrompt';
 import CommentThread from '@/components/comments/CommentThread';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUiStore } from '@/stores/uiStore';
 import { formatTokens } from '@/lib/format';
-import { isChapterLocked, isChapterReadable } from '@/lib/chapterAccess';
+import { isChapterLocked, isChapterReadable, isStaffFreeReader } from '@/lib/chapterAccess';
 import {
   hasReadingRestriction,
   notifyReadingRestricted,
@@ -31,6 +33,11 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
   const [showAll, setShowAll] = useState(false);
   const [inLibrary, setInLibrary] = useState(false);
   const [libraryBusy, setLibraryBusy] = useState(false);
+  const [collectionPromptOpen, setCollectionPromptOpen] = useState(false);
+  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
+  const [persistReady, setPersistReady] = useState(
+    () => Boolean(useAuthStore.persist?.hasHydrated?.()),
+  );
   const router = useRouter();
 
   const user = useAuthStore((s) => s.user);
@@ -38,9 +45,28 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
   const setBalance = useWalletStore((s) => s.setBalance);
   const refreshWallet = useWalletStore((s) => s.refresh);
   const pushToast = useUiStore((s) => s.pushToast);
+  const freeReader = isStaffFreeReader(user);
 
   useEffect(() => {
+    if (persistReady) return undefined;
+    const unsub = useAuthStore.persist?.onFinishHydration?.(() => setPersistReady(true));
+    const t = setTimeout(() => setPersistReady(true), 50);
+    return () => {
+      unsub?.();
+      clearTimeout(t);
+    };
+  }, [persistReady]);
+
+  useEffect(() => {
+    if (!persistReady) return undefined;
     let cancelled = false;
+    // Optimistic: mark canRead for admin/staff so lock/coin UI never flashes.
+    // Do not set isUnlocked — that badge is only for paid reader unlocks.
+    if (isStaffFreeReader(user)) {
+      setChapters((prev) => prev.map((c) => (
+        c.canRead === true ? c : { ...c, canRead: true }
+      )));
+    }
     api.get(`/books/${book.id}/chapters`)
       .then((data) => { if (!cancelled) setChapters(data.items || []); })
       .catch(() => { /* keep server-rendered list */ });
@@ -55,11 +81,11 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
       setInLibrary(false);
     }
     return () => { cancelled = true; };
-  }, [book.id, user, refreshWallet, mode]);
+  }, [book.id, user, refreshWallet, mode, persistReady]);
 
   const firstReadable = useMemo(
-    () => chapters.find((c) => isChapterReadable(c)) || chapters[0],
-    [chapters],
+    () => chapters.find((c) => isChapterReadable(c, user)) || chapters[0],
+    [chapters, user],
   );
 
   function guardReadingAccess() {
@@ -131,6 +157,7 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
       } else {
         await libraryApi.add(book.id);
         pushToast({ type: 'success', title: 'Added to library', message: `${book.title} is saved to your library.` });
+        setCollectionPromptOpen(true);
       }
     } catch (err) {
       setInLibrary(wasIn);
@@ -140,52 +167,83 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
     }
   }
 
+  function libraryCollectionModals() {
+    return (
+      <>
+        <LibraryCollectionPrompt
+          open={collectionPromptOpen}
+          bookTitle={book?.title}
+          onNo={() => setCollectionPromptOpen(false)}
+          onYes={() => {
+            setCollectionPromptOpen(false);
+            setCollectionModalOpen(true);
+          }}
+        />
+        <AddToCollectionModal
+          open={collectionModalOpen}
+          book={book}
+          onClose={() => setCollectionModalOpen(false)}
+          onSaved={() => {
+            pushToast({
+              type: 'success',
+              title: 'Collection updated',
+              message: `${book.title} was saved to your collection.`,
+            });
+          }}
+        />
+      </>
+    );
+  }
+
   if (mode === 'cta') {
     const noChapters = chapters.length === 0;
     return (
-      <div className="flex flex-wrap items-center gap-4">
-        {noChapters ? (
-          <span
-            className="px-8 py-4 bg-neutral-200 dark:bg-neutral-800 text-ink-600 dark:text-neutral-400 font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded flex items-center gap-2 cursor-not-allowed opacity-70"
-            title="No chapters published yet"
-          >
-            <Icon name="menu_book" size={20} />
-            No chapters yet
-          </span>
-        ) : (
+      <>
+        <div className="flex w-full items-stretch gap-2 sm:w-auto sm:flex-wrap sm:items-center sm:gap-4">
+          {noChapters ? (
+            <span
+              className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest bg-neutral-200 text-ink-600 opacity-70 cursor-not-allowed dark:bg-neutral-800 dark:text-neutral-400 sm:flex-none sm:gap-2 sm:px-8 sm:py-4 sm:text-ui-label-lg sm:font-ui-label-lg"
+              title="No chapters published yet"
+            >
+              <Icon name="menu_book" className="!text-[16px] sm:!text-[20px]" />
+              No chapters yet
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (!user) {
+                  openAuthModal({
+                    message: 'Sign in to start reading.',
+                    onSuccess: () => goToChapter(firstReadable.id),
+                  });
+                  return;
+                }
+                goToChapter(firstReadable.id);
+              }}
+              className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded bg-ink-900 px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:opacity-90 dark:bg-white dark:text-black sm:flex-none sm:gap-2 sm:px-8 sm:py-4 sm:text-ui-label-lg sm:font-ui-label-lg"
+            >
+              <Icon name="menu_book" className="!text-[16px] sm:!text-[20px]" />
+              Start Reading
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => {
-              if (!user) {
-                openAuthModal({
-                  message: 'Sign in to start reading.',
-                  onSuccess: () => goToChapter(firstReadable.id),
-                });
-                return;
-              }
-              goToChapter(firstReadable.id);
-            }}
-            className="px-8 py-4 bg-ink-900 text-white dark:bg-white dark:text-black font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:opacity-90 transition-colors flex items-center gap-2"
+            onClick={toggleLibrary}
+            disabled={libraryBusy}
+            aria-pressed={inLibrary}
+            className={
+              inLibrary
+                ? 'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded border border-neutral-300 bg-neutral-200 px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-ink-900 transition-colors hover:bg-neutral-300 disabled:opacity-60 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 sm:flex-none sm:gap-2 sm:px-8 sm:py-4 sm:text-ui-label-lg sm:font-ui-label-lg'
+                : 'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded border border-neutral-400 bg-transparent px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-ink-900 transition-colors hover:bg-neutral-100 disabled:opacity-60 dark:border-neutral-600 dark:text-neutral-100 dark:hover:bg-neutral-900 sm:flex-none sm:gap-2 sm:px-8 sm:py-4 sm:text-ui-label-lg sm:font-ui-label-lg'
+            }
           >
-            <Icon name="menu_book" size={20} />
-            Start Reading
+            <Icon name={inLibrary ? 'bookmark' : 'bookmark_add'} filled={inLibrary} className="!text-[16px] sm:!text-[20px]" />
+            {inLibrary ? 'In Library' : 'Add to Library'}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={toggleLibrary}
-          disabled={libraryBusy}
-          aria-pressed={inLibrary}
-          className={
-            inLibrary
-              ? 'px-8 py-4 bg-neutral-200 dark:bg-neutral-800 text-ink-900 dark:text-neutral-100 font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-colors flex items-center gap-2 border border-neutral-300 dark:border-neutral-600 disabled:opacity-60'
-              : 'px-8 py-4 bg-transparent border border-neutral-400 dark:border-neutral-600 text-ink-900 dark:text-neutral-100 font-ui-label-lg text-ui-label-lg uppercase tracking-widest rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors flex items-center gap-2 disabled:opacity-60'
-          }
-        >
-          <Icon name={inLibrary ? 'bookmark' : 'bookmark_add'} filled={inLibrary} size={20} />
-          {inLibrary ? 'In Library' : 'Add to Library'}
-        </button>
-      </div>
+        </div>
+        {libraryCollectionModals()}
+      </>
     );
   }
 
@@ -205,6 +263,10 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
                 onUnlockClick={handleUnlockClick}
                 onReadClick={goToChapter}
                 readingRestricted={hasReadingRestriction(user)}
+                freeReader={freeReader}
+                user={user}
+                // Hide coin locks until auth persist restores admin/staff role.
+                authPending={!persistReady}
                 busy={busy}
               />
             ))}
@@ -247,19 +309,24 @@ function ChapterRow({
   onUnlockClick,
   onReadClick,
   readingRestricted,
+  freeReader,
+  user,
+  authPending,
   busy,
   isLast,
 }) {
-  const suspended = readingRestricted && chapter.canRead === false;
-  const locked = suspended || isChapterLocked(chapter);
+  const suspended = readingRestricted && chapter.canRead === false && !freeReader;
+  const locked = !authPending && !freeReader && (suspended || isChapterLocked(chapter, user));
   const paidLock = locked && !suspended;
-  const free = !chapter.isPaid || chapter.tokenPrice === 0;
+  const isTrulyFree = !chapter.isPaid || Number(chapter.tokenPrice) === 0;
+  // Paid chapters unlocked with coins (readers only — not admin free-pass).
+  const showUnlocked = !freeReader && !authPending && chapter.isPaid && chapter.isUnlocked;
   const dateLabel = new Date(chapter.updatedAt || chapter.createdAt || Date.now())
     .toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const Body = (
     <div className="flex items-center gap-6 min-w-0 flex-1">
-      <span className="font-ui-label-sm text-ui-label-sm text-ink-500 dark:text-neutral-500 w-12 opacity-50 shrink-0">
+      <span className="font-ui-label-sm text-ui-label-sm text-ink-400 dark:text-neutral-400 w-12 shrink-0 tabular-nums">
         {String(chapter.idx).padStart(2, '0')}
       </span>
       <div className="min-w-0">
@@ -293,12 +360,17 @@ function ChapterRow({
       )}
 
       <div className="flex items-center gap-4 shrink-0">
-        {free && (
+        {isTrulyFree && !freeReader && (
           <span className="px-2 py-1 bg-neutral-200 dark:bg-neutral-800 text-ink-700 dark:text-neutral-300 font-ui-label-sm uppercase rounded text-[10px]">
             Free
           </span>
         )}
-        {chapter.isPaid && chapter.isUnlocked && (
+        {freeReader && (
+          <span className="px-2 py-1 bg-neutral-200 dark:bg-neutral-800 text-ink-700 dark:text-neutral-300 font-ui-label-sm uppercase rounded text-[10px]">
+            Free access
+          </span>
+        )}
+        {showUnlocked && (
           <span className="px-2 py-1 bg-tertiary-fixed/40 text-on-tertiary-container font-ui-label-sm uppercase rounded text-[10px] inline-flex items-center gap-1">
             <Icon name="check_circle" filled size={14} /> Unlocked
           </span>
@@ -331,7 +403,7 @@ function ChapterRow({
             </button>
           </>
         )}
-        {!free && chapter.isUnlocked && !suspended && (
+        {(freeReader || showUnlocked) && !suspended && (
           <button
             type="button"
             onClick={() => onReadClick?.(chapter.id)}
