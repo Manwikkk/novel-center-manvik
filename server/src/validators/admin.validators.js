@@ -168,6 +168,25 @@ module.exports = {
       ).required(),
     }),
   },
+  listHomeBooks: {
+    query: Joi.object({
+      q: Joi.string().trim().max(120).allow(''),
+    }),
+  },
+  setHomeBookTags: {
+    body: Joi.object({
+      tags: Joi.array().items(Joi.string().valid(
+        'weekly_featured',
+        'new_arrivals',
+        'potential_starlet',
+        'rising_fictions',
+        'cheering_reads',
+        'editors_choice',
+        'completed_novel',
+        'originals',
+      )).required(),
+    }),
+  },
   addHomeShelfBook: {
     body: Joi.object({
       bookId: Joi.number().integer().positive().required(),

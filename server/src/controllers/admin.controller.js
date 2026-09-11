@@ -131,6 +131,14 @@ const getHomeShelves = asyncHandler(async (_req, res) => {
   res.json(await bookTagsSvc.listHomeShelves());
 });
 
+const getHomeBooks = asyncHandler(async (req, res) => {
+  res.json(await bookTagsSvc.listHomeBooks(req.query));
+});
+
+const setHomeBookTags = asyncHandler(async (req, res) => {
+  res.json(await bookTagsSvc.setBookTags(Number(req.params.id), req.body.tags));
+});
+
 const addHomeShelfBook = asyncHandler(async (req, res) => {
   res.json(await bookTagsSvc.addBookToShelf(req.params.tag, Number(req.body.bookId)));
 });
@@ -157,7 +165,8 @@ module.exports = {
   listBooks, listTransactions,
   listComments, commentsByBook, commentsByChapter, moderateComment,
   stats, getPageSections, patchPageSections,
-  getHomeShelves, addHomeShelfBook, removeHomeShelfBook, addBookToAllHomeShelves,
+  getHomeShelves, getHomeBooks, setHomeBookTags,
+  addHomeShelfBook, removeHomeShelfBook, addBookToAllHomeShelves,
   getSettings, patchSettings, listAuditLogs,
   listBookChapters, recycleBook, recycleChapter, listRecycle, restoreRecycle,
 };

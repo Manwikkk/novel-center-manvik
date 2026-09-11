@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
+import HomeBookAssigner from '@/components/admin/HomeBookAssigner';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
@@ -55,21 +56,11 @@ function SectionSwitch({ on, disabled, onToggle, id }) {
   );
 }
 
-function bookLabel(book) {
-  return book.authorName ? `${book.title} · ${book.authorName}` : book.title;
-}
-
 function Inner() {
   const pushToast = useUiStore((s) => s.pushToast);
   const [sections,   setSections]  = useState(null);
   const [loading,    setLoading]   = useState(true);
   const [savingKey,  setSavingKey] = useState(null);
-  const [shelves, setShelves] = useState([]);
-  const [shelvesLoading, setShelvesLoading] = useState(true);
-  const [busyTag, setBusyTag] = useState(null);
-  const [search, setSearch] = useState('');
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,49 +75,6 @@ function Inner() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [pushToast]);
-
-  const loadShelves = useCallback(async () => {
-    setShelvesLoading(true);
-    try {
-      const d = await api.get('/admin/home-shelves');
-      setShelves(d.shelves || []);
-    } catch (err) {
-      setShelves([]);
-      pushToast({ type: 'error', title: 'Could not load home books', message: err.message });
-    } finally {
-      setShelvesLoading(false);
-    }
-  }, [pushToast]);
-
-  useEffect(() => {
-    loadShelves();
-  }, [loadShelves]);
-
-  useEffect(() => {
-    const q = search.trim();
-    if (q.length < 2) {
-      setResults([]);
-      return undefined;
-    }
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const d = await api.get('/admin/books', {
-          query: { q, status: 'published', pageSize: 8 },
-        });
-        if (!cancelled) setResults(d.items || []);
-      } catch (_err) {
-        if (!cancelled) setResults([]);
-      } finally {
-        if (!cancelled) setSearching(false);
-      }
-    }, 280);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [search]);
 
   const toggle = useCallback(
     async (key, next) => {
@@ -147,43 +95,6 @@ function Inner() {
     [sections, pushToast],
   );
 
-  const applyShelves = (d) => setShelves(d.shelves || []);
-
-  const addToShelf = async (tag, bookId) => {
-    setBusyTag(tag);
-    try {
-      applyShelves(await api.post(`/admin/home-shelves/${tag}/books`, { bookId }));
-      pushToast({ type: 'success', title: 'Book added to section' });
-    } catch (err) {
-      pushToast({ type: 'error', title: 'Could not add book', message: err.message });
-    } finally {
-      setBusyTag(null);
-    }
-  };
-
-  const addToAll = async (bookId) => {
-    setBusyTag('*');
-    try {
-      applyShelves(await api.post('/admin/home-shelves/all', { bookId }));
-      pushToast({ type: 'success', title: 'Book added to every home section' });
-    } catch (err) {
-      pushToast({ type: 'error', title: 'Could not add book', message: err.message });
-    } finally {
-      setBusyTag(null);
-    }
-  };
-
-  const removeFromShelf = async (tag, bookId) => {
-    setBusyTag(`${tag}:${bookId}`);
-    try {
-      applyShelves(await api.delete(`/admin/home-shelves/${tag}/books/${bookId}`));
-    } catch (err) {
-      pushToast({ type: 'error', title: 'Could not remove book', message: err.message });
-    } finally {
-      setBusyTag(null);
-    }
-  };
-
   return (
     <DashboardShell kind="admin">
       <DashboardTopbar
@@ -191,173 +102,62 @@ function Inner() {
         title="Page configuration"
         actions={(
           <p className="text-[12px] text-on-surface-variant max-w-xs md:max-w-md text-right normal-case tracking-normal font-sans font-normal">
-            Turn sections on or off, then pick which published books appear in each rail.
+            Turn sections on or off, then assign books from the list below.
           </p>
         )}
       />
 
-      <div className="px-4 md:px-edge py-8 space-y-10 max-w-3xl">
-        <p className="label-sm uppercase text-on-surface-variant">
-          Home page sections
-        </p>
-
-        <div className="border border-outline-variant rounded-md divide-y divide-outline-variant overflow-hidden">
-          {loading || !sections
-            ? SECTION_ROWS.map((row) => (
-                <div
-                  key={row.key}
-                  className="flex items-center justify-between gap-4 px-4 py-4 bg-surface-container-lowest"
-                >
-                  <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-3 w-56" />
-                  </div>
-                  <Skeleton className="h-7 w-12 rounded-full shrink-0" />
-                </div>
-              ))
-            : SECTION_ROWS.map((row) => {
-                const on = sections[row.key] !== false;
-                return (
-                  <div
-                    key={row.key}
-                    className="flex items-center justify-between gap-4 px-4 py-4 bg-surface-container-lowest hover:bg-surface-container-low/80 transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <label
-                        htmlFor={`sec-${row.key}`}
-                        className="font-serif text-[16px] text-on-surface cursor-pointer"
-                      >
-                        {row.label}
-                      </label>
-                      <p className="mt-0.5 text-[12px] text-on-surface-variant normal-case tracking-normal font-sans font-normal">
-                        {row.hint}
-                      </p>
-                    </div>
-                    <SectionSwitch
-                      id={`sec-${row.key}`}
-                      on={on}
-                      disabled={savingKey === row.key}
-                      onToggle={() => toggle(row.key, !on)}
-                    />
-                  </div>
-                );
-              })}
-        </div>
-
-        <div className="space-y-4">
-          <div>
+      <div className="px-4 md:px-edge py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start max-w-[1280px]">
+          <div className="min-w-0 space-y-4">
             <p className="label-sm uppercase text-on-surface-variant">
-              Books in home sections
+              Home page sections
             </p>
-            <p className="mt-1 text-[13px] text-on-surface-variant normal-case tracking-normal font-sans">
-              A section stays blank until you place at least one published book in it.
-              Search a title, then add it to one rail or every rail.
-            </p>
-          </div>
-
-          <div className="relative">
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search published novels…"
-              className="w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-[14px] text-on-surface outline-none focus:border-on-surface"
-            />
-            {search.trim().length >= 2 ? (
-              <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-outline-variant bg-surface-container-lowest shadow-lg">
-                {searching ? (
-                  <p className="px-3 py-3 text-[13px] text-on-surface-variant">Searching…</p>
-                ) : results.length === 0 ? (
-                  <p className="px-3 py-3 text-[13px] text-on-surface-variant">No published books found.</p>
-                ) : results.map((book) => (
-                  <div
-                    key={book.id}
-                    className="flex items-center justify-between gap-3 border-b border-outline-variant/70 px-3 py-2 last:border-b-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-serif text-[15px] text-on-surface">{book.title}</p>
-                      <p className="truncate text-[12px] text-on-surface-variant">{book.authorName || 'Author'}</p>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={busyTag === '*'}
-                      onClick={() => addToAll(book.id)}
-                      className="shrink-0 rounded-md bg-ink-900 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-cream-100 disabled:opacity-50 dark:bg-neutral-100 dark:text-ink-900"
+            <div className="border border-outline-variant rounded-xl divide-y divide-outline-variant overflow-hidden">
+              {loading || !sections
+                ? SECTION_ROWS.map((row) => (
+                    <div
+                      key={row.key}
+                      className="flex items-center justify-between gap-4 px-4 py-3.5 bg-surface-container-lowest"
                     >
-                      Add to all
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="space-y-4">
-            {shelvesLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="rounded-md border border-outline-variant p-4">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="mt-3 h-10 w-full" />
-                  </div>
-                ))
-              : shelves.map((shelf) => (
-                  <div
-                    key={shelf.tag}
-                    className="rounded-md border border-outline-variant bg-surface-container-lowest p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-serif text-[16px] text-on-surface">{shelf.label}</p>
-                        <p className="mt-0.5 text-[12px] text-on-surface-variant">{shelf.hint}</p>
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-56" />
                       </div>
-                      <span className="text-[11px] uppercase tracking-widest text-on-surface-variant">
-                        {shelf.books.length} book{shelf.books.length === 1 ? '' : 's'}
-                      </span>
+                      <Skeleton className="h-7 w-12 rounded-full shrink-0" />
                     </div>
-
-                    {results.length > 0 ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {results.map((book) => {
-                          const already = shelf.books.some((b) => b.id === book.id);
-                          return (
-                            <button
-                              key={`${shelf.tag}-${book.id}`}
-                              type="button"
-                              disabled={already || busyTag === shelf.tag}
-                              onClick={() => addToShelf(shelf.tag, book.id)}
-                              className="rounded-full border border-outline-variant px-3 py-1 text-[12px] text-on-surface disabled:opacity-40 hover:border-on-surface"
-                            >
-                              {already ? `In section · ${book.title}` : `Add ${book.title}`}
-                            </button>
-                          );
-                        })}
+                  ))
+                : SECTION_ROWS.map((row) => {
+                    const on = sections[row.key] !== false;
+                    return (
+                      <div
+                        key={row.key}
+                        className="flex items-center justify-between gap-4 px-4 py-3.5 bg-surface-container-lowest hover:bg-surface-container-low/80 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <label
+                            htmlFor={`sec-${row.key}`}
+                            className="font-serif text-[16px] text-on-surface cursor-pointer"
+                          >
+                            {row.label}
+                          </label>
+                          <p className="mt-0.5 text-[12px] text-on-surface-variant normal-case tracking-normal font-sans font-normal">
+                            {row.hint}
+                          </p>
+                        </div>
+                        <SectionSwitch
+                          id={`sec-${row.key}`}
+                          on={on}
+                          disabled={savingKey === row.key}
+                          onToggle={() => toggle(row.key, !on)}
+                        />
                       </div>
-                    ) : null}
-
-                    {shelf.books.length === 0 ? (
-                      <p className="mt-3 text-[13px] text-on-surface-variant">No books in this section yet.</p>
-                    ) : (
-                      <ul className="mt-3 divide-y divide-outline-variant">
-                        {shelf.books.map((book) => (
-                          <li key={book.id} className="flex items-center justify-between gap-3 py-2">
-                            <span className="min-w-0 truncate text-[14px] text-on-surface">
-                              {bookLabel(book)}
-                            </span>
-                            <button
-                              type="button"
-                              disabled={busyTag === `${shelf.tag}:${book.id}`}
-                              onClick={() => removeFromShelf(shelf.tag, book.id)}
-                              className="shrink-0 text-[12px] text-on-surface-variant hover:text-on-surface"
-                            >
-                              Remove
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
+                    );
+                  })}
+            </div>
           </div>
+
+          <HomeBookAssigner />
         </div>
       </div>
     </DashboardShell>

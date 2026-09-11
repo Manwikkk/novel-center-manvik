@@ -89,6 +89,88 @@ async function removeBookFromShelf(tag, bookId) {
   return listHomeShelves();
 }
 
+async function listHomeBooks({ q } = {}) {
+  const params = [];
+  let search = '';
+  if (q) {
+    search = 'AND (b.title LIKE ? OR b.slug LIKE ? OR u.display_name LIKE ?)';
+    const like = `%${q}%`;
+    params.push(like, like, like);
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT b.id, b.slug, b.title, b.cover_url, b.status, b.score,
+            u.display_name AS author_name,
+            bt.tag
+       FROM books b
+       JOIN users u ON u.id = b.author_id
+       LEFT JOIN book_tags bt
+         ON bt.book_id = b.id
+        AND bt.tag IN (${HOME_SHELF_TAGS.map(() => '?').join(', ')})
+      WHERE b.status = 'published'
+        AND b.recycled_at IS NULL
+        ${search}
+      ORDER BY b.updated_at DESC, b.id DESC
+      LIMIT 80`,
+    [...HOME_SHELF_TAGS, ...params],
+  );
+
+  const byId = new Map();
+  for (const row of rows) {
+    if (!byId.has(row.id)) {
+      byId.set(row.id, { ...rowToBook(row), tags: [] });
+    }
+    if (row.tag && isHomeShelfTag(row.tag)) {
+      const book = byId.get(row.id);
+      if (!book.tags.includes(row.tag)) book.tags.push(row.tag);
+    }
+  }
+
+  return { items: [...byId.values()], shelves: HOME_SHELVES };
+}
+
+async function setBookTags(bookId, tags) {
+  const wanted = [...new Set((tags || []).filter(isHomeShelfTag))];
+  const book = await getPublishedBook(bookId);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute(
+      `DELETE FROM book_tags
+        WHERE book_id = ?
+          AND tag IN (${HOME_SHELF_TAGS.map(() => '?').join(', ')})`,
+      [bookId, ...HOME_SHELF_TAGS],
+    );
+    for (const tag of wanted) {
+      await conn.execute(
+        'INSERT INTO book_tags (book_id, tag) VALUES (?, ?)',
+        [bookId, tag],
+      );
+    }
+    if (wanted.length && book.score == null) {
+      await conn.execute('UPDATE books SET score = 4.8 WHERE id = ? AND score IS NULL', [bookId]);
+    }
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+  return {
+    book: {
+      id: book.id,
+      slug: book.slug,
+      title: book.title,
+      coverUrl: book.cover_url,
+      status: book.status,
+      authorName: book.author_name || null,
+      score: book.score == null ? 4.8 : Number(book.score),
+      tags: wanted,
+    },
+  };
+}
+
 async function addBookToAllShelves(bookId) {
   const book = await getPublishedBook(bookId);
   const conn = await pool.getConnection();
@@ -115,6 +197,8 @@ async function addBookToAllShelves(bookId) {
 
 module.exports = {
   listHomeShelves,
+  listHomeBooks,
+  setBookTags,
   addBookToShelf,
   removeBookFromShelf,
   addBookToAllShelves,
