@@ -145,6 +145,7 @@ module.exports = {
       weekly_book: Joi.boolean(),
       meet_webnovel: Joi.boolean(),
       recommended: Joi.boolean(),
+      continue_reading: Joi.boolean(),
       new_arrivals: Joi.boolean(),
       ranking_novels: Joi.boolean(),
       updated_today: Joi.boolean(),
@@ -152,6 +153,40 @@ module.exports = {
       editors_choice: Joi.boolean(),
       gs_originals: Joi.boolean(),
     }).min(1),
+  },
+  homeShelfTagParam: {
+    params: Joi.object({
+      tag: Joi.string().valid(
+        'weekly_featured',
+        'new_arrivals',
+        'potential_starlet',
+        'rising_fictions',
+        'cheering_reads',
+        'editors_choice',
+        'completed_novel',
+        'originals',
+      ).required(),
+    }),
+  },
+  addHomeShelfBook: {
+    body: Joi.object({
+      bookId: Joi.number().integer().positive().required(),
+    }),
+  },
+  removeHomeShelfBook: {
+    params: Joi.object({
+      tag: Joi.string().valid(
+        'weekly_featured',
+        'new_arrivals',
+        'potential_starlet',
+        'rising_fictions',
+        'cheering_reads',
+        'editors_choice',
+        'completed_novel',
+        'originals',
+      ).required(),
+      bookId: Joi.number().integer().positive().required(),
+    }),
   },
   createCampaign: {
     body: Joi.object({

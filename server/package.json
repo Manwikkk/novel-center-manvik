@@ -36,6 +36,7 @@
     "db:seed:pricing-demo": "node scripts/seed-pricing-demo.js",
     "db:seed": "node src/db/runSql.js src/db/seed.sql",
     "db:seed:demo-profile": "node scripts/seed-demo-profile.js",
+    "db:seed:home-dummy": "node scripts/seed-home-dummy.js",
     "db:import:webnovel": "node scripts/import-webnovel-books.js",
     "db:seed:webnovel": "node scripts/seed-webnovel-home.js",
     "scrape:webnovel": "node scripts/scrape-webnovel-homepage.js",

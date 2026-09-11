@@ -5,6 +5,7 @@ const adminSvc = require('../services/admin.service');
 const staffSvc = require('../services/adminPermissions.service');
 const commentsSvc = require('../services/comments.service');
 const pageSectionsSvc = require('../services/pageSections.service');
+const bookTagsSvc = require('../services/bookTags.service');
 const adminSettingsSvc = require('../services/adminSettings.service');
 const { ADMIN_PERMISSION_DEFS, PAGE_PERMISSION_DEFS, CAPABILITY_PERMISSION_DEFS } = require('../constants/adminPermissions');
 const { STAFF_ROLE_TEMPLATES } = require('../constants/staffRoles');
@@ -126,6 +127,22 @@ const patchPageSections = asyncHandler(async (req, res) => {
   res.json({ pageSections });
 });
 
+const getHomeShelves = asyncHandler(async (_req, res) => {
+  res.json(await bookTagsSvc.listHomeShelves());
+});
+
+const addHomeShelfBook = asyncHandler(async (req, res) => {
+  res.json(await bookTagsSvc.addBookToShelf(req.params.tag, Number(req.body.bookId)));
+});
+
+const removeHomeShelfBook = asyncHandler(async (req, res) => {
+  res.json(await bookTagsSvc.removeBookFromShelf(req.params.tag, Number(req.params.bookId)));
+});
+
+const addBookToAllHomeShelves = asyncHandler(async (req, res) => {
+  res.json(await bookTagsSvc.addBookToAllShelves(Number(req.body.bookId)));
+});
+
 const getSettings = asyncHandler(async (_req, res) => {
   res.json({ settings: await adminSettingsSvc.getSettings() });
 });
@@ -140,6 +157,7 @@ module.exports = {
   listBooks, listTransactions,
   listComments, commentsByBook, commentsByChapter, moderateComment,
   stats, getPageSections, patchPageSections,
+  getHomeShelves, addHomeShelfBook, removeHomeShelfBook, addBookToAllHomeShelves,
   getSettings, patchSettings, listAuditLogs,
   listBookChapters, recycleBook, recycleChapter, listRecycle, restoreRecycle,
 };

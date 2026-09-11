@@ -78,6 +78,10 @@ router.get('/stats', requireAdminPermission('dashboard'), ctrl.stats);
 
 router.get('/page-sections', requireAdminPermission('page_configuration'), ctrl.getPageSections);
 router.patch('/page-sections', requireAdminPermission('page_configuration'), validate(v.patchPageSections), ctrl.patchPageSections);
+router.get('/home-shelves', requireAdminPermission('page_configuration'), ctrl.getHomeShelves);
+router.post('/home-shelves/all', requireAdminPermission('page_configuration'), validate(v.addHomeShelfBook), ctrl.addBookToAllHomeShelves);
+router.post('/home-shelves/:tag/books', requireAdminPermission('page_configuration'), validate({ params: v.homeShelfTagParam.params, body: v.addHomeShelfBook.body }), ctrl.addHomeShelfBook);
+router.delete('/home-shelves/:tag/books/:bookId', requireAdminPermission('page_configuration'), validate(v.removeHomeShelfBook), ctrl.removeHomeShelfBook);
 
 router.get('/settings', requireAdminPermission('users'), ctrl.getSettings);
 router.patch('/settings', requireSuperAdmin(), validate(v.patchAdminSettings), ctrl.patchSettings);
