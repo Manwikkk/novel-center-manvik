@@ -1,11 +1,12 @@
 'use strict';
 
-const RESTRICTION_KEYS = ['portal_access', 'reading', 'commenting', 'publishing'];
+const RESTRICTION_KEYS = ['portal_access', 'reading', 'commenting', 'reviewing', 'publishing'];
 
 const RESTRICTION_DEFS = [
   { key: 'portal_access', label: 'Portal access', hint: 'Blocks sign-in and refresh' },
   { key: 'reading', label: 'Reading', hint: 'Cannot read or unlock chapters' },
   { key: 'commenting', label: 'Commenting', hint: 'Cannot post or edit comments' },
+  { key: 'reviewing', label: 'Reviewing', hint: 'Cannot post or edit reviews' },
   { key: 'publishing', label: 'Publishing', hint: 'Authors cannot publish or edit works' },
 ];
 

@@ -31,6 +31,9 @@
     "db:migrate:finance": "node src/db/runSql.js src/db/migrations/021_finance_foundation.sql",
     "db:migrate:user-profiles": "node src/db/runSql.js src/db/migrations/022_user_profiles.sql",
     "db:migrate:badge-catalog": "node src/db/runSql.js src/db/migrations/023_badge_catalog.sql",
+    "db:migrate:moderation-reports": "node src/db/runSql.js src/db/migrations/024_moderation_reports.sql",
+    "db:migrate:password-resets": "node src/db/runSql.js src/db/migrations/025_password_resets.sql",
+    "db:migrate:user-experience": "node src/db/runSql.js src/db/migrations/026_user_experience.sql",
     "db:backfill:finance": "node scripts/backfill-finance-orders.js",
     "db:backfill:chapter-prices": "node scripts/backfill-chapter-prices.js",
     "db:seed:pricing-demo": "node scripts/seed-pricing-demo.js",
@@ -60,6 +63,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.0",
+    "nodemailer": "^6.10.1",
     "pdfkit": "^0.19.1",
     "sanitize-html": "^2.13.0",
     "slugify": "^1.6.6"

@@ -9,11 +9,24 @@ import AuthPageLayout from '@/components/auth/AuthPageLayout';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import AuthSocialDivider from '@/components/auth/AuthSocialDivider';
 import { useAuthStore } from '@/stores/authStore';
+import { firstAllowedAdminHref } from '@/lib/adminPermissions';
+import { landingFor as experienceLanding } from '@/lib/experience';
+
+/**
+ * Where a fresh sign-in lands. An explicit `next` wins; otherwise admins and
+ * staff go to the admin panel instead of the reader home.
+ */
+function landingFor(user, next) {
+  if (next) return next;
+  if (user?.role === 'admin') return '/admin';
+  if (user?.role === 'staff') return firstAllowedAdminHref(user);
+  return experienceLanding(user);
+}
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') || '/';
+  const next = params.get('next') || '';
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,8 +38,8 @@ function LoginForm() {
     setBusy(true);
     setError('');
     try {
-      await login({ email, password });
-      router.push(next);
+      const user = await login({ email, password });
+      router.push(landingFor(user, next));
     } catch (err) {
       setError(err.message || 'Could not sign in.');
     } finally {
@@ -60,6 +73,14 @@ function LoginForm() {
         autoComplete="current-password"
         compact
       />
+      <div className="flex justify-end">
+        <Link
+          href="/auth/forgot-password"
+          className="text-[12px] font-semibold text-ink-700 underline decoration-gold decoration-2 underline-offset-4 hover:text-ink-900"
+        >
+          Forgot password?
+        </Link>
+      </div>
 
       <Button
         type="submit"
@@ -77,17 +98,17 @@ function LoginForm() {
 function LoginGoogleSignIn() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') || '/';
+  const next = params.get('next') || '';
 
   return (
     <GoogleSignInButton
       label="signin_with"
       onSuccess={(data) => {
         if (data?.requiresOnboarding) {
-          sessionStorage.setItem('nc.onboarding.redirect', next);
+          sessionStorage.setItem('nc.onboarding.redirect', next || '/');
           return;
         }
-        router.push(next);
+        router.push(landingFor(data?.user, next));
       }}
     />
   );

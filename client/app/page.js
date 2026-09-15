@@ -11,6 +11,7 @@ import UpdatedTodaySection from '@/components/home/UpdatedTodaySection';
 import CompletedAndEditorsRow from '@/components/home/CompletedAndEditorsRow';
 import GSOriginalsSection from '@/components/home/GSOriginalsSection';
 import BecomeAuthorCTA from '@/components/home/BecomeAuthorCTA';
+import CreatorQuickBar from '@/components/home/CreatorQuickBar';
 
 export const revalidate = 30;
 
@@ -31,6 +32,7 @@ const DEFAULT_PAGE_SECTIONS = {
 
 const EMPTY_HOME = {
   weekly_featured: [],
+  meet_novel_centre: [],
   new_arrivals: [],
   potential_starlet: [],
   rising_fictions: [],
@@ -113,8 +115,10 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main className="flex-grow pt-32 max-lg:pt-[8.5rem] lg:pt-28">
+        <CreatorQuickBar />
         <NovelWeeklyHero
           items={home.weekly_featured}
+          meetItems={home.meet_novel_centre}
           visibility={{
             weekly_book: show('weekly_book'),
             meet_webnovel: show('meet_webnovel'),

@@ -8,6 +8,7 @@ const { hashPassword, comparePassword } = require('../utils/hash');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 const { errors } = require('../utils/HttpError');
 const { publicUser } = require('../utils/publicUser');
+const { isExperience, roleForExperience, resolveRoleAndExperience } = require('../constants/experience');
 const { permissionsForAuthUser } = require('./adminPermissions.service');
 const { assertPortalAccess, expireIfNeeded } = require('./suspension.service');
 
@@ -47,16 +48,17 @@ async function findById(id) {
   return rows[0] || null;
 }
 
-async function register({ email, password, displayName, role }) {
+async function register({ email, password, displayName, role, experience }) {
   const existing = await findByEmail(email);
   if (existing) throw errors.conflict('Email already registered');
 
   const password_hash = await hashPassword(password);
+  const resolved = resolveRoleAndExperience({ role, experience });
 
   return withTransaction(async (conn) => {
     const [r] = await conn.execute(
-      'INSERT INTO users (email, password_hash, display_name, role, onboarding_completed) VALUES (?, ?, ?, ?, 1)',
-      [email, password_hash, displayName, role || 'user'],
+      'INSERT INTO users (email, password_hash, display_name, role, experience, onboarding_completed) VALUES (?, ?, ?, ?, ?, 1)',
+      [email, password_hash, displayName, resolved.role, resolved.experience],
     );
     const userId = r.insertId;
     await conn.execute('INSERT INTO wallets (user_id, balance) VALUES (?, 0)', [userId]);
@@ -104,6 +106,14 @@ async function updateMe(userId, patch) {
   if (Object.prototype.hasOwnProperty.call(patch, 'avatarUrl')) {
     fields.push('avatar_url = ?');
     params.push(patch.avatarUrl === '' ? null : patch.avatarUrl);
+  }
+  if (isExperience(patch.experience)) {
+    fields.push('experience = ?');
+    params.push(patch.experience);
+    // Choosing a creator experience turns a reader account into an author account.
+    if (roleForExperience(patch.experience) === 'author') {
+      fields.push("role = IF(role = 'user', 'author', role)");
+    }
   }
 
   if (fields.length === 0) {
@@ -183,8 +193,8 @@ async function googleAuth({ credential }) {
   return buildAuthResult(row);
 }
 
-async function completeOnboarding(userId, { role }) {
-  const safeRole = role === 'author' ? 'author' : 'user';
+async function completeOnboarding(userId, { role, experience }) {
+  const resolved = resolveRoleAndExperience({ role, experience });
   const row = await findById(userId);
   if (!row) throw errors.notFound('User not found');
   if (Number(row.onboarding_completed) === 1) {
@@ -192,8 +202,25 @@ async function completeOnboarding(userId, { role }) {
   }
 
   await pool.execute(
-    'UPDATE users SET role = ?, onboarding_completed = 1 WHERE id = ?',
-    [safeRole, userId],
+    'UPDATE users SET role = ?, experience = ?, onboarding_completed = 1 WHERE id = ?',
+    [resolved.role, resolved.experience, userId],
+  );
+  const updated = await findById(userId);
+  return buildAuthResult(updated);
+}
+
+// A reader turns on the author studio by creating their first novel. Reissues
+// tokens so the new role is carried by the JWT immediately.
+async function becomeAuthor(userId) {
+  const row = await findById(userId);
+  if (!row) throw errors.notFound('User not found');
+  if (row.role === 'author' || row.role === 'admin') return buildAuthResult(row);
+  if (row.role !== 'user') throw errors.forbidden('Only reader accounts can become authors');
+
+  // A reader who starts writing keeps the reading tools too.
+  await pool.execute(
+    "UPDATE users SET role = 'author', experience = IF(experience = 'reader', 'both', experience) WHERE id = ? AND role = 'user'",
+    [userId],
   );
   const updated = await findById(userId);
   return buildAuthResult(updated);
@@ -216,6 +243,7 @@ module.exports = {
   login,
   googleAuth,
   completeOnboarding,
+  becomeAuthor,
   me,
   updateMe,
   refresh,

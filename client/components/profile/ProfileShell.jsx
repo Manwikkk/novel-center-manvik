@@ -18,6 +18,7 @@ import { formatTokens } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { openAuthModal } from '@/lib/authModal';
+import { EXPERIENCE_OPTIONS, experienceOf } from '@/lib/experience';
 
 function ProfilePageSkeleton() {
   return (
@@ -131,6 +132,7 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
   const router = useRouter();
   const authUser = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const setExperience = useAuthStore((s) => s.setExperience);
   const logout = useAuthStore((s) => s.logout);
 
   const [loading, setLoading] = useState(true);
@@ -347,7 +349,16 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
           : prev.dashboard,
       }));
     } catch (err) {
-      setError(err.message);
+      if (err.status === 409) {
+        // Already checked in today (e.g. from another tab): reflect it instead of erroring.
+        setData((prev) => ({
+          ...prev,
+          profile: { ...prev.profile, lastCheckinDate: new Date().toISOString().slice(0, 10) },
+          dashboard: prev.dashboard ? { ...prev.dashboard, checkedInToday: true } : prev.dashboard,
+        }));
+      } else {
+        setError(err.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -392,6 +403,7 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
         bio: String(fd.get('bio') || ''),
         country: String(fd.get('country') || ''),
         birthDate: fd.get('birthDate') || null,
+        experience: String(fd.get('experience') || '') || undefined,
         showReviews: fd.get('showReviews') === 'on',
         showComments: fd.get('showComments') === 'on',
         notifyEmail: fd.get('notifyEmail') === 'on',
@@ -406,6 +418,10 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
       };
       const res = await profileApi.update(body);
       setData((prev) => ({ ...prev, profile: { ...prev.profile, ...res.profile } }));
+      // Keep the signed-in session in step (navigation, studio access, JWT role).
+      if (body.experience && authUser && experienceOf(authUser) !== body.experience) {
+        await setExperience(body.experience).catch(() => {});
+      }
       setSettingsMsg('Settings saved');
     } catch (err) {
       setSettingsMsg(err.message || 'Save failed');
@@ -1064,6 +1080,21 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
                       <span className="text-[11px] uppercase tracking-wider text-ink-500">Birth date</span>
                       <input type="date" name="birthDate" defaultValue={profile.birthDate ? String(profile.birthDate).slice(0, 10) : ''} className="mt-1 w-full border-b border-neutral-300 bg-transparent py-2 dark:border-neutral-700 dark:text-neutral-100" />
                     </label>
+                    <fieldset className="space-y-2">
+                      <legend className="text-[11px] uppercase tracking-wider text-ink-500">How you use Novel Centre</legend>
+                      <p className="text-[12px] text-ink-500 dark:text-neutral-400">Shapes your navigation and home page. Choosing a writing option turns on the author studio.</p>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {EXPERIENCE_OPTIONS.map((opt) => (
+                          <label key={opt.value} className="flex cursor-pointer items-start gap-2 rounded-md border border-neutral-200 p-3 text-sm has-[:checked]:border-ink-900 dark:border-neutral-700 dark:has-[:checked]:border-neutral-100">
+                            <input type="radio" name="experience" value={opt.value} defaultChecked={experienceOf(profile) === opt.value} className="mt-0.5" />
+                            <span>
+                              <span className="block font-semibold text-ink-900 dark:text-neutral-100">{opt.label}</span>
+                              <span className="block text-[12px] text-ink-500 dark:text-neutral-400">{opt.hint}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
                     <fieldset className="space-y-2">
                       <legend className="text-[11px] uppercase tracking-wider text-ink-500">Privacy</legend>
                       <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="showReviews" defaultChecked={profile.showReviews !== false} /> Show reviews publicly</label>

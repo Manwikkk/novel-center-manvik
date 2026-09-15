@@ -29,6 +29,12 @@ router.post('/:id/cover',
   ctrl.uploadCover,
 );
 
+router.post('/:id/report',
+  authRequired,
+  validate({ params: idParam, body: v.report.body }),
+  ctrl.report,
+);
+
 router.get('/:id/chapters',
   authOptional,
   validate({ params: idParam }),

@@ -76,7 +76,8 @@ async function updateUser(id, patch, actor) {
   }
   const suspensionPatch = patch.status === 'suspended'
     || patch.status === 'active'
-    || patch.removeRestrictions?.length;
+    || patch.removeRestrictions?.length
+    || patch.addRestrictions?.length;
   if (suspensionPatch && actor?.role === 'staff') {
     const canSuspend = ctx.perms.includes('users.suspend')
       || ctx.perms.includes('comments.suspend_content');
@@ -101,7 +102,30 @@ async function updateUser(id, patch, actor) {
       await conn.execute('UPDATE users SET role = ? WHERE id = ?', [patch.role, id]);
     }
 
-    if (patch.removeRestrictions?.length) {
+    if (patch.addRestrictions?.length) {
+      // Extend an existing suspension; its type and expiry stay as issued.
+      const [rows] = await conn.execute(
+        'SELECT status, suspension_type, suspended_until, suspension_restrictions FROM users WHERE id = ?',
+        [id],
+      );
+      const row = rows[0];
+      let current = parseRestrictions(row.suspension_restrictions);
+      const hasCurrent = current && hasAnyRestriction(current);
+      if (!hasCurrent && row.status !== 'suspended') {
+        throw errors.badRequest('Start a suspension before adding restrictions');
+      }
+      if (!hasCurrent) current = sanitizeRestrictions({ portal_access: true });
+      for (const key of new Set(patch.addRestrictions)) current[key] = true;
+      const portalBlock = !!current.portal_access;
+      await conn.execute(
+        `UPDATE users
+            SET status = ?,
+                suspension_type = COALESCE(suspension_type, 'permanent'),
+                suspension_restrictions = ?
+          WHERE id = ?`,
+        [portalBlock ? 'suspended' : 'active', JSON.stringify(current), id],
+      );
+    } else if (patch.removeRestrictions?.length) {
       const [rows] = await conn.execute(
         'SELECT status, suspension_type, suspended_until, suspension_restrictions FROM users WHERE id = ?',
         [id],
@@ -229,6 +253,9 @@ async function updateUser(id, patch, actor) {
       } else if (patch.status === 'suspended') {
         action = 'user.suspend';
         summary = `Suspended ${target.display_name}`;
+      } else if (patch.addRestrictions?.length) {
+        action = 'user.suspend';
+        summary = `Added restrictions (${[...new Set(patch.addRestrictions)].join(', ')}) for ${target.display_name}`;
       } else if (patch.status === 'active' || patch.removeRestrictions?.length) {
         action = 'user.reinstate';
         summary = `Reinstated or lifted restrictions for ${target.display_name}`;
@@ -247,6 +274,7 @@ async function updateUser(id, patch, actor) {
           role: patch.role,
           status: patch.status,
           removeRestrictions: patch.removeRestrictions,
+          addRestrictions: patch.addRestrictions,
           restrictions: patch.restrictions,
           suspensionType: patch.suspensionType,
         },

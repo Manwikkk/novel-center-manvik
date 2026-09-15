@@ -17,7 +17,7 @@ import { cn } from '@/lib/cn';
 const STATUS = ['All', 'draft', 'published', 'archived'];
 const PAGE_SIZE = 20;
 const TABS = [
-  { key: 'active', label: 'Active books' },
+  { key: 'active', label: 'Active novels' },
   { key: 'recycle', label: 'Recycle bin' },
 ];
 
@@ -27,34 +27,43 @@ function Inner() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState('All');
+  const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [busyBookId, setBusyBookId] = useState(null);
   const [recycleTarget, setRecycleTarget] = useState(null);
 
-  useEffect(() => { setPage(1); }, [status]);
+  useEffect(() => { setPage(1); }, [status, q]);
 
   useEffect(() => {
     if (tab !== 'active') return undefined;
     let cancelled = false;
     setLoading(true);
-    api.get('/admin/books', {
-      query: { status: status === 'All' ? undefined : status, page, pageSize: PAGE_SIZE },
-    })
-      .then((d) => {
-        if (cancelled) return;
-        setItems(d.items || []);
-        setTotal(Number(d.total) || 0);
+    // Debounce typed searches; filter/page changes fetch immediately.
+    const timer = setTimeout(() => {
+      api.get('/admin/books', {
+        query: {
+          q: q.trim() || undefined,
+          status: status === 'All' ? undefined : status,
+          page,
+          pageSize: PAGE_SIZE,
+        },
       })
-      .catch((err) => {
-        if (cancelled) return;
-        setItems([]);
-        setTotal(0);
-        pushToast({ type: 'error', title: 'Could not load books', message: err.message });
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [tab, status, page, pushToast]);
+        .then((d) => {
+          if (cancelled) return;
+          setItems(d.items || []);
+          setTotal(Number(d.total) || 0);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setItems([]);
+          setTotal(0);
+          pushToast({ type: 'error', title: 'Could not load novels', message: err.message });
+        })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }, q ? 250 : 0);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [tab, status, q, page, pushToast]);
 
   async function confirmRecycleBook() {
     if (!recycleTarget) return;
@@ -78,7 +87,7 @@ function Inner() {
 
   return (
     <DashboardShell kind="admin">
-      <DashboardTopbar subtitle="Administration" title="Books" />
+      <DashboardTopbar subtitle="Administration" title="Novels" />
       <div className="px-4 md:px-edge py-8 space-y-6">
         <div className="flex flex-wrap gap-2 border-b border-outline-variant pb-1">
           {TABS.map((item) => (
@@ -100,6 +109,14 @@ function Inner() {
 
         {tab === 'active' && (
           <>
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search novels by title or slug"
+              aria-label="Search novels"
+              className="w-full md:max-w-md bg-transparent border-b border-outline-variant focus:border-on-surface focus:outline-none py-2 text-[15px] text-on-surface placeholder:text-on-surface-variant"
+            />
             <div className="flex flex-wrap gap-2 items-center">
               {STATUS.map((s) => (
                 <button key={s} type="button" onClick={() => setStatus(s)} className="inline-flex">
@@ -107,7 +124,7 @@ function Inner() {
                 </button>
               ))}
               <span className="ml-auto text-[12px] text-on-surface-variant label-sm uppercase">
-                {total} {total === 1 ? 'book' : 'books'}
+                {total} {total === 1 ? 'novel' : 'novels'}
               </span>
             </div>
             {loading ? (

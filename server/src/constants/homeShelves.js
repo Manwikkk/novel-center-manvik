@@ -3,6 +3,7 @@
 /** Canonical book_tags.tag values that drive GET /api/v1/home. */
 const HOME_SHELF_TAGS = [
   'weekly_featured',
+  'meet_novel_centre',
   'new_arrivals',
   'potential_starlet',
   'rising_fictions',
@@ -18,6 +19,7 @@ const HOME_SHELF_TAGS = [
  */
 const HOME_SHELVES = [
   { tag: 'weekly_featured', label: 'Weekly Book', hint: 'Hero + New Arrivals' },
+  { tag: 'meet_novel_centre', label: 'Meet Novel Centre', hint: 'Hero — right column cards' },
   { tag: 'new_arrivals', label: 'Recommended', hint: 'Recommended rail' },
   { tag: 'potential_starlet', label: 'Ranking — Most Read', hint: 'Ranking left' },
   { tag: 'rising_fictions', label: 'Ranking — Trending', hint: 'Ranking middle' },

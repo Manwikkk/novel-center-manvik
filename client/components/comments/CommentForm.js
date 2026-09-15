@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import SpoilerToggle from './SpoilerToggle';
+import RestrictionNotice from './RestrictionNotice';
+import { useAuthStore } from '@/stores/authStore';
+import { restrictionNotice } from '@/lib/suspensionRestrictions';
 import { cn } from '@/lib/cn';
 
 /**
@@ -20,9 +23,20 @@ export default function CommentForm({
   const [body, setBody] = useState(initialBody);
   const [isSpoiler, setIsSpoiler] = useState(initialIsSpoiler);
   const [busy, setBusy] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const restriction = restrictionNotice(user, 'commenting');
+  const [noticeOpen, setNoticeOpen] = useState(false);
+
+  function revealRestriction() {
+    if (restriction) setNoticeOpen(true);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (restriction) {
+      setNoticeOpen(true);
+      return;
+    }
     const trimmed = body.trim();
     if (!trimmed) return;
     setBusy(true);
@@ -72,9 +86,18 @@ export default function CommentForm({
           rows={compact ? 3 : 4}
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onFocus={revealRestriction}
+          onClick={revealRestriction}
+          readOnly={!!restriction}
+          aria-invalid={restriction ? 'true' : undefined}
           placeholder={placeholder}
-          className={ta}
+          className={cn(ta, restriction && 'cursor-not-allowed')}
         />
+        {restriction && noticeOpen ? (
+          <div className="px-4 pb-4">
+            <RestrictionNotice notice={restriction} reader={reader} />
+          </div>
+        ) : null}
         <div className={cn('flex flex-wrap items-center justify-between gap-3 px-4 py-3', footer)}>
           {showSpoilerOption ? (
             <SpoilerToggle checked={isSpoiler} onChange={setIsSpoiler} reader={reader} />
@@ -85,7 +108,7 @@ export default function CommentForm({
             <span className={cn('text-[12px] tabular-nums', meta)}>
               {2000 - body.length} characters left
             </span>
-            <button type="submit" disabled={busy || !body.trim()} className={postBtn}>
+            <button type="submit" disabled={busy || !!restriction || !body.trim()} className={postBtn}>
               {busy ? 'Saving…' : submitLabel}
             </button>
           </div>

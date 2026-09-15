@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Icon from '@/components/ui/Icon';
 import SpoilerToggle from './SpoilerToggle';
 import StarRatingInput, { REVIEW_CATEGORIES, StarRatingDisplay, averageRating } from './StarRatingInput';
+import RestrictionNotice from './RestrictionNotice';
+import { useAuthStore } from '@/stores/authStore';
+import { restrictionNotice } from '@/lib/suspensionRestrictions';
 import { cn } from '@/lib/cn';
 
 const EMPTY_RATINGS = Object.fromEntries(REVIEW_CATEGORIES.map((c) => [c.key, 0]));
@@ -21,6 +24,14 @@ export default function WriteReviewModal({
   const [body, setBody] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [busy, setBusy] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  // Reviews are blocked by a review ban or by a general commenting ban.
+  const restriction = restrictionNotice(user, 'reviewing') || restrictionNotice(user, 'commenting');
+  const [noticeOpen, setNoticeOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) setNoticeOpen(false);
+  }, [open]);
 
   const total = useMemo(() => averageRating(ratings), [ratings]);
   const ratedCount = REVIEW_CATEGORIES.filter((c) => ratings[c.key] >= 1).length;
@@ -58,8 +69,16 @@ export default function WriteReviewModal({
 
   if (!open) return null;
 
+  function revealRestriction() {
+    if (restriction) setNoticeOpen(true);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (restriction) {
+      setNoticeOpen(true);
+      return;
+    }
     const trimmed = body.trim();
     if (!trimmed) return;
     if (ratedCount < REVIEW_CATEGORIES.length) return;
@@ -155,10 +174,18 @@ export default function WriteReviewModal({
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
+            onFocus={revealRestriction}
+            onClick={revealRestriction}
+            readOnly={!!restriction}
             rows={6}
             placeholder="Type your review here. Please write your review as detailed as you can. Your reviews would be very important to the story (at least 140 characters)."
-            className={cn('mt-6', ta)}
+            className={cn('mt-6', ta, restriction && 'cursor-not-allowed')}
           />
+          {restriction && noticeOpen ? (
+            <div className="mt-3">
+              <RestrictionNotice notice={restriction} reader={reader} />
+            </div>
+          ) : null}
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
             <SpoilerToggle checked={isSpoiler} onChange={setIsSpoiler} reader={reader} />
@@ -173,7 +200,7 @@ export default function WriteReviewModal({
               </span>
               <button
                 type="submit"
-                disabled={busy || !body.trim() || ratedCount < REVIEW_CATEGORIES.length}
+                disabled={busy || !!restriction || !body.trim() || ratedCount < REVIEW_CATEGORIES.length}
                 className={cn(
                   'rounded-full px-8 py-2.5 text-[12px] font-semibold uppercase tracking-widest transition-colors',
                   'bg-[#2563eb] text-white hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed',

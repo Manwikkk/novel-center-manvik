@@ -6,8 +6,8 @@ export const ADMIN_PAGE_DEFS = [
   { key: 'comments', label: 'Moderation', href: '/admin/comments', icon: 'gavel' },
   { key: 'transactions', label: 'Transactions', href: '/admin/transactions', icon: 'monitoring' },
   { key: 'reports', label: 'Reports', href: '/admin/reports', icon: 'assessment' },
-  { key: 'novels', label: 'Novels', href: '/admin/novels', icon: 'auto_stories' },
-  { key: 'books', label: 'Books', href: '/admin/books', icon: 'menu_book' },
+  // One "Novels" section; `novels` stays a permission alias of `books` (see hasAdminPermission).
+  { key: 'books', label: 'Novels', href: '/admin/books', icon: 'auto_stories' },
 ];
 
 export const ADMIN_CAPABILITY_DEFS = [

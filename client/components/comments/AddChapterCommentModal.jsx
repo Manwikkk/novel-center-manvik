@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Icon from '@/components/ui/Icon';
+import RestrictionNotice from './RestrictionNotice';
+import { useAuthStore } from '@/stores/authStore';
+import { restrictionNotice } from '@/lib/suspensionRestrictions';
 import { cn } from '@/lib/cn';
 
 /**
@@ -17,6 +20,13 @@ export default function AddChapterCommentModal({
 }) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const restriction = restrictionNotice(user, 'commenting');
+  const [noticeOpen, setNoticeOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) setNoticeOpen(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -41,8 +51,16 @@ export default function AddChapterCommentModal({
 
   if (!open) return null;
 
+  function revealRestriction() {
+    if (restriction) setNoticeOpen(true);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (restriction) {
+      setNoticeOpen(true);
+      return;
+    }
     const trimmed = body.trim();
     if (!trimmed) return;
     setBusy(true);
@@ -62,17 +80,18 @@ export default function AddChapterCommentModal({
         className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
         onClick={onClose}
       />
+      {/* Reader-themed (cream / sepia / dark), like the comments panel that opens it. */}
       <form
         onSubmit={handleSubmit}
-        className="relative w-full max-w-lg rounded-lg bg-white shadow-2xl overflow-hidden dark:bg-neutral-950"
+        className="relative w-full max-w-lg rounded-lg border border-[var(--reader-rule)] bg-[var(--reader-bg)] text-[var(--reader-fg)] shadow-2xl overflow-hidden"
       >
         <div className="h-1 bg-[#2563eb]" aria-hidden />
         <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <h2 className="font-serif text-[20px] text-ink-900 dark:text-neutral-100">{title}</h2>
+          <h2 className="font-serif text-[20px] text-[var(--reader-fg)]">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-ink-400 hover:text-ink-900 dark:hover:text-neutral-200 rounded-lg"
+            className="p-2 text-[var(--reader-muted)] hover:text-[var(--reader-fg)] rounded-lg"
             aria-label="Close"
           >
             <Icon name="close" size={22} />
@@ -82,19 +101,27 @@ export default function AddChapterCommentModal({
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
+            onFocus={revealRestriction}
+            onClick={revealRestriction}
+            readOnly={!!restriction}
             rows={8}
             autoFocus
             placeholder=""
             className={cn(
               'w-full resize-y border-0 bg-transparent p-0 text-[16px] leading-relaxed',
-              'text-ink-800 placeholder:text-ink-300 focus:outline-none focus:ring-0',
-              'dark:text-neutral-200 dark:placeholder:text-neutral-600',
+              'text-[var(--reader-fg)] placeholder:text-[var(--reader-muted)] focus:outline-none focus:ring-0',
+              restriction && 'cursor-not-allowed',
             )}
           />
+          {restriction && noticeOpen ? (
+            <div className="mt-3">
+              <RestrictionNotice notice={restriction} reader />
+            </div>
+          ) : null}
           <div className="mt-4 flex justify-end">
             <button
               type="submit"
-              disabled={busy || !body.trim()}
+              disabled={busy || !!restriction || !body.trim()}
               className="rounded-full bg-[#2563eb] px-10 py-2.5 text-[13px] font-semibold uppercase tracking-widest text-white hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {busy ? 'Saving…' : submitLabel}

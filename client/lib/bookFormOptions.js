@@ -38,8 +38,8 @@ export const WARNING_NOTICES = [
   { value: 'general_audiences', label: 'General Audiences' },
   { value: 'parental_guidance', label: 'Parental Guidance Suggested' },
   { value: 'parents_cautioned', label: 'Parents Strongly Cautioned' },
-  { value: 'restricted', label: 'Restricted' },
-  { value: 'no_one_17', label: 'No One 17 and Under Admitted' },
+  { value: 'restricted', label: 'Restricted (mature — readers 18+)' },
+  { value: 'no_one_17', label: 'No One 17 and Under Admitted (mature — readers 18+)' },
 ];
 
 export const TITLE_MAX = 70;

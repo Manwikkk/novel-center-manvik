@@ -1,6 +1,14 @@
 const SPLIT_WARNING =
   'This chapter exceeds 3,600 words. Consider splitting it into two chapters for a better reading experience.';
 
+/** Mirrors server/src/services/chapterPricing.service.js — whole-novel word gate for paid chapters. */
+export const PAID_CHAPTER_MIN_BOOK_WORDS = 40000;
+
+export function paidGateMessage(totalWords) {
+  return `Paid chapters unlock once the novel reaches ${PAID_CHAPTER_MIN_BOOK_WORDS.toLocaleString('en-US')} words`
+    + ` (currently ${Math.max(0, Number(totalWords) || 0).toLocaleString('en-US')}).`;
+}
+
 export function htmlToWordCount(html) {
   if (!html) return 0;
   const text = String(html)

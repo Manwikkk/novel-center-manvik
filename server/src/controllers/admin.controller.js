@@ -11,6 +11,7 @@ const { ADMIN_PERMISSION_DEFS, PAGE_PERMISSION_DEFS, CAPABILITY_PERMISSION_DEFS 
 const { STAFF_ROLE_TEMPLATES } = require('../constants/staffRoles');
 const auditSvc = require('../services/audit.service');
 const recycleSvc = require('../services/recycle.service');
+const moderationSvc = require('../services/moderation.service');
 
 const listUsers = asyncHandler(async (req, res) => {
   res.json(await adminSvc.listUsers(req.query, req.user));
@@ -114,6 +115,18 @@ const moderateComment = asyncHandler(async (req, res) => {
   res.json({ comment });
 });
 
+const moderationQueue = asyncHandler(async (req, res) => {
+  res.json(await moderationSvc.listQueue(req.query));
+});
+
+const resolveReports = asyncHandler(async (req, res) => {
+  res.json(await moderationSvc.resolveReports(
+    req.body,
+    { ...req.user, staffRole: req.staffRole },
+    req.adminPermissions,
+  ));
+});
+
 const stats = asyncHandler(async (_req, res) => {
   res.json(await adminSvc.stats());
 });
@@ -164,6 +177,7 @@ module.exports = {
   listUsers, updateUser, listStaff, createStaff, updateStaff, listPermissionDefs,
   listBooks, listTransactions,
   listComments, commentsByBook, commentsByChapter, moderateComment,
+  moderationQueue, resolveReports,
   stats, getPageSections, patchPageSections,
   getHomeShelves, getHomeBooks, setHomeBookTags,
   addHomeShelfBook, removeHomeShelfBook, addBookToAllHomeShelves,

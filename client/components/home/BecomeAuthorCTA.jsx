@@ -1,6 +1,13 @@
+'use client';
+
 import Link from 'next/link';
+import { useAuthStore } from '@/stores/authStore';
+import { isCreator } from '@/lib/experience';
 
 export default function BecomeAuthorCTA() {
+  const user = useAuthStore((s) => s.user);
+  // Members who already write get the studio strip at the top instead.
+  if (isCreator(user)) return null;
   return (
     <section className="max-w-[1280px] mx-auto px-4 md:px-edge mt-14 md:mt-16">
       <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-black shadow-editorial-card">

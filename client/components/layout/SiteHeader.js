@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Icon from '@/components/ui/Icon';
 import Avatar from '@/components/ui/Avatar';
@@ -10,7 +10,11 @@ import HeaderSearch from '@/components/search/HeaderSearch';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useSiteThemeStore } from '@/stores/siteThemeStore';
+import { useUiStore } from '@/stores/uiStore';
 import { formatTokens } from '@/lib/format';
+import { readingApi } from '@/lib/reading';
+import { profileApi } from '@/lib/profileApi';
+import { primaryNavFor, isCreator, hasReaderTools, experienceOf, STUDIO_LINKS } from '@/lib/experience';
 import { cn } from '@/lib/cn';
 
 const navCls = (active) =>
@@ -21,17 +25,72 @@ const navCls = (active) =>
       : 'text-ink-600 dark:text-neutral-400 hover:text-ink-900 dark:hover:text-white',
   );
 
-function NavLink({ href, label, pathname }) {
-  const active = pathname === href || (href !== '/' && pathname.startsWith(href));
+const menuItemCls =
+  'flex items-center gap-3 px-4 py-2.5 text-[13px] text-ink-800 dark:text-neutral-200 hover:bg-ink-900/5 dark:hover:bg-white/10 transition-colors';
+const menuLabelCls = 'px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-ink-400 dark:text-neutral-500';
+
+function isActivePath(pathname, href, exact) {
+  if (!href) return false;
+  if (exact) return pathname === href;
+  return pathname === href || (href !== '/' && pathname.startsWith(href));
+}
+
+function NavLink({ href, label, pathname, exact }) {
   return (
-    <Link href={href} className={navCls(active)}>
+    <Link href={href} className={navCls(isActivePath(pathname, href, exact))}>
       {label}
     </Link>
   );
 }
 
+/** Top-bar dropdown (e.g. "Studio" for members who read and write). */
+function NavMenu({ item, pathname }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+  const active = item.activePrefix ? pathname.startsWith(item.activePrefix) : false;
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(navCls(active), 'inline-flex items-center gap-1')}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        {item.label}
+        <Icon name="expand_more" size={18} />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute left-1/2 top-full mt-3 w-56 -translate-x-1/2 rounded-md border border-neutral-200 bg-white py-2 shadow-editorial-modal dark:border-neutral-700 dark:bg-neutral-950"
+        >
+          {item.menu.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className={cn(menuItemCls, isActivePath(pathname, link.href, link.exact) && 'text-ink-900 dark:text-white font-semibold')}
+            >
+              <Icon name={link.icon} size={18} className="text-ink-500 dark:text-neutral-400" />
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /**
- * Site chrome: Logo | Search | Browse | Create | Library (auth) | Ranking | Auth | Theme
+ * Site chrome: Logo | Search | role-aware navigation | Profile menu | Theme
  * Fixed top; pages use pt-20 (h-20).
  */
 export default function SiteHeader({ variant = 'translucent' }) {
@@ -48,6 +107,10 @@ export default function SiteHeader({ variant = 'translucent' }) {
   const refreshWallet = useWalletStore((s) => s.refresh);
   const siteTheme = useSiteThemeStore((s) => s.siteTheme);
   const toggleSiteTheme = useSiteThemeStore((s) => s.toggleSiteTheme);
+  const pushToast = useUiStore((s) => s.pushToast);
+
+  // Quick facts for the profile menu, fetched when it opens.
+  const [quick, setQuick] = useState({ recent: null, checkedIn: null, streak: 0, busy: false });
 
   useEffect(() => {
     if (user) refreshWallet();
@@ -61,7 +124,7 @@ export default function SiteHeader({ variant = 'translucent' }) {
   }, []);
 
   useEffect(() => {
-    if (!profileOpen) return;
+    if (!profileOpen) return undefined;
     const onDown = (e) => {
       if (!profileRef.current?.contains(e.target)) setProfileOpen(false);
     };
@@ -69,11 +132,47 @@ export default function SiteHeader({ variant = 'translucent' }) {
     return () => document.removeEventListener('mousedown', onDown);
   }, [profileOpen]);
 
-  const isGlass = variant !== 'solid' || scrolled;
+  const loadQuickFacts = useCallback(async () => {
+    if (!user) return;
+    const [recent, me] = await Promise.all([
+      hasReaderTools(user) ? readingApi.recent(1).catch(() => null) : Promise.resolve(null),
+      profileApi.me().catch(() => null),
+    ]);
+    const entry = Array.isArray(recent?.items) ? recent.items[0] : null;
+    setQuick((q) => ({
+      ...q,
+      recent: entry?.chapter?.id ? { chapterId: entry.chapter.id, title: entry.book?.title, idx: entry.chapter.idx, percent: Math.round(entry.percent || 0) } : null,
+      checkedIn: me?.dashboard ? !!me.dashboard.checkedInToday : null,
+      streak: Number(me?.dashboard?.readingStreak || me?.profile?.currentStreak || 0),
+    }));
+  }, [user]);
 
+  useEffect(() => {
+    if (profileOpen) loadQuickFacts();
+  }, [profileOpen, loadQuickFacts]);
+
+  async function handleCheckIn() {
+    if (quick.busy || quick.checkedIn) return;
+    setQuick((q) => ({ ...q, busy: true }));
+    try {
+      const res = await profileApi.checkIn();
+      setQuick((q) => ({ ...q, checkedIn: true, streak: Number(res?.currentStreak || q.streak + 1), busy: false }));
+      pushToast({ type: 'success', title: 'Checked in', message: `+${res?.xpAwarded || 10} XP · ${res?.currentStreak || 1}-day streak` });
+    } catch (err) {
+      setQuick((q) => ({ ...q, checkedIn: err.status === 409 ? true : q.checkedIn, busy: false }));
+      if (err.status !== 409) pushToast({ type: 'error', title: 'Check-in failed', message: err.message });
+    }
+  }
+
+  const isGlass = variant !== 'solid' || scrolled;
   const headerBg = isGlass
     ? 'bg-white/85 dark:bg-black/85 backdrop-blur-nav border-neutral-200/80 dark:border-neutral-800'
     : 'bg-white dark:bg-black border-transparent';
+
+  const navItems = primaryNavFor(user);
+  const creator = isCreator(user);
+  const readerTools = hasReaderTools(user);
+  const experience = experienceOf(user);
 
   function handleLogout() {
     logout();
@@ -81,6 +180,8 @@ export default function SiteHeader({ variant = 'translucent' }) {
     setOpen(false);
     router.push('/');
   }
+
+  const closeAll = () => { setProfileOpen(false); setOpen(false); };
 
   return (
     <header
@@ -98,11 +199,14 @@ export default function SiteHeader({ variant = 'translucent' }) {
           className="order-3 w-full lg:order-2 lg:w-auto lg:flex-1 lg:max-w-[220px] xl:max-w-xs"
         />
 
-        <nav className="hidden lg:flex items-center gap-5 xl:gap-6 order-2 lg:order-3 flex-1 justify-center min-w-0 overflow-x-auto no-scrollbar shrink-0">
-          <NavLink href="/discover" label="Browse" pathname={pathname} />
-          <NavLink href="/author/books/new" label="Create" pathname={pathname} />
-          {user ? <NavLink href="/library" label="Library" pathname={pathname} /> : null}
-          <NavLink href="/ranking" label="Ranking" pathname={pathname} />
+        <nav className="hidden lg:flex items-center gap-5 xl:gap-6 order-2 lg:order-3 flex-1 justify-center min-w-0 shrink-0">
+          {navItems.map((item) =>
+            item.menu ? (
+              <NavMenu key={item.label} item={item} pathname={pathname} />
+            ) : (
+              <NavLink key={item.href} href={item.href} label={item.label} pathname={pathname} exact={item.exact} />
+            ),
+          )}
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-4 order-2 lg:order-4 ml-auto shrink-0">
@@ -116,56 +220,88 @@ export default function SiteHeader({ variant = 'translucent' }) {
                 aria-haspopup="menu"
               >
                 <Avatar name={user.displayName} src={user.avatarUrl} size={32} />
-                <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-900 dark:text-neutral-100 max-w-[100px] truncate">
-                  Profile
+                <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-900 dark:text-neutral-100 max-w-[120px] truncate">
+                  {user.displayName?.split(/\s+/)[0] || 'Profile'}
                 </span>
                 <Icon name="expand_more" size={20} className="text-ink-600 dark:text-neutral-400" />
               </button>
               {profileOpen ? (
                 <div
-                  className="absolute right-0 top-full mt-1 py-2 w-52 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-950 shadow-editorial-modal z-50"
+                  className="absolute right-0 top-full mt-1 w-72 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-950 shadow-editorial-modal z-50 py-2"
                   role="menu"
                 >
-                  <Link
-                    href="/account"
-                    className="block px-4 py-2.5 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-800 dark:text-neutral-200 hover:bg-ink-900/5 dark:hover:bg-white/10"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    Account
+                  {/* identity */}
+                  <Link href="/account" onClick={closeAll} className="flex items-center gap-3 px-4 py-3 hover:bg-ink-900/5 dark:hover:bg-white/10">
+                    <Avatar name={user.displayName} src={user.avatarUrl} size={40} />
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-semibold text-ink-900 dark:text-neutral-100">{user.displayName}</p>
+                      <p className="text-[11px] uppercase tracking-widest text-ink-400 dark:text-neutral-500">
+                        {experience === 'both' ? 'Reader · Author' : experience === 'creator' ? 'Author' : 'Reader'} · View profile
+                      </p>
+                    </div>
                   </Link>
-                  <Link
-                    href="/wallet"
-                    className="flex items-center gap-2 px-4 py-2.5 font-ui-label-sm text-ui-label-sm text-ink-700 dark:text-neutral-300 hover:bg-ink-900/5 dark:hover:bg-white/10"
-                    onClick={() => setProfileOpen(false)}
+
+                  {/* daily check-in */}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleCheckIn}
+                    disabled={quick.busy || quick.checkedIn === true}
+                    className={cn(menuItemCls, 'w-full text-left disabled:cursor-default')}
                   >
-                    <Icon name="toll" filled size={18} />
-                    {formatTokens(balance)} tokens
+                    <Icon name={quick.checkedIn ? 'task_alt' : 'local_fire_department'} size={18} className={quick.checkedIn ? 'text-emerald-600' : 'text-gold-dim dark:text-gold'} />
+                    <span className="flex-1">
+                      {quick.checkedIn === null ? 'Daily check-in' : quick.checkedIn ? 'Checked in today' : 'Check in for today'}
+                    </span>
+                    {quick.streak > 0 ? <span className="text-[11px] text-ink-400 dark:text-neutral-500">{quick.streak}-day streak</span> : null}
+                  </button>
+
+                  {readerTools ? (
+                    <>
+                      <p className={menuLabelCls}>Reading</p>
+                      {quick.recent ? (
+                        <Link href={`/read/${quick.recent.chapterId}`} onClick={closeAll} className={menuItemCls} role="menuitem">
+                          <Icon name="play_circle" size={18} className="text-ink-500 dark:text-neutral-400" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">Continue: {quick.recent.title}</span>
+                            <span className="block text-[11px] text-ink-400 dark:text-neutral-500">Chapter {quick.recent.idx} · {quick.recent.percent}%</span>
+                          </span>
+                        </Link>
+                      ) : null}
+                      <Link href="/library" onClick={closeAll} className={menuItemCls} role="menuitem">
+                        <Icon name="bookmarks" size={18} className="text-ink-500 dark:text-neutral-400" />
+                        Library
+                      </Link>
+                    </>
+                  ) : null}
+
+                  {creator ? (
+                    <>
+                      <p className={menuLabelCls}>Studio</p>
+                      {STUDIO_LINKS.map((link) => (
+                        <Link key={link.href} href={link.href} onClick={closeAll} className={menuItemCls} role="menuitem">
+                          <Icon name={link.icon} size={18} className="text-ink-500 dark:text-neutral-400" />
+                          {link.label}
+                        </Link>
+                      ))}
+                    </>
+                  ) : user.role === 'user' ? (
+                    <Link href="/author/books/new" onClick={closeAll} className={menuItemCls} role="menuitem">
+                      <Icon name="edit_note" size={18} className="text-ink-500 dark:text-neutral-400" />
+                      Start writing
+                    </Link>
+                  ) : null}
+
+                  <p className={menuLabelCls}>Account</p>
+                  <Link href="/wallet" onClick={closeAll} className={menuItemCls} role="menuitem">
+                    <Icon name="toll" filled size={18} className="text-gold-dim dark:text-gold" />
+                    <span className="flex-1">Wallet</span>
+                    <span className="text-[12px] text-ink-500 dark:text-neutral-400">{formatTokens(balance)} tokens</span>
                   </Link>
-                  {(user.role === 'author' || user.role === 'admin') && (
-                    <Link
-                      href="/author"
-                      className="block px-4 py-2.5 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-800 dark:text-neutral-200 hover:bg-ink-900/5 dark:hover:bg-white/10"
-                      onClick={() => setProfileOpen(false)}
-                    >
-                      Studio
-                    </Link>
-                  )}
-                  {user.role === 'admin' && (
-                    <Link
-                      href="/admin"
-                      className="block px-4 py-2.5 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-800 dark:text-neutral-200 hover:bg-ink-900/5 dark:hover:bg-white/10"
-                      onClick={() => setProfileOpen(false)}
-                    >
-                      Admin
-                    </Link>
-                  )}
-                  {user.role === 'staff' && (
-                    <Link
-                      href="/admin"
-                      className="block px-4 py-2.5 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-800 dark:text-neutral-200 hover:bg-ink-900/5 dark:hover:bg-white/10"
-                      onClick={() => setProfileOpen(false)}
-                    >
-                      Admin Panel
+                  {(user.role === 'admin' || user.role === 'staff') && (
+                    <Link href="/admin" onClick={closeAll} className={menuItemCls} role="menuitem">
+                      <Icon name="admin_panel_settings" size={18} className="text-ink-500 dark:text-neutral-400" />
+                      {user.role === 'admin' ? 'Admin' : 'Admin panel'}
                     </Link>
                   )}
                   <div className="my-1 border-t border-neutral-200 dark:border-neutral-800" />
@@ -173,10 +309,10 @@ export default function SiteHeader({ variant = 'translucent' }) {
                     type="button"
                     role="menuitem"
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-2 px-4 py-2.5 font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-ink-800 dark:text-neutral-200 hover:bg-ink-900/5 dark:hover:bg-white/10"
+                    className={cn(menuItemCls, 'w-full text-left')}
                   >
-                    <Icon name="logout" size={18} />
-                    Logout
+                    <Icon name="logout" size={18} className="text-ink-500 dark:text-neutral-400" />
+                    Sign out
                   </button>
                 </div>
               ) : null}
@@ -222,57 +358,27 @@ export default function SiteHeader({ variant = 'translucent' }) {
       {open && (
         <div className="lg:hidden border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-black">
           <div className="px-4 py-4 flex flex-col gap-1 max-h-[70vh] overflow-y-auto">
-            <Link
-              href="/discover"
-              onClick={() => setOpen(false)}
-              className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest py-3 border-b border-neutral-200 dark:border-neutral-800 text-ink-800 dark:text-neutral-200"
-            >
-              Browse
-            </Link>
-            <Link
-              href="/author/books/new"
-              onClick={() => setOpen(false)}
-              className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest py-3 border-b border-neutral-200 dark:border-neutral-800 text-ink-800 dark:text-neutral-200"
-            >
-              Create
-            </Link>
-            {user ? (
+            {navItems.flatMap((item) => (item.menu ? item.menu : [item])).map((item) => (
               <Link
-                href="/library"
+                key={item.href}
+                href={item.href}
                 onClick={() => setOpen(false)}
                 className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest py-3 border-b border-neutral-200 dark:border-neutral-800 text-ink-800 dark:text-neutral-200"
               >
-                Library
+                {item.label}
               </Link>
-            ) : null}
-            <Link
-              href="/ranking"
-              onClick={() => setOpen(false)}
-              className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest py-3 border-b border-neutral-200 dark:border-neutral-800 text-ink-800 dark:text-neutral-200"
-            >
-              Ranking
-            </Link>
+            ))}
             {user ? (
               <div className="pt-3 flex flex-col gap-2 border-t border-neutral-200 dark:border-neutral-800 mt-2">
                 <Link href="/account" onClick={() => setOpen(false)} className="py-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200">
-                  Profile / Account
+                  Profile
                 </Link>
                 <Link href="/wallet" onClick={() => setOpen(false)} className="inline-flex items-center gap-2 py-2 text-ink-700 dark:text-neutral-300">
-                  <Icon name="toll" filled size={18} /> {formatTokens(balance)}
+                  <Icon name="toll" filled size={18} /> {formatTokens(balance)} tokens
                 </Link>
-                {(user.role === 'author' || user.role === 'admin') && (
-                  <Link href="/author" onClick={() => setOpen(false)} className="py-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200">
-                    Studio
-                  </Link>
-                )}
-                {user.role === 'admin' && (
+                {(user.role === 'admin' || user.role === 'staff') && (
                   <Link href="/admin" onClick={() => setOpen(false)} className="py-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200">
-                    Admin
-                  </Link>
-                )}
-                {user.role === 'staff' && (
-                  <Link href="/admin" onClick={() => setOpen(false)} className="py-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200">
-                    Admin Panel
+                    {user.role === 'admin' ? 'Admin' : 'Admin panel'}
                   </Link>
                 )}
                 <button
@@ -281,7 +387,7 @@ export default function SiteHeader({ variant = 'translucent' }) {
                   className="inline-flex items-center gap-2 py-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200 text-left"
                 >
                   <Icon name="logout" size={18} />
-                  Logout
+                  Sign out
                 </button>
               </div>
             ) : (
@@ -302,17 +408,6 @@ export default function SiteHeader({ variant = 'translucent' }) {
                 </Link>
               </div>
             )}
-            <div className="pt-4 flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800 mt-2">
-              <span className="text-[11px] font-medium uppercase tracking-widest text-ink-500 dark:text-neutral-500">Site theme</span>
-              <button
-                type="button"
-                onClick={() => toggleSiteTheme()}
-                className="flex items-center gap-2 font-ui-label-sm uppercase text-ink-800 dark:text-neutral-200"
-              >
-                <Icon name={siteTheme === 'dark' ? 'light_mode' : 'dark_mode'} size={22} />
-                {siteTheme === 'dark' ? 'Light' : 'Dark'}
-              </button>
-            </div>
           </div>
         </div>
       )}

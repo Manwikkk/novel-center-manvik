@@ -4,6 +4,16 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { api, setTokens, clearTokens, getAccessToken } from '@/lib/api';
 
+function isSameUser(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch (_e) {
+    return false;
+  }
+}
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -46,8 +56,14 @@ export const useAuthStore = create(
         return data;
       },
 
-      completeOnboarding: async (role) => {
-        const data = await api.post('/auth/onboarding', { role });
+      // Accepts an experience ('reader' | 'creator' | 'both') or a legacy role.
+      completeOnboarding: async (choice) => {
+        const body = typeof choice === 'object' && choice
+          ? choice
+          : ['reader', 'creator', 'both'].includes(choice)
+            ? { experience: choice }
+            : { role: choice };
+        const data = await api.post('/auth/onboarding', body);
         if (data.accessToken) {
           setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
         }
@@ -55,12 +71,39 @@ export const useAuthStore = create(
         return data.user;
       },
 
+      becomeAuthor: async () => {
+        const data = await api.post('/auth/become-author');
+        if (data.accessToken) {
+          setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+        }
+        set({ user: data.user, hydrated: true });
+        return data.user;
+      },
+
+      // Switch between reader / creator / both. Moving a reader account to a
+      // creator experience also makes it an author, so tokens are reissued.
+      setExperience: async (experience) => {
+        const data = await api.patch('/auth/me', { experience });
+        let user = data.user;
+        if (user && user.role === 'author' && get().user?.role === 'user') {
+          const upgraded = await api.post('/auth/become-author');
+          if (upgraded.accessToken) {
+            setTokens({ accessToken: upgraded.accessToken, refreshToken: upgraded.refreshToken });
+          }
+          user = upgraded.user;
+        }
+        set({ user, hydrated: true });
+        return user;
+      },
+
       logout: () => {
         clearTokens();
         set({ user: null });
       },
 
-      setUser: (user) => set({ user }),
+      // Session polling re-sends the same profile every 30s; skip identical
+      // payloads so effects keyed on `user` don't refetch and reset their UI.
+      setUser: (user) => set((s) => (isSameUser(s.user, user) ? {} : { user })),
 
       hasRole: (...roles) => {
         const u = get().user;

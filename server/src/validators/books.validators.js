@@ -38,6 +38,7 @@ module.exports = {
       category: Joi.string().trim().max(80),
       status: Joi.string().valid('draft', 'published', 'archived'),
       tag: homeBrowseTag,
+      contentTag: Joi.string().trim().max(64),
       page: Joi.number().integer().min(1).default(1),
       pageSize: Joi.number().integer().min(1).max(60).default(12),
     }),
@@ -62,6 +63,14 @@ module.exports = {
       contentTagIds,
       coverUrl: Joi.string().uri().max(500).allow('', null),
       status: status.default('draft'),
+    }),
+  },
+  report: {
+    body: Joi.object({
+      reason: Joi.string()
+        .valid('plagiarism', 'copyright', 'inappropriate', 'spam', 'harassment', 'other')
+        .required(),
+      details: Joi.string().trim().max(500).allow('', null),
     }),
   },
   update: {

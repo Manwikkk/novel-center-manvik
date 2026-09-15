@@ -8,17 +8,21 @@ import BookDetailClient from './BookDetailClient';
 import BookTabsClient from './BookTabsClient';
 import BookActionsMenu from '@/components/book/BookActionsMenu';
 import YouMayAlsoLikeSection from '@/components/book/YouMayAlsoLikeSection';
+import { genreLabel } from '@/lib/bookFormOptions';
+import { cn } from '@/lib/cn';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 async function fetchBook(slug) {
+  let r;
   try {
-    const r = await fetch(`${API}/api/v1/books/${slug}`, { cache: 'no-store' });
-    if (!r.ok) return null;
-    return await r.json();
+    r = await fetch(`${API}/api/v1/books/${slug}`, { cache: 'no-store' });
   } catch (_e) {
-    return null;
+    // Network failure (API down) — surface the error page, not a misleading 404.
+    throw new Error('The Novel Centre API could not be reached.');
   }
+  if (!r.ok) return null;
+  return await r.json();
 }
 
 async function fetchChapters(bookId) {
@@ -66,10 +70,10 @@ export default async function BookDetailPage({ params }) {
   const initialChapters = ch.items || [];
   const moreLike = await fetchMoreLike(slug);
 
-  // Naive per-book stats so the badges aren't blank if the API doesn't
-  // surface them. These are visual fillers, not source-of-truth.
-  const rating = book.rating || 4.8;
-  const reviews = book.reviewCount || 2041;
+  // Score comes from the catalogue (books.score); views from the API counter.
+  const rating = book.score != null && Number.isFinite(Number(book.score)) ? Number(book.score) : null;
+  const reviews = Number(book.reviewCount) || 0;
+  const views = Number(book.viewCount) || 0;
   const pages = book.pageCount || estimatePages(initialChapters);
 
   return (
@@ -80,7 +84,7 @@ export default async function BookDetailPage({ params }) {
         {/* HERO (WebNovel-like compact layout) */}
         <section className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 md:gap-10 items-start mb-14 md:mb-16">
           <div className="w-full md:w-[240px]">
-            <div className="relative w-full aspect-[3/4] bg-neutral-100 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+            <div className="relative w-full aspect-[2/3] bg-neutral-100 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-book overflow-hidden">
               {book.coverUrl ? (
                 <img
                   src={book.coverUrl}
@@ -104,6 +108,22 @@ export default async function BookDetailPage({ params }) {
               <BookActionsMenu book={book} />
             </div>
 
+            {book.isOriginal || book.isMature ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {book.isOriginal ? (
+                  <Chip title="A Novel Centre Original">Original</Chip>
+                ) : null}
+                {book.isMature ? (
+                  <Chip
+                    title="Mature content — for readers aged 18 and over"
+                    className="border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200"
+                  >
+                    Mature 18+
+                  </Chip>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-ink-600 dark:text-neutral-400">
               <span className="inline-flex items-center gap-2 text-sm">
                 <Icon name="category" size={18} className="opacity-80" />
@@ -121,21 +141,19 @@ export default async function BookDetailPage({ params }) {
               </span>
               <span className="inline-flex items-center gap-2 text-sm">
                 <Icon name="visibility" size={18} className="opacity-80" />
-                60.1K Views
+                {compactNumber(views)} {views === 1 ? 'View' : 'Views'}
               </span>
             </div>
-            {(book.contentTags || []).length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(book.contentTags || []).map((t) => (
-                  <span
-                    key={t.id}
-                    className="inline-flex items-center rounded-full border border-ink-200/80 bg-cream-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-ink-700 dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-200"
-                  >
-                    {t.label}
-                  </span>
-                ))}
+            {book.genre ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-500 dark:text-neutral-500">
+                  Genre
+                </span>
+                <span className="inline-flex items-center rounded-full border border-ink-200/80 bg-cream-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-ink-700 dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-200">
+                  {genreLabel(book.genre, book.leadingGender || 'male')}
+                </span>
               </div>
-            )}
+            ) : null}
 
             <p className="mt-3 text-sm text-ink-600 dark:text-neutral-400">
               Author:{' '}
@@ -151,9 +169,11 @@ export default async function BookDetailPage({ params }) {
               )}
             </p>
 
-            <div className="mt-4 flex items-center gap-3">
-              <StarRating rating={rating} reviews={reviews} />
-            </div>
+            {rating != null ? (
+              <div className="mt-4 flex items-center gap-3">
+                <StarRating rating={rating} reviews={reviews} />
+              </div>
+            ) : null}
 
             <div className="mt-6">
               <BookDetailClient book={book} initialChapters={initialChapters} mode="cta" />
@@ -195,9 +215,15 @@ export default async function BookDetailPage({ params }) {
   );
 }
 
-function Chip({ children }) {
+function Chip({ children, className, title }) {
   return (
-    <span className="px-3 py-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-full font-ui-label-sm text-ui-label-sm text-ink-900 dark:text-neutral-100 uppercase tracking-widest">
+    <span
+      title={title}
+      className={cn(
+        'px-3 py-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-full font-ui-label-sm text-ui-label-sm text-ink-900 dark:text-neutral-100 uppercase tracking-widest',
+        className,
+      )}
+    >
       {children}
     </span>
   );
@@ -218,7 +244,8 @@ function StarRating({ rating, reviews }) {
     <div className="flex items-center gap-1">
       {stars}
       <span className="font-ui-label-sm text-ui-label-sm text-ink-600 dark:text-neutral-400 ml-2">
-        {rating.toFixed(1)} ({reviews.toLocaleString()} Reviews)
+        {rating.toFixed(1)}
+        {reviews > 0 ? ` (${reviews.toLocaleString()} ${reviews === 1 ? 'Review' : 'Reviews'})` : ''}
       </span>
     </div>
   );
@@ -272,6 +299,13 @@ function AuthorCard({ authorId, name, avatarUrl, location, bio }) {
       )}
     </div>
   );
+}
+
+function compactNumber(n) {
+  const v = Number(n) || 0;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(v >= 10_000 ? 0 : 1)}K`;
+  return String(v);
 }
 
 function estimatePages(chapters = []) {

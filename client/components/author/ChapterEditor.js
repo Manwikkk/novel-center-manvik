@@ -88,7 +88,8 @@ export default function ChapterEditor({ value, onChange }) {
         </button>
       </div>
       <div className="border border-surface-variant rounded-md bg-surface-container-lowest overflow-hidden">
-        <div className="h-[60vh] overflow-y-auto">
+        {/* color-scheme keeps the native scrollbar in step with the site theme (dark mode). */}
+        <div className="h-[60vh] overflow-y-auto [color-scheme:light] dark:[color-scheme:dark]">
           <EditorContent editor={editor} />
         </div>
       </div>

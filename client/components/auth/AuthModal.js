@@ -9,11 +9,12 @@ import { cn } from '@/lib/cn';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import AuthSocialDivider from '@/components/auth/AuthSocialDivider';
 import RolePicker from '@/components/auth/RolePicker';
+import { landingFor, roleForExperience } from '@/lib/experience';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 
-function LoginPanel({ onSuccess }) {
+function LoginPanel({ onSuccess, onForgot }) {
   const login = useAuthStore((s) => s.login);
   const refreshWallet = useWalletStore((s) => s.refresh);
   const pushToast = useUiStore((s) => s.pushToast);
@@ -61,6 +62,15 @@ function LoginPanel({ onSuccess }) {
         required
         autoComplete="current-password"
       />
+      <div className="flex justify-end -mt-1">
+        <button
+          type="button"
+          onClick={onForgot}
+          className="text-[12px] font-semibold text-ink-700 underline decoration-gold decoration-2 underline-offset-4 hover:text-ink-900"
+        >
+          Forgot password?
+        </button>
+      </div>
       <Button
         type="submit"
         variant="primary"
@@ -79,7 +89,7 @@ function RegisterPanel({ onSuccess }) {
   const register = useAuthStore((s) => s.register);
   const refreshWallet = useWalletStore((s) => s.refresh);
   const pushToast = useUiStore((s) => s.pushToast);
-  const [form, setForm] = useState({ displayName: '', email: '', password: '', role: 'user' });
+  const [form, setForm] = useState({ displayName: '', email: '', password: '', experience: 'reader' });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,12 +114,12 @@ function RegisterPanel({ onSuccess }) {
     setError('');
     try {
       const hadPendingAction = !!useUiStore.getState()._authOnSuccess;
-      const user = await register(form);
+      const user = await register({ ...form, role: roleForExperience(form.experience) });
       await refreshWallet().catch(() => {});
       pushToast({ type: 'success', title: 'Account created' });
       onSuccess?.();
-      if (user.role === 'author' && !hadPendingAction) {
-        router.push('/author');
+      if (!hadPendingAction && landingFor(user) !== '/') {
+        router.push(landingFor(user));
       }
     } catch (err) {
       setError(err.message || 'Could not create account.');
@@ -164,7 +174,7 @@ function RegisterPanel({ onSuccess }) {
         </span>
       </label>
       {fieldErrors.terms ? <p className="text-[12px] text-danger -mt-2">{fieldErrors.terms}</p> : null}
-      <RolePicker value={form.role} onChange={(role) => setForm((f) => ({ ...f, role }))} />
+      <RolePicker surface="light" value={form.experience} onChange={(experience) => setForm((f) => ({ ...f, experience }))} />
       <Button
         type="submit"
         variant="primary"
@@ -204,13 +214,16 @@ export default function AuthModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+    // The overlay scrolls: the register form is taller than short viewports, and a
+    // centred, non-scrolling card would clip its top edge (and the close button).
+    <div className="fixed inset-0 z-[90] overflow-y-auto">
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+        className="fixed inset-0 bg-black/55 backdrop-blur-[2px]"
         onClick={closeAuthModal}
       />
+      <div className="flex min-h-full items-center justify-center p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -269,7 +282,10 @@ export default function AuthModal() {
             />
           <AuthSocialDivider />
           {tab === 'login' ? (
-            <LoginPanel onSuccess={handleSuccess} />
+            <LoginPanel
+              onSuccess={handleSuccess}
+              onForgot={() => { closeAuthModal(); router.push('/auth/forgot-password'); }}
+            />
           ) : (
             <RegisterPanel onSuccess={handleSuccess} />
           )}
@@ -300,6 +316,7 @@ export default function AuthModal() {
             </>
           )}
         </p>
+      </div>
       </div>
     </div>
   );

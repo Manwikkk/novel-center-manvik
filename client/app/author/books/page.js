@@ -65,12 +65,12 @@ function AuthorBooks() {
   }, [user, page, filter, pushToast]);
 
   async function handleDelete(book) {
-    if (!confirm(`Delete "${book.title}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete "${book.title}"? It moves to the recycle bin, where an admin can restore it.`)) return;
     try {
       await api.delete(`/books/${book.id}`);
       setItems((prev) => prev.filter((b) => b.id !== book.id));
       setTotal((t) => Math.max(0, t - 1));
-      pushToast({ type: 'success', title: 'Book deleted' });
+      pushToast({ type: 'success', title: 'Book moved to recycle bin' });
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not delete', message: err.message });
     }

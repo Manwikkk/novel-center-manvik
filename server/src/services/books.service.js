@@ -31,6 +31,7 @@ function rowToBook(row, opts = {}) {
     abbreviation: row.abbreviation || null,
     bookLength: row.book_length || null,
     warningNotice: row.warning_notice || null,
+    isMature: bookMeta.isMatureNotice(row.warning_notice),
     score: row.score == null ? null : Number(row.score),
     chapterNum: row.chapter_num != null ? Number(row.chapter_num) : 0,
     externalLink: row.external_link || null,
@@ -92,6 +93,21 @@ async function assertLanguageAllowed(languageId, user) {
   if (!rows[0]) throw errors.badRequest('Invalid or inactive language');
 }
 
+// One author cannot own two live (non-recycled) novels with the same title.
+async function assertTitleAvailable(authorId, title, { excludeId = null } = {}) {
+  const wanted = String(title || '').trim();
+  if (!wanted) return;
+  const params = [authorId, wanted];
+  let sql = `SELECT id FROM books
+              WHERE author_id = ? AND LOWER(title) = LOWER(?) AND recycled_at IS NULL`;
+  if (excludeId != null) {
+    sql += ' AND id <> ?';
+    params.push(excludeId);
+  }
+  const [rows] = await pool.execute(`${sql} LIMIT 1`, params);
+  if (rows[0]) throw errors.conflict('You already have a novel with this title');
+}
+
 async function uniqueSlug(base) {
   const root = slugify(base, { lower: true, strict: true }).slice(0, 200) || 'book';
   let candidate = root;
@@ -107,7 +123,7 @@ async function uniqueSlug(base) {
 
 const RANKING_HOME_TAGS = ['potential_starlet', 'rising_fictions', 'new_arrivals', 'completed_novel'];
 
-async function list({ q, author, category, status, tag, page, pageSize }, viewer) {
+async function list({ q, author, category, status, tag, contentTag, page, pageSize }, viewer) {
   const where = ['b.recycled_at IS NULL'];
   const params = [];
 
@@ -145,6 +161,15 @@ async function list({ q, author, category, status, tag, page, pageSize }, viewer
       'EXISTS (SELECT 1 FROM book_tags btx WHERE btx.book_id = b.id AND btx.tag = ?)',
     );
     params.push(tag);
+  }
+  if (contentTag) {
+    // Author-facing content tag (catalog_content_tags.slug), independent of home shelves.
+    where.push(
+      `EXISTS (SELECT 1 FROM book_content_tags bct
+                 JOIN catalog_content_tags ct ON ct.id = bct.tag_id
+                WHERE bct.book_id = b.id AND ct.slug = ? AND ct.is_active = 1)`,
+    );
+    params.push(contentTag);
   }
 
   const { page: safePage, pageSize: safePageSize, offset } = clampPagination(page, pageSize);
@@ -274,6 +299,7 @@ async function create(body, authorId, user) {
   } = body;
 
   validateBookMetadata(body, { requireSynopsis: true });
+  await assertTitleAvailable(authorId, title);
 
   let langId = languageId != null ? Number(languageId) : null;
   if (langId == null) langId = await defaultLanguageId();
@@ -323,7 +349,7 @@ async function create(body, authorId, user) {
 }
 
 function assertOwnerOrAdmin(book, user) {
-  if (!book) throw errors.notFound('Book not found');
+  if (!book || book.recycled_at) throw errors.notFound('Book not found');
   if (user.role !== 'admin' && book.author_id !== user.id) throw errors.forbidden();
 }
 
@@ -333,6 +359,10 @@ async function update(id, patch, user) {
 
   const book = await getById(id);
   assertOwnerOrAdmin(book, user);
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'title')) {
+    await assertTitleAvailable(book.author_id, patch.title, { excludeId: id });
+  }
 
   const leadingGender = patch.leadingGender !== undefined ? patch.leadingGender : book.leadingGender;
   const genre = patch.genre !== undefined ? patch.genre : book.genre;
@@ -407,16 +437,41 @@ async function update(id, patch, user) {
   return getBySlug(row.slug, user);
 }
 
+// Author/admin "delete" is a soft delete: the book (and its chapters) move to the
+// admin recycle bin, where it can be restored. Nothing is removed from storage.
 async function remove(id, user) {
   const userRow = await resolveUserRow(user.id);
   assertRestriction(userRow, 'publishing', 'Publishing is restricted on your account');
 
   const book = await getById(id);
   assertOwnerOrAdmin(book, user);
-  if (book.cover_storage_key) {
-    try { await storage.remove(book.cover_storage_key); } catch (_) { /* ignore */ }
+  if (book.recycled_at) throw errors.notFound('Book not found');
+  const recycleSvc = require('./recycle.service');
+  await recycleSvc.recycleBook(id, user);
+  return { ok: true };
+}
+
+// Reader report on a novel (one open report per user per book; admins see it in the moderation queue).
+const BOOK_REPORT_REASONS = new Set(['plagiarism', 'copyright', 'inappropriate', 'spam', 'harassment', 'other']);
+
+async function reportBook(id, { reason, details }, userId) {
+  const book = await getById(id);
+  if (!book || book.recycled_at || book.status !== 'published') throw errors.notFound('Book not found');
+  if (Number(book.author_id) === Number(userId)) throw errors.badRequest('You cannot report your own novel');
+  if (!BOOK_REPORT_REASONS.has(reason)) throw errors.badRequest('Invalid report reason');
+
+  const cleanDetails = details ? String(details).trim().slice(0, 500) : null;
+  try {
+    await pool.execute(
+      'INSERT INTO book_reports (book_id, user_id, reason, details) VALUES (?, ?, ?, ?)',
+      [id, userId, reason, cleanDetails],
+    );
+  } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY') {
+      throw errors.conflict('You have already reported this novel');
+    }
+    throw err;
   }
-  await pool.execute('DELETE FROM books WHERE id = ?', [id]);
   return { ok: true };
 }
 
@@ -438,6 +493,6 @@ async function setCover(id, file, user) {
 }
 
 module.exports = {
-  list, getBySlug, getById, getByIdForViewer, create, update, remove, setCover,
+  list, getBySlug, getById, getByIdForViewer, create, update, remove, setCover, reportBook,
   rowToBook, assertOwnerOrAdmin,
 };

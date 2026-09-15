@@ -1,19 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-
-const DUMMY_TAGS = [
-  'ACTION',
-  'ADVENTURE',
-  'ROMANCE',
-  'SYSTEM',
-  'MAGIC',
-  'WEAKTOSTRONG',
-  'SUPERPOWERS',
-  'TRANSMIGRATION',
-  'ANTI_HERO',
-  'THESTRONGACTINGWEAK',
-];
+import Link from 'next/link';
 
 /*
 const DUMMY_FANS = [
@@ -58,24 +46,27 @@ export default function BookTabsClient({ book, toc }) {
             </p>
           </div>
 
-          {/* Tags */}
-          <div>
-            <h3 className="font-ui-label-lg text-ui-label-lg font-semibold text-ink-900 dark:text-neutral-100">
-              Tags
-            </h3>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {DUMMY_TAGS.map((t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-300 px-3 py-1 text-[11px] uppercase tracking-widest"
-                >
-                  <span className="opacity-80">#</span>
-                  {t}
-                  <span className="ml-1 opacity-50">♡</span>
-                </span>
-              ))}
+          {/* Tags — the content tags chosen for this book in Author Studio */}
+          {(book?.contentTags || []).length > 0 ? (
+            <div>
+              <h3 className="font-ui-label-lg text-ui-label-lg font-semibold text-ink-900 dark:text-neutral-100">
+                Tags
+              </h3>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {book.contentTags.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={`/discover?tag=${encodeURIComponent(t.slug)}`}
+                    title={`Browse books tagged ${t.label}`}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-300 px-3 py-1 text-[11px] uppercase tracking-widest transition-colors hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                  >
+                    <span className="opacity-80">#</span>
+                    {t.label}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {/*
           Fans section (placeholder) — disabled per product request.

@@ -1,13 +1,24 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MoreVertical, Check } from 'lucide-react';
+import { MoreVertical, Check, Flag } from 'lucide-react';
 import { openAuthModal } from '@/lib/authModal';
+import { api } from '@/lib/api';
 import { libraryApi } from '@/lib/library';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
 import AddToCollectionModal from '@/components/book/AddToCollectionModal';
+import ReportCommentModal from '@/components/comments/ReportCommentModal';
 import { cn } from '@/lib/cn';
+
+const NOVEL_REPORT_REASONS = [
+  { value: 'plagiarism', label: 'Plagiarism or stolen work' },
+  { value: 'copyright', label: 'Copyright violation' },
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'spam', label: 'Spam or misleading listing' },
+  { value: 'harassment', label: 'Harassment or hate' },
+  { value: 'other', label: 'Other' },
+];
 
 const STATUS_ITEMS = [
   { key: 'archive', label: 'Add to Archive' },
@@ -27,6 +38,7 @@ export default function BookActionsMenu({ book }) {
   const pushToast = useUiStore((s) => s.pushToast);
   const [open, setOpen] = useState(false);
   const [collectionOpen, setCollectionOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [readingStatus, setReadingStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   const rootRef = useRef(null);
@@ -63,6 +75,20 @@ export default function BookActionsMenu({ book }) {
       message: 'Sign in to organize books in your library.',
       onSuccess: action,
     });
+  }
+
+  async function submitReport({ reason, details }) {
+    try {
+      await api.post(`/books/${book.id}/report`, { reason, details });
+      pushToast({
+        type: 'success',
+        title: 'Report submitted',
+        message: 'Thanks — our moderators will review this novel.',
+      });
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Could not report', message: err.message });
+      throw err;
+    }
   }
 
   async function setStatus(status) {
@@ -133,9 +159,41 @@ export default function BookActionsMenu({ book }) {
                 {readingStatus === item.key ? <Check size={16} className="shrink-0" /> : null}
               </button>
             ))}
+            {user?.id !== book?.authorId ? (
+              <>
+                <div className="my-1 h-px bg-neutral-100 dark:bg-neutral-800" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    if (user) {
+                      setReportOpen(true);
+                      return;
+                    }
+                    openAuthModal({
+                      message: 'Sign in to report this novel.',
+                      onSuccess: () => setReportOpen(true),
+                    });
+                  }}
+                  className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm text-danger hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                >
+                  <Flag size={15} className="shrink-0" />
+                  Report novel
+                </button>
+              </>
+            ) : null}
           </div>
         ) : null}
       </div>
+
+      <ReportCommentModal
+        open={reportOpen}
+        title="Report novel"
+        reasons={NOVEL_REPORT_REASONS}
+        onClose={() => setReportOpen(false)}
+        onSubmit={submitReport}
+      />
 
       <AddToCollectionModal
         open={collectionOpen}

@@ -13,4 +13,9 @@ const recent = asyncHandler(async (req, res) => {
   res.json(await svc.recent(req.user.id, req.query));
 });
 
-module.exports = { saveProgress, recent };
+const bookProgress = asyncHandler(async (req, res) => {
+  const progress = await svc.latestForBook(req.user.id, Number(req.params.bookId));
+  res.json({ progress });
+});
+
+module.exports = { saveProgress, recent, bookProgress };

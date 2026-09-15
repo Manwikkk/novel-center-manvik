@@ -3,8 +3,14 @@
 const Joi = require('joi');
 const { ALL_PERMISSION_KEYS } = require('../constants/adminPermissions');
 const { STAFF_ROLE_KEYS } = require('../constants/staffRoles');
+const { RESTRICTION_KEYS } = require('../constants/suspensionRestrictions');
+const { HOME_SHELF_TAGS } = require('../constants/homeShelves');
 
 const permissionSchema = Joi.string().valid(...ALL_PERMISSION_KEYS);
+const restrictionKey = Joi.string().valid(...RESTRICTION_KEYS);
+const restrictionsObject = Joi.object(
+  Object.fromEntries(RESTRICTION_KEYS.map((k) => [k, Joi.boolean()])),
+).min(1);
 
 module.exports = {
   listUsers: {
@@ -21,19 +27,17 @@ module.exports = {
       role: Joi.string().valid('admin', 'author', 'user'),
       status: Joi.string().valid('active', 'suspended'),
       suspensionType: Joi.string().valid('permanent', 'temporary'),
-      restrictions: Joi.object({
-        portal_access: Joi.boolean(),
-        reading: Joi.boolean(),
-        commenting: Joi.boolean(),
-        publishing: Joi.boolean(),
-      }).min(1),
-      removeRestrictions: Joi.array().items(
-        Joi.string().valid('portal_access', 'reading', 'commenting', 'publishing'),
-      ).min(1),
+      restrictions: restrictionsObject,
+      removeRestrictions: Joi.array().items(restrictionKey).min(1),
+      // Extend an existing suspension with more restrictions (keeps its duration).
+      addRestrictions: Joi.array().items(restrictionKey).min(1),
       walletDelta: Joi.number().integer().invalid(0),
     }).min(1).custom((value, helpers) => {
       if (value.removeRestrictions?.length && value.status === 'active') {
         return helpers.message('Use removeRestrictions or status active, not both');
+      }
+      if (value.addRestrictions?.length && (value.status || value.removeRestrictions?.length)) {
+        return helpers.message('addRestrictions cannot be combined with status or removeRestrictions');
       }
       if (value.status === 'suspended') {
         if (!value.suspensionType) {
@@ -140,6 +144,21 @@ module.exports = {
       status: Joi.string().valid('visible', 'hidden', 'deleted').required(),
     }),
   },
+  moderationQueue: {
+    query: Joi.object({
+      kind: Joi.string().valid('all', 'comment', 'review', 'book').default('all'),
+      status: Joi.string().valid('open', 'resolved').default('open'),
+      page: Joi.number().integer().min(1).default(1),
+      pageSize: Joi.number().integer().min(1).max(50).default(20),
+    }),
+  },
+  resolveReports: {
+    body: Joi.object({
+      kind: Joi.string().valid('comment', 'book').required(),
+      targetId: Joi.number().integer().positive().required(),
+      resolution: Joi.string().valid('dismissed', 'actioned').default('dismissed'),
+    }),
+  },
   patchPageSections: {
     body: Joi.object({
       weekly_book: Joi.boolean(),
@@ -156,16 +175,7 @@ module.exports = {
   },
   homeShelfTagParam: {
     params: Joi.object({
-      tag: Joi.string().valid(
-        'weekly_featured',
-        'new_arrivals',
-        'potential_starlet',
-        'rising_fictions',
-        'cheering_reads',
-        'editors_choice',
-        'completed_novel',
-        'originals',
-      ).required(),
+      tag: Joi.string().valid(...HOME_SHELF_TAGS).required(),
     }),
   },
   listHomeBooks: {
@@ -175,16 +185,7 @@ module.exports = {
   },
   setHomeBookTags: {
     body: Joi.object({
-      tags: Joi.array().items(Joi.string().valid(
-        'weekly_featured',
-        'new_arrivals',
-        'potential_starlet',
-        'rising_fictions',
-        'cheering_reads',
-        'editors_choice',
-        'completed_novel',
-        'originals',
-      )).required(),
+      tags: Joi.array().items(Joi.string().valid(...HOME_SHELF_TAGS)).required(),
     }),
   },
   addHomeShelfBook: {
@@ -194,16 +195,7 @@ module.exports = {
   },
   removeHomeShelfBook: {
     params: Joi.object({
-      tag: Joi.string().valid(
-        'weekly_featured',
-        'new_arrivals',
-        'potential_starlet',
-        'rising_fictions',
-        'cheering_reads',
-        'editors_choice',
-        'completed_novel',
-        'originals',
-      ).required(),
+      tag: Joi.string().valid(...HOME_SHELF_TAGS).required(),
       bookId: Joi.number().integer().positive().required(),
     }),
   },

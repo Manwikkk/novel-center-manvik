@@ -127,16 +127,23 @@ function RankList({ title, items, seed = 0, viewAllHref }) {
   );
 }
 
-export default function RankingNovelsSection({ mostRead = [], trending = [], highlyRated = [] }) {
+export default function RankingNovelsSection({
+  mostRead = [],
+  trending = [],
+  highlyRated = [],
+  heading = 'Ranking Novels',
+}) {
   if (mostRead.length === 0 && trending.length === 0 && highlyRated.length === 0) return null;
 
   return (
     <section className="max-w-[1280px] mx-auto px-4 md:px-edge mt-14 md:mt-16">
-      <div className="mb-6">
-        <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100">
-          Ranking Novels
-        </h2>
-      </div>
+      {heading ? (
+        <div className="mb-6">
+          <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100">
+            {heading}
+          </h2>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
         <RankList title="Most Read" items={mostRead} seed={1} viewAllHref="/sections/most-read" />

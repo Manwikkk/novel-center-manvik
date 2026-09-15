@@ -5,8 +5,50 @@ const { errors } = require('../utils/HttpError');
 const { sanitizeChapterHtml, sanitizeAuthorThought } = require('../utils/htmlSanitize');
 const booksService = require('./books.service');
 const { htmlToWordCount, minutesFromWords } = require('./reading.service');
-const { pricingFromContent, getSplitWarning } = require('./chapterPricing.service');
+const {
+  pricingFromContent,
+  getSplitWarning,
+  PAID_CHAPTER_MIN_BOOK_WORDS,
+  paidGateMessage,
+} = require('./chapterPricing.service');
 const { resolveUserRow, hasRestriction, assertRestriction } = require('./suspension.service');
+const { assertMatureAccess } = require('./ageGate');
+
+// Placeholder title given to auto-created chapters; it never counts as a real name.
+const DEFAULT_CHAPTER_TITLE = 'Untitled chapter';
+
+function isUnnamedTitle(title) {
+  const t = String(title || '').trim();
+  return !t || t.toLowerCase() === DEFAULT_CHAPTER_TITLE.toLowerCase();
+}
+
+// A chapter that is published (or scheduled to publish) must carry a real title.
+function assertNamedForPublish(title, { status, scheduledAt }) {
+  if (status !== 'published' && !scheduledAt) return;
+  if (isUnnamedTitle(title)) {
+    throw errors.badRequest('Name the chapter before publishing it');
+  }
+}
+
+// Total words across every non-recycled chapter of a book (drafts included).
+async function bookWordCount(bookId, { excludeChapterId = null } = {}) {
+  const [rows] = await pool.execute(
+    'SELECT id, content_html FROM chapters WHERE book_id = ? AND recycled_at IS NULL',
+    [bookId],
+  );
+  return rows.reduce((sum, r) => (
+    Number(r.id) === Number(excludeChapterId) ? sum : sum + htmlToWordCount(r.content_html)
+  ), 0);
+}
+
+// Making a chapter paid requires the whole novel to have reached the word threshold.
+async function assertPaidAllowed(bookId, { excludeChapterId = null, contentHtml = '' } = {}) {
+  const total = await bookWordCount(bookId, { excludeChapterId }) + htmlToWordCount(contentHtml);
+  if (total < PAID_CHAPTER_MIN_BOOK_WORDS) {
+    throw errors.badRequest(paidGateMessage(total));
+  }
+  return total;
+}
 
 function isPaidChapter(row) {
   return !!row.is_paid && Number(row.token_price) > 0;
@@ -171,6 +213,9 @@ async function getById(id, viewer) {
   }
   if (row.status !== 'published' && !isAuthor) throw errors.notFound('Chapter not found');
   if (book.status !== 'published' && !isAuthor) throw errors.notFound('Chapter not found');
+  if (!isAuthor) {
+    assertMatureAccess({ warningNotice: book.warning_notice, authorId: book.author_id }, viewerRow);
+  }
 
   let unlocked = false;
   if (viewer) unlocked = await isUnlockedFor(viewer.id, id);
@@ -199,7 +244,10 @@ async function createInBook(bookId, body, user) {
     ? schedulePatch.scheduled_publish_at
     : null;
 
+  assertNamedForPublish(body.title, { status: chapterStatus, scheduledAt });
+
   const isPaid = !!body.isPaid;
+  if (isPaid) await assertPaidAllowed(bookId, { contentHtml: html });
   const { tokenPrice } = pricingFromContent(isPaid, html);
 
   const [r] = await pool.execute(
@@ -222,10 +270,12 @@ async function update(id, patch, user) {
 
   const fields = [];
   const params = [];
+  const nextTitle = patch.title != null
+    ? String(patch.title).trim() || DEFAULT_CHAPTER_TITLE
+    : row.title;
   if (patch.title != null) {
-    const t = String(patch.title).trim() || 'Untitled chapter';
     fields.push('title = ?');
-    params.push(t);
+    params.push(nextTitle);
   }
   if (patch.contentHtml != null)   { fields.push('content_html = ?');  params.push(sanitizeChapterHtml(patch.contentHtml)); }
   if (patch.authorThought != null) {
@@ -249,8 +299,20 @@ async function update(id, patch, user) {
     params.push(schedulePatch.scheduled_publish_at);
   }
 
+  // Validate against the state the chapter will be in after this write.
+  const nextStatus = schedulePatch.status != null
+    ? schedulePatch.status
+    : (patch.status != null ? patch.status : row.status);
+  const nextScheduledAt = schedulePatch.scheduled_publish_at !== undefined
+    ? schedulePatch.scheduled_publish_at
+    : row.scheduled_publish_at;
+  assertNamedForPublish(nextTitle, { status: nextStatus, scheduledAt: nextScheduledAt });
+
   const nextIsPaid = patch.isPaid != null ? !!patch.isPaid : !!row.is_paid;
   const nextHtml = patch.contentHtml != null ? sanitizeChapterHtml(patch.contentHtml) : row.content_html;
+  if (nextIsPaid && !row.is_paid) {
+    await assertPaidAllowed(row.book_id, { excludeChapterId: id, contentHtml: nextHtml });
+  }
   if (patch.isPaid != null || patch.contentHtml != null) {
     const { tokenPrice } = pricingFromContent(nextIsPaid, nextHtml);
     fields.push('token_price = ?');
@@ -264,19 +326,22 @@ async function update(id, patch, user) {
   return rowToChapter(fresh, { includeContent: true, isUnlocked: true, canRead: true });
 }
 
+// Soft delete: the chapter moves to the admin recycle bin instead of being dropped.
 async function remove(id, user) {
   const userRow = await resolveUserRow(user.id);
   assertRestriction(userRow, 'publishing', 'Publishing is restricted on your account');
 
   const row = await getRawById(id);
-  if (!row) throw errors.notFound('Chapter not found');
+  if (!row || row.recycled_at) throw errors.notFound('Chapter not found');
   const book = await booksService.getById(row.book_id);
   booksService.assertOwnerOrAdmin(book, user);
-  await pool.execute('DELETE FROM chapters WHERE id = ?', [id]);
+  const recycleSvc = require('./recycle.service');
+  await recycleSvc.recycleChapter(id, user);
   return { ok: true };
 }
 
 module.exports = {
   listForBook, getById, createInBook, update, remove,
   rowToChapter, getRawById,
+  DEFAULT_CHAPTER_TITLE, isUnnamedTitle, bookWordCount,
 };

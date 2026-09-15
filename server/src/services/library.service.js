@@ -149,13 +149,8 @@ async function setStatus(userId, bookId, readingStatus) {
   return { bookId: Number(bookId), readingStatus, inLibrary: true };
 }
 
+// Only the library shelf entry is removed; collection membership is independent.
 async function remove(userId, bookId) {
-  await pool.execute(
-    `DELETE cb FROM collection_books cb
-       JOIN user_collections uc ON uc.id = cb.collection_id
-      WHERE uc.user_id = ? AND cb.book_id = ?`,
-    [userId, bookId],
-  );
   await pool.execute(
     'DELETE FROM library WHERE user_id = ? AND book_id = ?',
     [userId, bookId],

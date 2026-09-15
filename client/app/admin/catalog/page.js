@@ -16,6 +16,9 @@ const TABS = [
   { id: 'tags', label: 'Content tags', path: 'content-tags', keyField: 'slug' },
 ];
 
+const EDIT_INPUT =
+  'w-full min-w-[8rem] bg-transparent border-b border-ink-300 focus:border-ink-900 focus:outline-none py-1 text-[13px] text-ink-900 dark:border-neutral-600 dark:focus:border-neutral-100 dark:text-neutral-100';
+
 function TabButton({ active, children, onClick }) {
   return (
     <button
@@ -40,6 +43,9 @@ function Inner() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({ label: '', slug: '', code: '', sortOrder: '0', isActive: true });
+  // Row currently being edited inline: { id, label, slug, code, sortOrder }.
+  const [editing, setEditing] = useState(null);
+  const [rowBusy, setRowBusy] = useState(false);
 
   const cfg = TABS.find((t) => t.id === tab) || TABS[0];
 
@@ -62,6 +68,7 @@ function Inner() {
 
   useEffect(() => {
     setDraft({ label: '', slug: '', code: '', sortOrder: '0', isActive: true });
+    setEditing(null);
   }, [tab]);
 
   async function handleCreate(e) {
@@ -105,6 +112,50 @@ function Inner() {
       await load();
     } catch (err) {
       pushToast({ type: 'error', title: 'Update failed', message: err.message });
+    }
+  }
+
+  function startEdit(row) {
+    setEditing({
+      id: row.id,
+      label: row.label || '',
+      slug: row.slug || '',
+      code: row.code || '',
+      sortOrder: String(row.sortOrder ?? 0),
+    });
+  }
+
+  async function saveEdit(row) {
+    if (!editing || editing.id !== row.id) return;
+    const label = editing.label.trim();
+    if (!label) {
+      pushToast({ type: 'error', title: 'Label is required' });
+      return;
+    }
+    const sortOrder = Number(editing.sortOrder) || 0;
+    let patch;
+    if (tab === 'languages') {
+      const code = editing.code.trim();
+      if (!code) {
+        pushToast({ type: 'error', title: 'Code is required' });
+        return;
+      }
+      patch = { label, code, sortOrder };
+    } else {
+      // An empty slug keeps the current one (the server would otherwise slugify "").
+      const slug = editing.slug.trim();
+      patch = slug ? { label, slug, sortOrder } : { label, sortOrder };
+    }
+    setRowBusy(true);
+    try {
+      await api.patch(`/admin/catalog/${cfg.path}/${row.id}`, patch);
+      pushToast({ type: 'success', title: 'Saved' });
+      setEditing(null);
+      await load();
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Update failed', message: err.message });
+    } finally {
+      setRowBusy(false);
     }
   }
 
@@ -195,7 +246,7 @@ function Inner() {
                   <th className="px-4 py-3 font-bold">Sort</th>
                   <th className="px-4 py-3 font-bold">Active</th>
                   <th className="px-4 py-3 font-bold">Books</th>
-                  <th className="px-4 py-3 font-bold w-40">Actions</th>
+                  <th className="px-4 py-3 font-bold w-56">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink-200/60 dark:divide-neutral-800 text-ink-800 dark:text-neutral-200">
@@ -212,35 +263,105 @@ function Inner() {
                     </td>
                   </tr>
                 ) : (
-                  items.map((row) => (
-                    <tr key={row.id} className="hover:bg-cream-100/40 dark:hover:bg-neutral-900/40">
-                      <td className="px-4 py-3 font-medium">{row.label}</td>
-                      <td className="px-4 py-3 text-ink-500 dark:text-neutral-400 font-mono text-[12px]">
-                        {tab === 'languages' ? row.code : row.slug}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">{row.sortOrder}</td>
-                      <td className="px-4 py-3">{row.isActive ? 'Yes' : 'No'}</td>
-                      <td className="px-4 py-3 tabular-nums">{row.bookCount ?? 0}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleActive(row)}
-                            className="text-[11px] uppercase tracking-widest font-bold text-ink-600 hover:text-ink-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-                          >
-                            {row.isActive ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(row)}
-                            className="text-[11px] uppercase tracking-widest font-bold text-danger hover:opacity-80"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  items.map((row) => {
+                    const isEditing = editing?.id === row.id;
+                    const onEditKey = (e) => {
+                      if (e.key === 'Enter') saveEdit(row);
+                      if (e.key === 'Escape') setEditing(null);
+                    };
+                    return (
+                      <tr key={row.id} className="hover:bg-cream-100/40 dark:hover:bg-neutral-900/40">
+                        <td className="px-4 py-3 font-medium">
+                          {isEditing ? (
+                            <input
+                              value={editing.label}
+                              onChange={(e) => setEditing((d) => ({ ...d, label: e.target.value }))}
+                              onKeyDown={onEditKey}
+                              aria-label="Label"
+                              className={EDIT_INPUT}
+                              autoFocus
+                            />
+                          ) : row.label}
+                        </td>
+                        <td className="px-4 py-3 text-ink-500 dark:text-neutral-400 font-mono text-[12px]">
+                          {isEditing ? (
+                            <input
+                              value={tab === 'languages' ? editing.code : editing.slug}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setEditing((d) => (tab === 'languages' ? { ...d, code: v } : { ...d, slug: v }));
+                              }}
+                              onKeyDown={onEditKey}
+                              aria-label={tab === 'languages' ? 'Code' : 'Slug'}
+                              className={cn(EDIT_INPUT, 'font-mono text-[12px]')}
+                            />
+                          ) : (tab === 'languages' ? row.code : row.slug)}
+                        </td>
+                        <td className="px-4 py-3 tabular-nums">
+                          {isEditing ? (
+                            <input
+                              value={editing.sortOrder}
+                              onChange={(e) => setEditing((d) => ({ ...d, sortOrder: e.target.value }))}
+                              onKeyDown={onEditKey}
+                              inputMode="numeric"
+                              aria-label="Sort order"
+                              className={cn(EDIT_INPUT, 'min-w-0 w-16')}
+                            />
+                          ) : row.sortOrder}
+                        </td>
+                        <td className="px-4 py-3">{row.isActive ? 'Yes' : 'No'}</td>
+                        <td className="px-4 py-3 tabular-nums">{row.bookCount ?? 0}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => saveEdit(row)}
+                                  disabled={rowBusy}
+                                  className="text-[11px] uppercase tracking-widest font-bold text-ink-900 hover:opacity-80 disabled:opacity-50 dark:text-neutral-100"
+                                >
+                                  {rowBusy ? 'Saving…' : 'Save'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditing(null)}
+                                  disabled={rowBusy}
+                                  className="text-[11px] uppercase tracking-widest font-bold text-ink-600 hover:text-ink-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(row)}
+                                  className="text-[11px] uppercase tracking-widest font-bold text-ink-600 hover:text-ink-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleActive(row)}
+                                  className="text-[11px] uppercase tracking-widest font-bold text-ink-600 hover:text-ink-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                                >
+                                  {row.isActive ? 'Deactivate' : 'Activate'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(row)}
+                                  className="text-[11px] uppercase tracking-widest font-bold text-danger hover:opacity-80"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

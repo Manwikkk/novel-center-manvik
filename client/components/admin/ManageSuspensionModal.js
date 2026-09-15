@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
-import { activeRestrictionDefs } from '@/lib/suspensionRestrictions';
+import { RESTRICTION_DEFS, activeRestrictionDefs } from '@/lib/suspensionRestrictions';
 
 export default function ManageSuspensionModal({
   open,
@@ -12,16 +12,29 @@ export default function ManageSuspensionModal({
   busy,
   onClose,
   onRemoveRestrictions,
+  onAddRestrictions,
   onReinstateAll,
 }) {
   const activeDefs = useMemo(
     () => (user ? activeRestrictionDefs(user) : []),
     [user],
   );
+  // Restrictions that can still be added on top of the current suspension.
+  const addableDefs = useMemo(() => {
+    if (!user) return [];
+    const active = new Set(activeDefs.map((def) => def.key));
+    return RESTRICTION_DEFS.filter(
+      (def) => !active.has(def.key) && (def.key !== 'publishing' || user.role === 'author'),
+    );
+  }, [user, activeDefs]);
   const [selected, setSelected] = useState([]);
+  const [adding, setAdding] = useState([]);
 
   useEffect(() => {
-    if (open) setSelected([]);
+    if (open) {
+      setSelected([]);
+      setAdding([]);
+    }
   }, [open, user?.id]);
 
   useEffect(() => {
@@ -57,6 +70,17 @@ export default function ManageSuspensionModal({
     e.preventDefault();
     if (!selected.length || busy) return;
     onRemoveRestrictions(selected);
+  }
+
+  function toggleAdd(key) {
+    setAdding((prev) => (
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    ));
+  }
+
+  function submitAdd() {
+    if (!adding.length || busy) return;
+    onAddRestrictions?.(adding);
   }
 
   return (
@@ -156,6 +180,55 @@ export default function ManageSuspensionModal({
               ))}
             </div>
           </fieldset>
+
+          {addableDefs.length > 0 && onAddRestrictions ? (
+            <fieldset className="space-y-3 border-t border-outline-variant pt-5">
+              <legend className="text-[12px] text-on-surface-variant label-sm uppercase mb-2">
+                Add restrictions
+              </legend>
+              <p className="text-[13px] text-on-surface-variant normal-case tracking-normal font-sans -mt-1">
+                Extend this suspension. New restrictions follow its current duration.
+              </p>
+              <div className="space-y-2">
+                {addableDefs.map((def) => (
+                  <label
+                    key={def.key}
+                    className={cn(
+                      'flex items-start gap-3 rounded-md border px-4 py-3 cursor-pointer transition-colors',
+                      adding.includes(def.key)
+                        ? 'border-danger bg-danger/5'
+                        : 'border-outline-variant hover:border-on-surface/60',
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={adding.includes(def.key)}
+                      onChange={() => toggleAdd(def.key)}
+                      className="mt-1 accent-danger"
+                    />
+                    <span>
+                      <span className="block text-[14px] text-on-surface normal-case tracking-normal font-sans">
+                        {def.label}
+                      </span>
+                      <span className="block text-[12px] text-on-surface-variant normal-case tracking-normal font-sans">
+                        {def.hint}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={submitAdd}
+                  disabled={!adding.length || busy}
+                  className="px-4 py-2 rounded-md bg-danger text-white text-[12px] uppercase tracking-widest disabled:opacity-50"
+                >
+                  {busy ? 'Updating…' : `Add ${adding.length || ''} restriction${adding.length === 1 ? '' : 's'}`}
+                </button>
+              </div>
+            </fieldset>
+          ) : null}
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-2">
             <button

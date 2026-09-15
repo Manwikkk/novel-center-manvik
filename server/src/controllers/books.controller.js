@@ -38,4 +38,9 @@ const uploadCover = asyncHandler(async (req, res) => {
   res.json({ book });
 });
 
-module.exports = { list, getBySlug, getById, create, update, remove, uploadCover };
+const report = asyncHandler(async (req, res) => {
+  await svc.reportBook(Number(req.params.id), req.body, req.user.id);
+  res.status(201).json({ ok: true });
+});
+
+module.exports = { list, getBySlug, getById, create, update, remove, uploadCover, report };

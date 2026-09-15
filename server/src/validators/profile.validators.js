@@ -58,6 +58,7 @@ module.exports = {
       showComments: Joi.boolean(),
       notifyEmail: Joi.boolean(),
       notifyPush: Joi.boolean(),
+      experience: Joi.string().valid('reader', 'creator', 'both'),
       socialLinks,
     }).min(1),
   },

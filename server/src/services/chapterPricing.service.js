@@ -5,6 +5,15 @@ const { htmlToWordCount } = require('./reading.service');
 const SPLIT_WARNING =
   'This chapter exceeds 3,600 words. Consider splitting it into two chapters for a better reading experience.';
 
+// A chapter may only be made paid once the whole novel (all non-recycled
+// chapters, drafts included) has reached this many words.
+const PAID_CHAPTER_MIN_BOOK_WORDS = 40000;
+
+function paidGateMessage(totalWords) {
+  return `Paid chapters unlock once the novel reaches ${PAID_CHAPTER_MIN_BOOK_WORDS.toLocaleString('en-US')} words`
+    + ` (currently ${Math.max(0, Number(totalWords) || 0).toLocaleString('en-US')}).`;
+}
+
 function computeTokenPrice(wordCount) {
   const words = Math.max(0, Number(wordCount) || 0);
   if (words < 800) return 0;
@@ -35,6 +44,8 @@ function pricingFromContent(isPaid, contentHtml) {
 }
 
 module.exports = {
+  PAID_CHAPTER_MIN_BOOK_WORDS,
+  paidGateMessage,
   computeTokenPrice,
   getSplitWarning,
   pricingFromContent,

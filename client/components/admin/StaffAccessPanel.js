@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
 import { ADMIN_PERMISSION_DEFS } from '@/lib/adminPermissions';
@@ -60,6 +61,38 @@ function PermissionCheckboxes({ selected, onChange, disabled, items }) {
   );
 }
 
+/** Password field with a show/hide toggle (admins type the initial staff password by hand). */
+function PasswordField({ label, value, onChange, required, placeholder, autoComplete = 'new-password' }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div>
+      <label className="block text-[12px] text-on-surface-variant label-sm uppercase mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type={visible ? 'text' : 'password'}
+          required={required}
+          minLength={8}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          className="w-full bg-transparent border-b border-outline-variant focus:border-on-surface focus:outline-none py-2 pr-10 text-on-surface placeholder:text-on-surface-variant"
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 text-on-surface-variant hover:text-on-surface"
+          aria-label={visible ? 'Hide password' : 'Show password'}
+          title={visible ? 'Hide password' : 'Show password'}
+          tabIndex={-1}
+        >
+          {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function StaffForm({ initial, onSubmit, onCancel, saving }) {
   const [email, setEmail] = useState(initial?.email || '');
   const [displayName, setDisplayName] = useState(initial?.displayName || '');
@@ -112,17 +145,15 @@ function StaffForm({ initial, onSubmit, onCancel, saving }) {
               className="w-full bg-transparent border-b border-outline-variant focus:border-on-surface focus:outline-none py-2 text-on-surface"
             />
           </div>
-          <div>
-            <label className="block text-[12px] text-on-surface-variant label-sm uppercase mb-1">Password</label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-transparent border-b border-outline-variant focus:border-on-surface focus:outline-none py-2 text-on-surface"
-            />
-          </div>
+          <PasswordField
+            label="Password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <p className="-mt-3 text-[12px] text-on-surface-variant normal-case tracking-normal font-sans">
+            The new staff member receives an email with the sign-in link and a link to set their own password.
+          </p>
         </>
       )}
       <div>
@@ -136,17 +167,12 @@ function StaffForm({ initial, onSubmit, onCancel, saving }) {
         />
       </div>
       {initial && (
-        <div>
-          <label className="block text-[12px] text-on-surface-variant label-sm uppercase mb-1">New password (optional)</label>
-          <input
-            type="password"
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Leave blank to keep current"
-            className="w-full bg-transparent border-b border-outline-variant focus:border-on-surface focus:outline-none py-2 text-on-surface placeholder:text-on-surface-variant"
-          />
-        </div>
+        <PasswordField
+          label="New password (optional)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Leave blank to keep current"
+        />
       )}
 
       <div>
@@ -255,7 +281,15 @@ export default function StaffAccessPanel() {
       const data = await api.post('/admin/staff', payload);
       setItems((prev) => [data.user, ...prev]);
       setCreating(false);
-      pushToast({ type: 'success', title: 'Staff account created' });
+      pushToast({
+        type: data.emailSent ? 'success' : 'info',
+        title: 'Staff account created',
+        message: data.emailSent
+          ? `Access details were emailed to ${data.user.email}.`
+          : data.emailConfigured
+            ? 'The invite email could not be sent — share the sign-in details manually.'
+            : 'Email is not configured on the server — share the sign-in details manually.',
+      });
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not create account', message: err.message });
     } finally {

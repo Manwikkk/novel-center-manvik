@@ -212,6 +212,9 @@ async function getById(id, viewer) {
 async function create({ bookId, chapterId, parentId, body, isSpoiler, reviewRatings }, userId) {
   const userRow = await resolveUserRow(userId);
   assertRestriction(userRow, 'commenting', 'Commenting is restricted on your account');
+  if (reviewRatings) {
+    assertRestriction(userRow, 'reviewing', 'Reviewing is restricted on your account');
+  }
 
   const clean = sanitizeCommentBody(body);
   if (!clean) throw errors.badRequest('Comment body is empty after sanitization');
@@ -290,6 +293,9 @@ async function update(id, payload, user) {
   if (user.role !== 'admin') {
     const userRow = await resolveUserRow(user.id);
     assertRestriction(userRow, 'commenting', 'Commenting is restricted on your account');
+    if (c.reviewRatings) {
+      assertRestriction(userRow, 'reviewing', 'Reviewing is restricted on your account');
+    }
   }
 
   const clean = sanitizeCommentBody(payload.body);
@@ -382,8 +388,11 @@ async function setReaction(commentId, userId, reaction) {
   if (reaction !== null && reaction !== 'like' && reaction !== 'dislike') {
     throw errors.badRequest('reaction must be "like", "dislike", or null');
   }
-  const [rows] = await pool.execute('SELECT id FROM comments WHERE id = ? LIMIT 1', [commentId]);
+  const [rows] = await pool.execute('SELECT id, user_id FROM comments WHERE id = ? LIMIT 1', [commentId]);
   if (!rows[0]) throw errors.notFound('Comment not found');
+  if (reaction != null && Number(rows[0].user_id) === Number(userId)) {
+    throw errors.forbidden('You cannot react to your own comment');
+  }
 
   if (reaction == null) {
     await pool.execute('DELETE FROM comment_reactions WHERE comment_id = ? AND user_id = ?', [commentId, userId]);

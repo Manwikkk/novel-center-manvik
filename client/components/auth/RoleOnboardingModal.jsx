@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import RolePicker from '@/components/auth/RolePicker';
+import { landingFor } from '@/lib/experience';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -17,7 +18,7 @@ export default function RoleOnboardingModal() {
   const pushToast = useUiStore((s) => s.pushToast);
   const finishAuthModal = useUiStore((s) => s.finishAuthModal);
   const refreshWallet = useWalletStore((s) => s.refresh);
-  const [role, setRole] = useState('user');
+  const [role, setRole] = useState('reader');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,11 +34,11 @@ export default function RoleOnboardingModal() {
       pushToast({
         type: 'success',
         title: 'Welcome!',
-        message: role === 'author' ? 'Your author workspace is ready.' : 'Happy reading!',
+        message: role === 'creator' ? 'Your author studio is ready.' : role === 'both' ? 'Reader tools and your studio are ready.' : 'Happy reading!',
       });
       finishAuthModal();
-      if (updated?.role === 'author') {
-        router.push('/author');
+      if (landingFor(updated) !== '/') {
+        router.push(landingFor(updated));
       } else {
         const next = sessionStorage.getItem('nc.onboarding.redirect');
         if (next) {
@@ -68,7 +69,7 @@ export default function RoleOnboardingModal() {
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <p className="text-sm text-ink-600 dark:text-neutral-400">
-          Choose whether you want to read stories or publish your own. You can always explore both later.
+          Read, write, or do both — this shapes your navigation and home page. You can change it any time in Settings.
         </p>
         <RolePicker value={role} onChange={setRole} />
         {error ? (

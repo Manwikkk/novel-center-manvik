@@ -19,6 +19,7 @@ function publicUser(row, extra = {}) {
     email: row.email,
     displayName: row.display_name,
     role: row.role,
+    experience: row.experience || (row.role === 'author' || row.role === 'admin' ? 'both' : 'reader'),
     avatarUrl: row.avatar_url,
     bannerUrl: row.banner_url || null,
     bio: row.bio,

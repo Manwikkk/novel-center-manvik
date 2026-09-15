@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { openAuthModal } from '@/lib/authModal';
 import { api } from '@/lib/api';
 import { libraryApi } from '@/lib/library';
+import { readingApi } from '@/lib/reading';
 import Icon from '@/components/ui/Icon';
 import UnlockModal from '@/components/book/UnlockModal';
 import AddToCollectionModal from '@/components/book/AddToCollectionModal';
@@ -32,6 +33,8 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
   const [busy, setBusy] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [inLibrary, setInLibrary] = useState(false);
+  // Latest saved position in this book (null = none / signed out).
+  const [resume, setResume] = useState(null);
   const [libraryBusy, setLibraryBusy] = useState(false);
   const [collectionPromptOpen, setCollectionPromptOpen] = useState(false);
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
@@ -57,12 +60,14 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
     };
   }, [persistReady]);
 
+  // Keyed on the user id (not the object) so session polling doesn't refetch and flash.
+  const userId = user?.id || null;
   useEffect(() => {
     if (!persistReady) return undefined;
     let cancelled = false;
     // Optimistic: mark canRead for admin/staff so lock/coin UI never flashes.
     // Do not set isUnlocked — that badge is only for paid reader unlocks.
-    if (isStaffFreeReader(user)) {
+    if (isStaffFreeReader(useAuthStore.getState().user)) {
       setChapters((prev) => prev.map((c) => (
         c.canRead === true ? c : { ...c, canRead: true }
       )));
@@ -70,23 +75,32 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
     api.get(`/books/${book.id}/chapters`)
       .then((data) => { if (!cancelled) setChapters(data.items || []); })
       .catch(() => { /* keep server-rendered list */ });
-    if (user) {
+    if (userId) {
       refreshWallet();
       if (mode === 'cta' || mode === 'all') {
         libraryApi.contains([book.id])
           .then((r) => { if (!cancelled) setInLibrary(Boolean(r?.items?.[book.id])); })
           .catch(() => { /* leave default */ });
+        readingApi.latestForBook(book.id)
+          .then((r) => { if (!cancelled) setResume(r?.progress || null); })
+          .catch(() => { if (!cancelled) setResume(null); });
       }
     } else {
       setInLibrary(false);
+      setResume(null);
     }
     return () => { cancelled = true; };
-  }, [book.id, user, refreshWallet, mode, persistReady]);
+  }, [book.id, userId, refreshWallet, mode, persistReady]);
 
   const firstReadable = useMemo(
     () => chapters.find((c) => isChapterReadable(c, user)) || chapters[0],
     [chapters, user],
   );
+  // Chapter to resume from: the saved position, as long as it is still listed.
+  const resumeChapter = useMemo(() => {
+    if (!user || !resume?.chapterId) return null;
+    return chapters.find((c) => c.id === resume.chapterId) || null;
+  }, [chapters, user, resume]);
 
   function guardReadingAccess() {
     const currentUser = useAuthStore.getState().user;
@@ -219,12 +233,13 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
                   });
                   return;
                 }
-                goToChapter(firstReadable.id);
+                goToChapter(resumeChapter ? resumeChapter.id : firstReadable.id);
               }}
+              title={resumeChapter ? `Continue from chapter ${resumeChapter.idx}` : undefined}
               className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded bg-ink-900 px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:opacity-90 dark:bg-white dark:text-black sm:flex-none sm:gap-2 sm:px-8 sm:py-4 sm:text-ui-label-lg sm:font-ui-label-lg"
             >
-              <Icon name="menu_book" className="!text-[16px] sm:!text-[20px]" />
-              Start Reading
+              <Icon name={resumeChapter ? 'play_arrow' : 'menu_book'} className="!text-[16px] sm:!text-[20px]" />
+              {resumeChapter ? `Continue Reading · Ch. ${resumeChapter.idx}` : 'Start Reading'}
             </button>
           )}
           <button

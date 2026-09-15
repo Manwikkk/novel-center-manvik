@@ -12,6 +12,14 @@ const WARNING_NOTICES = [
   'no_one_17',
 ];
 
+// Warning notices that classify a novel as mature: readers must be verified adults.
+const MATURE_WARNING_NOTICES = ['restricted', 'no_one_17'];
+const MATURE_MIN_AGE = 18;
+
+function isMatureNotice(notice) {
+  return MATURE_WARNING_NOTICES.includes(notice);
+}
+
 const GENRE_LABELS = {
   male: {
     urban: 'Urban(-Male Oriented)',
@@ -47,6 +55,9 @@ module.exports = {
   GENRE_SLUGS,
   BOOK_LENGTHS,
   WARNING_NOTICES,
+  MATURE_WARNING_NOTICES,
+  MATURE_MIN_AGE,
   GENRE_LABELS,
   assertGenreForGender,
+  isMatureNotice,
 };

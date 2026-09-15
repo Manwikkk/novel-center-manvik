@@ -8,6 +8,7 @@ const { hashPassword, comparePassword } = require('../utils/hash');
 const { publicUser } = require('../utils/publicUser');
 const { readImageDimensions } = require('../utils/imageDimensions');
 const { levelFromXp, xpProgress, XP_THRESHOLDS } = require('./levels');
+const { dateOnly } = require('../utils/dateOnly');
 
 const BANNER_MIN_WIDTH = 1080;
 const BANNER_MIN_HEIGHT = 420;
@@ -42,6 +43,7 @@ function profilePublicFields(row, { isOwner = false, viewerId = null } = {}) {
     id: row.id,
     displayName: row.display_name,
     role: row.role,
+    experience: row.experience || (row.role === 'author' || row.role === 'admin' ? 'both' : 'reader'),
     avatarUrl: row.avatar_url,
     bannerUrl: row.banner_url,
     bio: row.bio,
@@ -67,12 +69,12 @@ function profilePublicFields(row, { isOwner = false, viewerId = null } = {}) {
     return {
       ...base,
       email: row.email,
-      birthDate: row.birth_date || null,
+      birthDate: dateOnly(row.birth_date),
       bonusBalance: Number(row.bonus_balance) || 0,
       membershipExpiresAt: row.membership_expires_at || null,
       notifyEmail: Number(row.notify_email) !== 0,
       notifyPush: Number(row.notify_push) !== 0,
-      lastCheckinDate: row.last_checkin_date || null,
+      lastCheckinDate: dateOnly(row.last_checkin_date),
       authProvider: row.google_id ? 'google' : 'local',
       isOwner: true,
     };
@@ -939,7 +941,9 @@ async function checkIn(userId) {
   const today = toDateStr();
   const row = await getUserRow(userId);
   if (!row) throw errors.notFound('User not found');
-  if (row.last_checkin_date && String(row.last_checkin_date).slice(0, 10) === today) {
+  // DATE columns arrive as Date objects; compare calendar dates, not toString() output.
+  const last = dateOnly(row.last_checkin_date);
+  if (last === today) {
     throw errors.conflict('Already checked in today');
   }
 
@@ -953,7 +957,6 @@ async function checkIn(userId) {
   }
 
   let streak = 1;
-  const last = row.last_checkin_date ? String(row.last_checkin_date).slice(0, 10) : null;
   if (last === yesterdayStr()) {
     streak = Number(row.current_streak || 0) + 1;
   }
@@ -1006,6 +1009,13 @@ async function updateProfile(userId, patch) {
     }
     fields.push(`${col} = ?`);
     params.push(val);
+  }
+
+  if (['reader', 'creator', 'both'].includes(patch.experience)) {
+    fields.push('experience = ?');
+    params.push(patch.experience);
+    // Switching to a creator experience upgrades a reader account to author.
+    if (patch.experience !== 'reader') fields.push("role = IF(role = 'user', 'author', role)");
   }
 
   if (Object.prototype.hasOwnProperty.call(patch, 'socialLinks')) {

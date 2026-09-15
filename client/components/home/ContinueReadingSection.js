@@ -12,11 +12,14 @@ const LIMIT = 7;
 export default function ContinueReadingSection() {
   const user = useAuthStore((s) => s.user);
   const hydrated = useAuthStore((s) => s.hydrated);
+  const userId = user?.id || null;
   const [items, setItems] = useState(null);
 
+  // Keyed on the user id, not the object: session polling re-sets `user`
+  // every 30s and must not re-fetch (and flash) this section.
   useEffect(() => {
     if (!hydrated) return undefined;
-    if (!user) {
+    if (!userId) {
       setItems([]);
       return undefined;
     }
@@ -42,7 +45,7 @@ export default function ContinueReadingSection() {
         if (!cancelled) setItems([]);
       });
     return () => { cancelled = true; };
-  }, [hydrated, user]);
+  }, [hydrated, userId]);
 
   if (!hydrated || !user) return null;
 

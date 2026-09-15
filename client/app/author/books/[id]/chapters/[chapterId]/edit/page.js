@@ -15,15 +15,32 @@ import { formatDateTime } from '@/lib/format';
 import { useUiStore } from '@/stores/uiStore';
 import { useChapterDraft } from '@/lib/useChapterDraft';
 import { cn } from '@/lib/cn';
-import { pricingFromContent } from '@/lib/chapterPricing';
+import {
+  pricingFromContent,
+  PAID_CHAPTER_MIN_BOOK_WORDS,
+  paidGateMessage,
+} from '@/lib/chapterPricing';
 
 const SERVER_DEBOUNCE_MS = 3000;
 const DEFAULT_CHAPTER_TITLE = 'Untitled chapter';
+const UNNAMED_PUBLISH_ERROR = 'Name the chapter before publishing it.';
 const PUBLISH_MODES = [
   { id: 'draft', label: 'Draft' },
   { id: 'publishNow', label: 'Publish now' },
   { id: 'schedule', label: 'Schedule' },
 ];
+
+/** Mirrors chapters.service.isUnnamedTitle — the placeholder title is not a real name. */
+function isUnnamedTitle(title) {
+  const t = String(title || '').trim();
+  return !t || t.toLowerCase() === DEFAULT_CHAPTER_TITLE.toLowerCase();
+}
+
+/** True when a payload would leave the chapter published or scheduled without a real title. */
+function blockedByMissingTitle(payload) {
+  return (payload.status === 'published' || !!payload.scheduledPublishAt)
+    && isUnnamedTitle(payload.title);
+}
 
 function toDatetimeLocalValue(iso) {
   if (!iso) return '';
@@ -162,6 +179,8 @@ function ChapterEditInner() {
 
   const [chapter, setChapter] = useState(null);
   const [content, setContent] = useState('');
+  // Sibling chapters (null until loaded) — drives the whole-novel word count.
+  const [bookChapters, setBookChapters] = useState(null);
   const [busy, setBusy] = useState(false);
   const [creatingNext, setCreatingNext] = useState(false);
   const [saveState, setSaveState] = useState('idle');
@@ -204,6 +223,29 @@ function ChapterEditInner() {
     () => pricingFromContent(!!chapter?.isPaid, content),
     [chapter?.isPaid, content],
   );
+
+  // Whole-novel word count: every other chapter (server counts) + this chapter's live content.
+  const otherChaptersWords = useMemo(() => {
+    if (!Array.isArray(bookChapters)) return 0;
+    return bookChapters.reduce((sum, c) => (
+      Number(c.id) === Number(chapterId) ? sum : sum + (Number(c.wordCount) || 0)
+    ), 0);
+  }, [bookChapters, chapterId]);
+  const novelWords = otherChaptersWords + chapterPricing.wordCount;
+  const paidGateReady = Array.isArray(bookChapters);
+  const paidAllowed = !!chapter?.isPaid || (paidGateReady && novelWords >= PAID_CHAPTER_MIN_BOOK_WORDS);
+  const needsTitleToPublish = !!chapter
+    && (publishMode === 'publishNow' || publishMode === 'schedule')
+    && isUnnamedTitle(chapter.title);
+
+  useEffect(() => {
+    let cancel = false;
+    setBookChapters(null);
+    api.get(`/books/${id}/chapters`)
+      .then((data) => { if (!cancel) setBookChapters(data.items || []); })
+      .catch(() => { if (!cancel) setBookChapters([]); });
+    return () => { cancel = true; };
+  }, [id, chapterId]);
 
   useEffect(() => {
     let cancel = false;
@@ -292,6 +334,25 @@ function ChapterEditInner() {
     setChapter((c) => ({ ...c, [field]: value }));
   }
 
+  function setPaid(nextPaid) {
+    if (!nextPaid) {
+      update('isPaid', false);
+      return;
+    }
+    if (chapter?.isPaid) return;
+    if (!paidAllowed) {
+      pushToast({
+        type: 'error',
+        title: 'Paid chapters are locked',
+        message: paidGateReady
+          ? paidGateMessage(novelWords)
+          : 'Still counting the novel’s words — try again in a moment.',
+      });
+      return;
+    }
+    update('isPaid', true);
+  }
+
   function changePublishMode(mode) {
     setPublishMode(mode);
     if (mode === 'draft') {
@@ -352,6 +413,15 @@ function ChapterEditInner() {
       return true;
     }
     if (!manual && serverStatusRef.current === 'published' && payload.status !== 'published') {
+      return false;
+    }
+    // Publishing/scheduling requires a real title (server rejects it too);
+    // auto-saves stay "unsaved" until the author names the chapter.
+    if (blockedByMissingTitle(payload)) {
+      if (manual) {
+        pushToast({ type: 'error', title: 'Chapter needs a name', message: UNNAMED_PUBLISH_ERROR });
+        setSaveState('error');
+      }
       return false;
     }
     if (manual) setBusy(true);
@@ -441,6 +511,11 @@ function ChapterEditInner() {
     if (!chapter || !snapshot || creatingNext || busy) return;
     if (scheduledPublishAt && new Date(scheduledPublishAt).getTime() <= Date.now()) {
       pushToast({ type: 'error', title: 'Scheduled time must be in the future' });
+      return;
+    }
+    if ((targetStatus === 'published' || scheduledPublishAt) && isUnnamedTitle(snapshot.title)) {
+      pushToast({ type: 'error', title: 'Chapter needs a name', message: UNNAMED_PUBLISH_ERROR });
+      setSaveState('error');
       return;
     }
     if (serverTimerRef.current) {
@@ -574,13 +649,31 @@ function ChapterEditInner() {
               variant="dashboard"
               value={chapter.title}
               onChange={(e) => update('title', e.target.value)}
+              error={needsTitleToPublish ? UNNAMED_PUBLISH_ERROR : undefined}
               hint={
                 !(chapter.title || '').trim()
                   ? `If left empty, this chapter saves as "${DEFAULT_CHAPTER_TITLE}".`
                   : undefined
               }
             />
-            <ChapterEditor value={content} onChange={setContent} />
+            <div>
+              <ChapterEditor value={content} onChange={setContent} />
+              <p className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[12px] text-on-surface-variant tabular-nums">
+                <span>
+                  <span className="font-semibold text-on-surface">
+                    {chapterPricing.wordCount.toLocaleString()}
+                  </span>
+                  {' '}words in this chapter
+                </span>
+                <span>
+                  Novel total:{' '}
+                  <span className="font-semibold text-on-surface">
+                    {paidGateReady ? novelWords.toLocaleString() : '…'}
+                  </span>
+                  {' '}words
+                </span>
+              </p>
+            </div>
             <div className="pt-2 border-t border-surface-variant">
               {chapter.authorThought ? (
                 <p className="mb-3 text-[14px] leading-relaxed text-on-surface-variant line-clamp-3 italic">
@@ -695,7 +788,7 @@ function ChapterEditInner() {
               <div className="mt-2 inline-flex rounded-md border border-surface-variant overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => update('isPaid', false)}
+                  onClick={() => setPaid(false)}
                   className={
                     'px-3 py-1.5 text-[12px] tracking-labelTight uppercase ' +
                     (!chapter.isPaid
@@ -707,17 +800,25 @@ function ChapterEditInner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => update('isPaid', true)}
-                  className={
-                    'px-3 py-1.5 text-[12px] tracking-labelTight uppercase ' +
-                    (chapter.isPaid
+                  onClick={() => setPaid(true)}
+                  aria-disabled={!paidAllowed ? 'true' : undefined}
+                  title={!paidAllowed && paidGateReady ? paidGateMessage(novelWords) : undefined}
+                  className={cn(
+                    'px-3 py-1.5 text-[12px] tracking-labelTight uppercase',
+                    chapter.isPaid
                       ? 'bg-primary text-on-primary'
-                      : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface')
-                  }
+                      : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface',
+                    !paidAllowed && 'opacity-50 cursor-not-allowed hover:bg-transparent hover:text-on-surface-variant',
+                  )}
                 >
                   Paid
                 </button>
               </div>
+              {!paidAllowed && paidGateReady && (
+                <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed border border-amber-600/30 rounded-md px-3 py-2">
+                  {paidGateMessage(novelWords)}
+                </p>
+              )}
             </div>
             {chapter.isPaid && (
               <div className="space-y-2">

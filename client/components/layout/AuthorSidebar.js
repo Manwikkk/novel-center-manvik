@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   LayoutGrid,
-  CircleDollarSign,
+  BadgeIndianRupee,
   Rocket,
   Award,
   HelpCircle,
@@ -36,7 +36,7 @@ export const AUTHOR_NAV = [
       { href: '/author/books', label: 'Novels', icon: BookOpen },
     ],
   },
-  { href: '/author/earnings', label: 'Income', icon: CircleDollarSign },
+  { href: '/author/earnings', label: 'Income', icon: BadgeIndianRupee },
   { href: '/author/books', label: 'Promote', icon: Rocket, disabled: true },
   { href: '#', label: 'Privilege', icon: Award, disabled: true },
 ];
@@ -195,6 +195,10 @@ function NavItem({ item, pathname, collapsed }) {
   );
 }
 
+// Every studio page mounts its own sidebar, so remember the nav's scroll offset
+// between mounts instead of jumping back to the top on each tab change.
+let savedNavScroll = 0;
+
 export default function AuthorSidebar() {
   const pathname = usePathname() || '/';
   const router = useRouter();
@@ -202,6 +206,11 @@ export default function AuthorSidebar() {
   const user = useAuthStore((s) => s.user);
   const collapsed = useDashboardSidebarStore((s) => s.collapsed);
   const toggle = useDashboardSidebarStore((s) => s.toggle);
+  const navRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (navRef.current) navRef.current.scrollTop = savedNavScroll;
+  }, []);
 
   return (
     <aside
@@ -272,7 +281,11 @@ export default function AuthorSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 space-y-0.5">
+      <nav
+        ref={navRef}
+        onScroll={(e) => { savedNavScroll = e.currentTarget.scrollTop; }}
+        className="flex-1 overflow-y-auto py-3 space-y-0.5"
+      >
         <DashboardSiteHomeLink variant="sidebar" collapsed={collapsed} />
         {!collapsed ? <div className="mx-4 my-2 border-b border-surface-variant" /> : null}
         {AUTHOR_NAV.map((it) => (

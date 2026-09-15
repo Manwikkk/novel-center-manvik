@@ -110,16 +110,21 @@ async function recycleChapter(chapterId, actor) {
 
 async function recycleBook(bookId, actor) {
   return withTransaction(async (conn) => {
+    // Lock the book row only. Joining users under FOR UPDATE would also lock the
+    // author's users row, which blocks the audit-log insert (FK -> users) when the
+    // author recycles their own book.
     const [bookRows] = await conn.execute(
-      `SELECT b.*, u.display_name AS author_name
-         FROM books b
-         JOIN users u ON u.id = b.author_id
-        WHERE b.id = ? FOR UPDATE`,
+      'SELECT * FROM books WHERE id = ? FOR UPDATE',
       [bookId],
     );
     const book = bookRows[0];
     if (!book) throw errors.notFound('Book not found');
     if (book.recycled_at) throw errors.badRequest('Book is already in recycle bin');
+    const [authorRows] = await conn.execute(
+      'SELECT display_name FROM users WHERE id = ?',
+      [book.author_id],
+    );
+    book.author_name = authorRows[0]?.display_name ?? null;
 
     const [chapterRows] = await conn.execute(
       'SELECT * FROM chapters WHERE book_id = ? AND recycled_at IS NULL',

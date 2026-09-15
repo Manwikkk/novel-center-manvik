@@ -6,17 +6,10 @@
 
 const pool = require('../db/pool');
 const pageSectionsSvc = require('./pageSections.service');
+const { HOME_SHELF_TAGS } = require('../constants/homeShelves');
 
-const SECTION_TAGS = [
-  'weekly_featured',
-  'new_arrivals',
-  'potential_starlet',
-  'rising_fictions',
-  'cheering_reads',
-  'editors_choice',
-  'completed_novel',
-  'originals',
-];
+// Every admin-assignable shelf is returned as its own array (see constants/homeShelves).
+const SECTION_TAGS = [...HOME_SHELF_TAGS];
 
 const PER_SECTION_LIMIT = 24;
 

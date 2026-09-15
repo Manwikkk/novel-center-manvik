@@ -14,6 +14,7 @@ import Pagination from '@/components/ui/Pagination';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { libraryApi } from '@/lib/library';
 import { collectionsApi } from '@/lib/collections';
+import { readingApi } from '@/lib/reading';
 import { useUiStore } from '@/stores/uiStore';
 import { cn } from '@/lib/cn';
 
@@ -21,6 +22,7 @@ const PAGE_SIZE = 12;
 
 const TABS = [
   { key: 'active', label: 'Library', readingStatus: 'active' },
+  { key: 'continue', label: 'Continue Reading' },
   { key: 'on_hold', label: 'On Hold', readingStatus: 'on_hold' },
   { key: 'archive', label: 'Archive', readingStatus: 'archive' },
   { key: 'dropped', label: 'Dropped', readingStatus: 'dropped' },
@@ -48,6 +50,10 @@ const EMPTY_COPY = {
     title: 'No collections yet.',
     body: 'Create collections from any book page using Add to Collection.',
   },
+  continue: {
+    title: 'Nothing in progress.',
+    body: 'Open any chapter and your place is saved here so you can pick up where you left off.',
+  },
 };
 
 function LibraryInner() {
@@ -60,6 +66,7 @@ function LibraryInner() {
 
   const activeTab = TABS.some((t) => t.key === tab) ? tab : 'active';
   const isCollections = activeTab === 'collections';
+  const isContinue = activeTab === 'continue';
   const readingStatus = TABS.find((t) => t.key === activeTab)?.readingStatus || 'active';
 
   const [data, setData] = useState({ items: [], total: 0, pageSize: PAGE_SIZE });
@@ -70,13 +77,15 @@ function LibraryInner() {
     setLoading(true);
     const req = isCollections
       ? collectionsApi.list({ page, pageSize: PAGE_SIZE })
-      : libraryApi.list({ page, pageSize: PAGE_SIZE, q: q || undefined, readingStatus });
+      : isContinue
+        ? readingApi.recentPage({ page, pageSize: PAGE_SIZE })
+        : libraryApi.list({ page, pageSize: PAGE_SIZE, q: q || undefined, readingStatus });
 
     req
       .then((res) => setData({ items: res.items || [], total: res.total || 0, pageSize: res.pageSize || PAGE_SIZE }))
       .catch((err) => pushToast({ type: 'error', title: 'Could not load', message: err.message }))
       .finally(() => setLoading(false));
-  }, [page, q, pushToast, isCollections, readingStatus]);
+  }, [page, q, pushToast, isCollections, isContinue, readingStatus]);
 
   useEffect(() => {
     setData({ items: [], total: 0, pageSize: PAGE_SIZE });
@@ -123,6 +132,11 @@ function LibraryInner() {
   const items = data.items;
   const total = data.total;
   const bookEntries = isCollections ? [] : items.filter((entry) => entry?.book?.id);
+  const countNoun = isCollections
+    ? (total === 1 ? 'collection' : 'collections')
+    : isContinue
+      ? (total === 1 ? 'book in progress' : 'books in progress')
+      : (total === 1 ? 'book' : 'books');
   const empty = EMPTY_COPY[activeTab] || EMPTY_COPY.active;
 
   return (
@@ -139,7 +153,7 @@ function LibraryInner() {
             </h1>
             {!loading && (
               <span className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest text-on-surface-variant dark:text-neutral-400">
-                {total} {isCollections ? (total === 1 ? 'collection' : 'collections') : (total === 1 ? 'book' : 'books')}
+                {total} {countNoun}
               </span>
             )}
           </div>
@@ -163,7 +177,7 @@ function LibraryInner() {
           ))}
         </div>
 
-        {!isCollections ? (
+        {!isCollections && !isContinue ? (
           <LiveSearchBar
             basePath="/library"
             placeholder="Search library…"
@@ -171,7 +185,7 @@ function LibraryInner() {
           />
         ) : null}
 
-        {!loading && q && !isCollections ? (
+        {!loading && q && !isCollections && !isContinue ? (
           <div className="mb-8 flex items-center gap-4">
             <div className="flex-1 h-px bg-surface-variant dark:bg-neutral-800" />
             <p className="font-ui-label-sm text-ui-label-sm text-on-surface-variant dark:text-neutral-500 whitespace-nowrap">
@@ -199,23 +213,23 @@ function LibraryInner() {
           </div>
         ) : (isCollections ? items.length === 0 : bookEntries.length === 0) ? (
           <div className="border border-outline-variant rounded-lg p-16 text-center bg-surface-container-low">
-            <Icon name={q ? 'search' : isCollections ? 'folder' : 'bookmark_add'} size={36} className="text-on-surface-variant mb-4" />
+            <Icon name={q && !isCollections && !isContinue ? 'search' : isCollections ? 'folder' : isContinue ? 'auto_stories' : 'bookmark_add'} size={36} className="text-on-surface-variant mb-4" />
             <h2 className="font-headline-md text-headline-md text-on-surface mb-2">
-              {q && !isCollections ? 'No books match your search.' : empty.title}
+              {q && !isCollections && !isContinue ? 'No books match your search.' : empty.title}
             </h2>
             <p className="font-reading-body text-reading-body text-on-surface-variant max-w-md mx-auto mb-8">
-              {q && !isCollections
+              {q && !isCollections && !isContinue
                 ? 'Try a different title, author, or category — or clear the search to see everything in this tab.'
                 : empty.body}
             </p>
-            {q && !isCollections ? (
+            {q && !isCollections && !isContinue ? (
               <Link
                 href={`/library${activeTab !== 'active' ? `?tab=${activeTab}` : ''}`}
                 className="inline-flex items-center gap-2 px-8 py-4 border border-outline-variant text-on-surface font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-surface-container transition-colors"
               >
                 Clear search
               </Link>
-            ) : activeTab === 'active' ? (
+            ) : activeTab === 'active' || isContinue ? (
               <Link
                 href="/discover"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-on-primary font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-on-surface-variant transition-colors"
@@ -241,6 +255,30 @@ function LibraryInner() {
                   </p>
                 </Link>
               ))}
+            </div>
+            <div className="mt-16">
+              <Pagination
+                page={page}
+                pageSize={data.pageSize || PAGE_SIZE}
+                total={total}
+                onPageChange={goPage}
+              />
+            </div>
+          </>
+        ) : isContinue ? (
+          <>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 sm:gap-x-6 sm:gap-y-8">
+              {bookEntries.map((entry) => {
+                const pct = Math.max(0, Math.min(100, Math.round(entry.percent || 0)));
+                return (
+                  <CompactBookTile
+                    key={entry.book.id}
+                    book={entry.book}
+                    href={entry.chapter?.id ? `/read/${entry.chapter.id}` : undefined}
+                    subtitle={entry.chapter ? `Ch. ${entry.chapter.idx} · ${pct}%` : undefined}
+                  />
+                );
+              })}
             </div>
             <div className="mt-16">
               <Pagination

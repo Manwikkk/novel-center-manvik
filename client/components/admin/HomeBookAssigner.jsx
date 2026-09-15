@@ -10,6 +10,7 @@ import { useUiStore } from '@/stores/uiStore';
 
 const FALLBACK_SHELVES = [
   { tag: 'weekly_featured', label: 'Weekly Book' },
+  { tag: 'meet_novel_centre', label: 'Meet Novel Centre' },
   { tag: 'new_arrivals', label: 'Recommended' },
   { tag: 'potential_starlet', label: 'Ranking — Most Read' },
   { tag: 'rising_fictions', label: 'Ranking — Trending' },

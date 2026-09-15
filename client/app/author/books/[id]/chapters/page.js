@@ -40,11 +40,11 @@ function BookChaptersInner() {
   }, [id, pushToast]);
 
   async function deleteChapter(ch) {
-    if (!confirm(`Delete "${ch.title}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete "${ch.title}"? It moves to the recycle bin, where an admin can restore it.`)) return;
     try {
       await api.delete(`/chapters/${ch.id}`);
       setChapters((prev) => prev.filter((c) => c.id !== ch.id));
-      pushToast({ type: 'success', title: 'Chapter deleted' });
+      pushToast({ type: 'success', title: 'Chapter moved to recycle bin' });
     } catch (err) {
       pushToast({ type: 'error', title: 'Delete failed', message: err.message });
     }

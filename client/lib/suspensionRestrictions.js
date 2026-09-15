@@ -1,9 +1,50 @@
+import { formatDateTime } from '@/lib/format';
+
 export const RESTRICTION_DEFS = [
   { key: 'portal_access', label: 'Portal access', hint: 'Blocks sign-in and site access' },
   { key: 'reading', label: 'Reading', hint: 'Cannot read or unlock chapters' },
   { key: 'commenting', label: 'Commenting', hint: 'Cannot post or edit comments' },
+  { key: 'reviewing', label: 'Reviewing', hint: 'Cannot post or edit reviews' },
   { key: 'publishing', label: 'Publishing', hint: 'Authors cannot publish or edit works' },
 ];
+
+const ACTION_LABELS = {
+  portal_access: 'Signing in',
+  reading: 'Reading',
+  commenting: 'Commenting',
+  reviewing: 'Writing reviews',
+  publishing: 'Publishing',
+};
+
+/** True when the signed-in user carries the given restriction. */
+export function hasRestriction(user, key) {
+  return !!user?.restrictions?.[key];
+}
+
+/**
+ * Human-readable notice for a restricted action, including how long every
+ * active restriction lasts (temporary bans share one expiry; permanent ones
+ * stay until an admin lifts them).
+ */
+export function restrictionNotice(user, key) {
+  if (!hasRestriction(user, key)) return null;
+  const temporary = user.suspensionType === 'temporary' && user.suspendedUntil;
+  const until = temporary ? formatDateTime(user.suspendedUntil) : null;
+  const activeLabels = RESTRICTION_DEFS
+    .filter((def) => user.restrictions?.[def.key])
+    .map((def) => def.label);
+  const action = ACTION_LABELS[key] || 'This action';
+  return {
+    title: `${action} is restricted on your account`,
+    duration: until ? `Temporary ban · lifts on ${until}` : 'Permanent ban · stays until an admin lifts it',
+    message: until
+      ? `${action} is blocked until ${until}.`
+      : `${action} is blocked permanently until an admin reinstates your account.`,
+    active: activeLabels,
+    until: user.suspendedUntil || null,
+    permanent: !until,
+  };
+}
 
 export function emptyRestrictions() {
   return RESTRICTION_DEFS.reduce((acc, { key }) => {

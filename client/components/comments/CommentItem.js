@@ -83,6 +83,14 @@ export default function CommentItem({
       : 'text-ink-400 dark:text-neutral-500 hover:text-ink-900 dark:hover:text-neutral-200',
   );
 
+  // Members cannot react to their own comments or reviews (the API rejects it too).
+  const canReact = Boolean(currentUser && onVote && !isOwner);
+  const reactTitle = (action) => {
+    if (!currentUser) return 'Sign in to react';
+    if (isOwner) return `You can't ${action} your own ${isReview ? 'review' : 'comment'}`;
+    return null;
+  };
+
   function startEdit() {
     if (isReview) {
       onEditReview?.(node);
@@ -241,20 +249,20 @@ export default function CommentItem({
               <div className="flex items-center gap-1 tabular-nums">
                 <button
                   type="button"
-                  disabled={!currentUser || !onVote}
-                  title={currentUser ? (my === 'like' ? 'Remove like' : 'Like') : 'Sign in to react'}
+                  disabled={!canReact}
+                  title={reactTitle('like') || (my === 'like' ? 'Remove like' : 'Like')}
                   onClick={() => onVote?.(node.id, nextReaction('like'))}
-                  className={cn(btnBase, likeCls, !currentUser && 'cursor-not-allowed opacity-50')}
+                  className={cn(btnBase, likeCls, !canReact && 'cursor-not-allowed opacity-50')}
                 >
                   <Icon name="thumb_up" filled={my === 'like'} size={16} />
                   <span>{likeCount}</span>
                 </button>
                 <button
                   type="button"
-                  disabled={!currentUser || !onVote}
-                  title={currentUser ? (my === 'dislike' ? 'Remove dislike' : 'Dislike') : 'Sign in to react'}
+                  disabled={!canReact}
+                  title={reactTitle('dislike') || (my === 'dislike' ? 'Remove dislike' : 'Dislike')}
                   onClick={() => onVote?.(node.id, nextReaction('dislike'))}
-                  className={cn(btnBase, dislikeCls, !currentUser && 'cursor-not-allowed opacity-50')}
+                  className={cn(btnBase, dislikeCls, !canReact && 'cursor-not-allowed opacity-50')}
                 >
                   <Icon name="thumb_down" filled={my === 'dislike'} size={16} />
                   <span>{dislikeCount}</span>

@@ -328,12 +328,13 @@ async function deleteContentTag(id) {
 // Book ↔ content tags
 // ---------------------------------------------------------------------------
 
+// Only active tags are surfaced on a novel; a deactivated tag behaves like a removed one.
 async function getContentTagsForBook(bookId) {
   const [rows] = await pool.execute(
     `SELECT t.id, t.slug, t.label
        FROM book_content_tags bct
        JOIN catalog_content_tags t ON t.id = bct.tag_id
-      WHERE bct.book_id = ?
+      WHERE bct.book_id = ? AND t.is_active = 1
       ORDER BY t.sort_order ASC, t.label ASC`,
     [bookId],
   );

@@ -9,12 +9,13 @@ import AuthPageLayout from '@/components/auth/AuthPageLayout';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import AuthSocialDivider from '@/components/auth/AuthSocialDivider';
 import RolePicker from '@/components/auth/RolePicker';
+import { landingFor, roleForExperience } from '@/lib/experience';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function RegisterPage() {
   const router = useRouter();
   const register = useAuthStore((s) => s.register);
-  const [form, setForm] = useState({ displayName: '', email: '', password: '', role: 'user' });
+  const [form, setForm] = useState({ displayName: '', email: '', password: '', experience: 'reader' });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -42,8 +43,8 @@ export default function RegisterPage() {
     setBusy(true);
     setError('');
     try {
-      await register(form);
-      router.push(form.role === 'author' ? '/author' : '/');
+      const user = await register({ ...form, role: roleForExperience(form.experience) });
+      router.push(landingFor(user));
     } catch (err) {
       setError(err.message || 'Could not create account.');
     } finally {
@@ -170,7 +171,7 @@ export default function RegisterPage() {
           <p className="text-[11px] text-danger -mt-2">{fieldErrors.terms}</p>
         ) : null}
 
-        <RolePicker value={form.role} onChange={(role) => setForm((f) => ({ ...f, role }))} />
+        <RolePicker surface="light" value={form.experience} onChange={(experience) => setForm((f) => ({ ...f, experience }))} />
 
         <Button
           type="submit"

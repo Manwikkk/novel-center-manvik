@@ -8,6 +8,9 @@ const { sanitizePermissions, ALL_PERMISSION_KEYS } = require('../constants/admin
 const { isValidStaffRole, permissionsForStaffRole } = require('../constants/staffRoles');
 const { publicUser } = require('../utils/publicUser');
 const auditSvc = require('./audit.service');
+const emailSvc = require('./email.service');
+const passwordResetSvc = require('./passwordReset.service');
+const { STAFF_ROLE_TEMPLATES } = require('../constants/staffRoles');
 
 async function getStaffMeta(userId) {
   const [rows] = await pool.execute(
@@ -68,7 +71,7 @@ async function createStaffUser({ email, password, displayName, permissions, staf
 
   const password_hash = await hashPassword(password);
 
-  return withTransaction(async (conn) => {
+  const created = await withTransaction(async (conn) => {
     const [r] = await conn.execute(
       'INSERT INTO users (email, password_hash, display_name, role, staff_role) VALUES (?, ?, ?, ?, ?)',
       [normalizedEmail, password_hash, displayName, 'staff', roleKey],
@@ -76,6 +79,11 @@ async function createStaffUser({ email, password, displayName, permissions, staf
     const userId = r.insertId;
     await conn.execute('INSERT INTO wallets (user_id, balance) VALUES (?, 0)', [userId]);
     const savedPerms = await setUserPermissions(conn, userId, safePerms);
+    const invite = await passwordResetSvc.issueToken(userId, {
+      purpose: 'invite',
+      ttlHours: passwordResetSvc.INVITE_TTL_HOURS,
+      conn,
+    });
     const [rows] = await conn.execute('SELECT * FROM users WHERE id = ? LIMIT 1', [userId]);
     const user = { ...publicUser(rows[0]), permissions: savedPerms };
     if (actor) {
@@ -88,8 +96,24 @@ async function createStaffUser({ email, password, displayName, permissions, staf
         meta: { staffRole: roleKey, permissions: savedPerms },
       });
     }
-    return { user };
+    return { user, invite };
   });
+
+  // Tell the new staff member how to get in; a failed email never undoes the account.
+  let emailSent = false;
+  try {
+    const result = await emailSvc.sendStaffInviteEmail({
+      to: normalizedEmail,
+      displayName,
+      roleLabel: roleKey ? STAFF_ROLE_TEMPLATES[roleKey]?.label : null,
+      token: created.invite.token,
+      ttlHours: created.invite.ttlHours,
+    });
+    emailSent = Boolean(result?.sent);
+  } catch (err) {
+    console.error('[email] staff invite send failed:', err.message);
+  }
+  return { user: created.user, emailSent, emailConfigured: emailSvc.isConfigured() };
 }
 
 async function updateStaffUser(id, patch, actor = null) {

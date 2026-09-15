@@ -17,8 +17,9 @@ function NewBookInner() {
 }
 
 export default function NewBookPage() {
+  // Readers may open the create form; creating a novel turns on their author studio.
   return (
-    <AuthGuard roles={['author', 'admin']}>
+    <AuthGuard roles={['user', 'author', 'admin']}>
       <NewBookInner />
     </AuthGuard>
   );

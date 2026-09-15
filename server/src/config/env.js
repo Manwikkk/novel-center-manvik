@@ -42,6 +42,17 @@ const env = {
   google: {
     clientId: optional('GOOGLE_CLIENT_ID', ''),
   },
+  appName: optional('APP_NAME', 'Novel Centre'),
+  // Public web origin used in emails (password reset / staff invite links).
+  appUrl: optional('APP_URL', '') || optional('CORS_ORIGINS', 'http://localhost:3000').split(',')[0].trim(),
+  smtp: {
+    host: optional('SMTP_HOST', ''),
+    port: Number(optional('SMTP_PORT', '587')),
+    secure: optional('SMTP_SECURE', '') === 'true',
+    user: optional('SMTP_USER', ''),
+    pass: optional('SMTP_PASS', ''),
+    from: optional('SMTP_FROM', 'Novel Centre <no-reply@novelcentre.com>'),
+  },
   storage: {
     driver: optional('STORAGE_DRIVER', 'local'),
     localDir: optional('STORAGE_LOCAL_DIR', 'uploads'),

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -33,6 +33,9 @@ function CollectionDetailInner() {
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState(null);
   const [visibilityBusy, setVisibilityBusy] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameBusy, setNameBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!Number.isFinite(collectionId) || collectionId <= 0) return;
@@ -79,6 +82,36 @@ function CollectionDetailInner() {
     }
   }
 
+  function startRename() {
+    setNameDraft(meta?.name || '');
+    setEditingName(true);
+  }
+
+  async function saveName(e) {
+    e?.preventDefault?.();
+    if (!meta || nameBusy) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      pushToast({ type: 'error', title: 'Collection name is required' });
+      return;
+    }
+    if (trimmed === meta.name) {
+      setEditingName(false);
+      return;
+    }
+    setNameBusy(true);
+    try {
+      const { collection } = await collectionsApi.update(collectionId, { name: trimmed });
+      setMeta((m) => ({ ...m, name: collection.name }));
+      setEditingName(false);
+      pushToast({ type: 'success', title: 'Collection renamed', message: `Now called “${collection.name}”.` });
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Could not rename', message: err.message });
+    } finally {
+      setNameBusy(false);
+    }
+  }
+
   async function handleRemove(bookId, title) {
     if (removingId) return;
     setRemovingId(bookId);
@@ -111,9 +144,57 @@ function CollectionDetailInner() {
         </Link>
 
         <header className="mb-8">
-          <h1 className="font-display-lg text-[36px] md:text-[44px] text-on-surface dark:text-neutral-100 leading-tight">
-            {meta?.name || 'Collection'}
-          </h1>
+          {editingName ? (
+            <form onSubmit={saveName} className="flex flex-wrap items-end gap-3">
+              <label className="flex-1 min-w-[220px] max-w-lg">
+                <span className="sr-only">Collection name</span>
+                <input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value.slice(0, 120))}
+                  onKeyDown={(e) => { if (e.key === 'Escape') setEditingName(false); }}
+                  maxLength={120}
+                  disabled={nameBusy}
+                  className="w-full bg-transparent border-b border-outline-variant focus:border-on-surface focus:outline-none py-2 font-display-lg text-[28px] md:text-[36px] leading-tight text-on-surface dark:text-neutral-100"
+                />
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={nameBusy || !nameDraft.trim()}
+                  className="px-4 py-2 rounded bg-primary text-on-primary text-[11px] font-semibold uppercase tracking-widest hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {nameBusy ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingName(false)}
+                  disabled={nameBusy}
+                  className="px-4 py-2 rounded border border-outline-variant text-on-surface-variant text-[11px] font-semibold uppercase tracking-widest hover:text-on-surface hover:border-on-surface disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-display-lg text-[36px] md:text-[44px] text-on-surface dark:text-neutral-100 leading-tight">
+                {meta?.name || 'Collection'}
+              </h1>
+              {meta ? (
+                <button
+                  type="button"
+                  onClick={startRename}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-[11px] uppercase tracking-widest text-on-surface-variant hover:text-on-surface hover:border-on-surface transition-colors"
+                  aria-label="Rename collection"
+                  title="Rename collection"
+                >
+                  <Pencil size={12} />
+                  Rename
+                </button>
+              ) : null}
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-4">
             <span className="text-[12px] uppercase tracking-widest text-on-surface-variant">
               {!loading ? `${total} ${total === 1 ? 'book' : 'books'}` : '…'}

@@ -7,6 +7,7 @@ import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardTopbar from '@/components/layout/DashboardTopbar';
 import CommentsModeration from '@/components/admin/CommentsModeration';
+import ModerationQueue from '@/components/admin/ModerationQueue';
 import Chip from '@/components/ui/Chip';
 import Icon from '@/components/ui/Icon';
 import Pagination from '@/components/ui/Pagination';
@@ -23,6 +24,18 @@ const STATUS_FILTERS = [
 ];
 
 const PAGE_SIZE = 20;
+
+const QUEUE_KINDS = [
+  { id: 'all', label: 'All reports' },
+  { id: 'comment', label: 'Comments' },
+  { id: 'review', label: 'Reviews' },
+  { id: 'book', label: 'Novels' },
+];
+
+const QUEUE_STATUSES = [
+  { id: 'open', label: 'Open' },
+  { id: 'resolved', label: 'Resolved' },
+];
 
 function buildQuery(updates, current) {
   const next = new URLSearchParams(current?.toString() || '');
@@ -43,8 +56,15 @@ function Inner() {
   const status    = searchParams.get('status') || 'all';
   const order     = searchParams.get('order')  || 'asc';
   const page      = Math.max(1, Number(searchParams.get('page') || '1') || 1);
+  const view      = searchParams.get('view') || '';
+  const queueKind   = searchParams.get('kind') || 'all';
+  const queueStatus = searchParams.get('rstatus') || 'open';
 
+  // Reported content is the default view; the per-book browser lives under ?view=all.
+  const showQueue = !bookId && view !== 'all';
   const level = !bookId ? 1 : chapterId === null ? 2 : 3;
+
+  const [names, setNames] = useState({ bookTitle: '', chapterTitle: '' });
 
   const setQuery = useCallback((updates) => {
     const next = buildQuery(updates, searchParams);
@@ -56,14 +76,18 @@ function Inner() {
   const setOrder  = (o) => setQuery({ order: o === 'asc' ? '' : o, page: '' });
   const setPage   = (p) => setQuery({ page: p > 1 ? p : '' });
 
-  const goLevel1 = () => router.push('/admin/comments');
+  const goQueue  = () => router.push('/admin/comments');
+  const goLevel1 = () => router.push('/admin/comments?view=all');
+  const setQueueKind   = (k) => setQuery({ kind: k === 'all' ? '' : k, page: '' });
+  const setQueueStatus = (s) => setQuery({ rstatus: s === 'open' ? '' : s, page: '' });
   const goLevel2 = (bId) => {
     const q = new URLSearchParams();
     q.set('bookId', String(bId));
     if (status !== 'all') q.set('status', status);
     router.push(`/admin/comments?${q.toString()}`);
   };
-  const goLevel3 = (bId, chId) => {
+  const goLevel3 = (bId, chId, chapterTitle = '') => {
+    setNames((n) => ({ ...n, chapterTitle }));
     const q = new URLSearchParams();
     q.set('bookId', String(bId));
     q.set('chapterId', chId === null ? 'null' : String(chId));
@@ -71,18 +95,84 @@ function Inner() {
     router.push(`/admin/comments?${q.toString()}`);
   };
 
+  // Breadcrumb labels. The chapter title is carried over from the chapter list
+  // when picked there; on a cold load both names are fetched.
+  useEffect(() => {
+    setNames({ bookTitle: '', chapterTitle: '' });
+    if (!bookId) return undefined;
+    let cancelled = false;
+    api.get('/admin/comments/by-chapter', { query: { bookId, pageSize: 1 } })
+      .then((d) => {
+        if (!cancelled && d.book?.title) setNames((n) => ({ ...n, bookTitle: d.book.title }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [bookId]);
+  useEffect(() => {
+    if (!chapterId || chapterId === 'null' || names.chapterTitle) return undefined;
+    let cancelled = false;
+    api.get(`/chapters/${chapterId}`)
+      .then((d) => {
+        if (!cancelled && d.chapter?.title) setNames((n) => ({ ...n, chapterTitle: d.chapter.title }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [chapterId, names.chapterTitle]);
+
   return (
     <DashboardShell kind="admin">
-      <DashboardTopbar subtitle="Administration" title="Comment moderation" />
+      <DashboardTopbar subtitle="Administration" title="Moderation" />
       <div className="px-4 md:px-edge py-8 space-y-8">
+        <div className="flex flex-wrap gap-2 border-b border-outline-variant pb-1">
+          <button
+            type="button"
+            onClick={goQueue}
+            className={`px-4 py-2 text-[12px] uppercase tracking-widest border-b-2 -mb-px transition-colors ${
+              showQueue
+                ? 'border-on-surface text-on-surface'
+                : 'border-transparent text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            Reported
+          </button>
+          <button
+            type="button"
+            onClick={goLevel1}
+            className={`px-4 py-2 text-[12px] uppercase tracking-widest border-b-2 -mb-px transition-colors ${
+              !showQueue
+                ? 'border-on-surface text-on-surface'
+                : 'border-transparent text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            All comments
+          </button>
+        </div>
+
+        {showQueue ? (
+          <QueueLevel
+            kind={queueKind}
+            status={queueStatus}
+            page={page}
+            onKind={setQueueKind}
+            onStatus={setQueueStatus}
+            onPageChange={setPage}
+            pushToast={pushToast}
+          />
+        ) : null}
+
+        {!showQueue ? (
         <Breadcrumbs
           level={level}
           bookId={bookId}
           chapterId={chapterId}
+          bookTitle={names.bookTitle}
+          chapterTitle={names.chapterTitle}
           onAll={goLevel1}
           onBook={(b) => goLevel2(b)}
         />
+        ) : null}
 
+        {!showQueue ? (
         <div className="flex flex-wrap items-center gap-2">
           {STATUS_FILTERS.map((s) => (
             <button key={s.id} type="button" onClick={() => setStatus(s.id)} className="inline-flex">
@@ -117,8 +207,9 @@ function Inner() {
             </div>
           )}
         </div>
+        ) : null}
 
-        {level === 1 && (
+        {!showQueue && level === 1 && (
           <BooksLevel
             status={status}
             page={page}
@@ -127,18 +218,18 @@ function Inner() {
             pushToast={pushToast}
           />
         )}
-        {level === 2 && (
+        {!showQueue && level === 2 && (
           <ChaptersLevel
             bookId={bookId}
             status={status}
             page={page}
             onBack={goLevel1}
-            onPick={(chId) => goLevel3(bookId, chId)}
+            onPick={(chId, title) => goLevel3(bookId, chId, title)}
             onPageChange={setPage}
             pushToast={pushToast}
           />
         )}
-        {level === 3 && (
+        {!showQueue && level === 3 && (
           <CommentsLevel
             bookId={bookId}
             chapterId={chapterId === 'null' ? null : chapterId}
@@ -154,7 +245,100 @@ function Inner() {
   );
 }
 
-function Breadcrumbs({ level, bookId, chapterId, onAll, onBook }) {
+function QueueLevel({ kind, status, page, onKind, onStatus, onPageChange, pushToast }) {
+  const [data, setData] = useState({ items: [], total: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api.get('/admin/moderation/queue', { query: { kind, status, page, pageSize: PAGE_SIZE } })
+      .then((d) => {
+        if (cancelled) return;
+        setData({ items: d.items || [], total: Number(d.total) || 0 });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setData({ items: [], total: 0 });
+        pushToast({ type: 'error', title: 'Could not load reports', message: err.message });
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [kind, status, page, pushToast]);
+
+  const sameItem = (a, b) => a.kind === b.kind && a.targetId === b.targetId;
+  const removeItem = (item) => setData((d) => ({
+    items: d.items.filter((it) => !sameItem(it, item)),
+    total: Math.max(0, d.total - 1),
+  }));
+  const updateItem = (item) => setData((d) => ({
+    ...d,
+    items: d.items.map((it) => (sameItem(it, item) ? item : it)),
+  }));
+
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        {QUEUE_KINDS.map((k) => (
+          <button key={k.id} type="button" onClick={() => onKind(k.id)} className="inline-flex">
+            <Chip active={kind === k.id}>{k.label}</Chip>
+          </button>
+        ))}
+        <div className="ml-auto flex items-center gap-2">
+          {QUEUE_STATUSES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onStatus(s.id)}
+              className={`px-3 py-1 text-[11px] tracking-labelTight uppercase border rounded ${
+                status === s.id
+                  ? 'border-on-surface bg-on-surface text-surface dark:bg-neutral-100 dark:text-neutral-950 dark:border-neutral-100'
+                  : 'border-outline-variant text-on-surface-variant dark:border-neutral-700 dark:text-neutral-400'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!loading ? (
+        <p className="text-[12px] uppercase tracking-widest text-on-surface-variant">
+          {data.total} {status === 'open' ? 'open' : 'resolved'} report{data.total === 1 ? '' : 's'}
+        </p>
+      ) : null}
+
+      {loading ? (
+        <div className="border border-outline-variant rounded-md p-6 space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-5/6" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ModerationQueue
+          items={data.items}
+          resolvedView={status === 'resolved'}
+          onRemove={removeItem}
+          onUpdate={updateItem}
+          emptyText={status === 'open' ? 'No open reports — nothing waiting for review.' : 'No resolved reports yet.'}
+        />
+      )}
+      <Pagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={data.total}
+        onPageChange={onPageChange}
+        className="pt-2"
+      />
+    </section>
+  );
+}
+
+function Breadcrumbs({ level, bookId, chapterId, bookTitle, chapterTitle, onAll, onBook }) {
   return (
     <nav aria-label="Breadcrumbs" className="flex items-center gap-2 text-[12px] tracking-labelTight uppercase text-on-surface-variant">
       <button
@@ -172,7 +356,7 @@ function Breadcrumbs({ level, bookId, chapterId, onAll, onBook }) {
             onClick={() => onBook(bookId)}
             className={`hover:text-on-surface transition-colors max-w-[260px] truncate ${level === 2 ? 'text-on-surface' : ''}`}
           >
-            Book #{bookId}
+            {bookTitle || `Book #${bookId}`}
           </button>
         </>
       )}
@@ -180,7 +364,9 @@ function Breadcrumbs({ level, bookId, chapterId, onAll, onBook }) {
         <>
           <Icon name="chevron_right" size={14} className="text-outline-variant" />
           <span className="text-on-surface max-w-[260px] truncate">
-            {chapterId === 'null' || chapterId === null ? 'Book-level comments' : `Chapter #${chapterId}`}
+            {chapterId === 'null' || chapterId === null
+              ? 'Book-level comments'
+              : chapterTitle || `Chapter #${chapterId}`}
           </span>
         </>
       )}
@@ -413,7 +599,7 @@ function ChaptersLevel({ bookId, status, page, onBack, onPick, onPageChange, pus
                   <tr
                     key={row.chapterId}
                     className="border-b border-outline-variant/60 hover:bg-surface-container dark:hover:bg-neutral-900/50 cursor-pointer"
-                    onClick={() => onPick(row.chapterId)}
+                    onClick={() => onPick(row.chapterId, row.title)}
                   >
                     <td className="px-4 py-4">
                       <p className="font-serif text-[16px] text-on-surface">

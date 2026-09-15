@@ -1,5 +1,6 @@
 'use client';
 
+import { useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import Icon from '@/components/ui/Icon';
@@ -10,12 +11,21 @@ import { navItemsForUser } from '@/lib/adminPermissions';
 import { DashboardThemeToggleSidebar } from '@/components/layout/DashboardThemeToggle';
 import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
 
+// Every admin page mounts its own sidebar, so remember the nav's scroll offset
+// between mounts instead of jumping back to the top on each tab change.
+let savedNavScroll = 0;
+
 export default function AdminSidebar() {
   const pathname = usePathname() || '/';
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navItems = navItemsForUser(user);
+  const navRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (navRef.current) navRef.current.scrollTop = savedNavScroll;
+  }, []);
 
   return (
     <aside
@@ -44,7 +54,11 @@ export default function AdminSidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 flex flex-col gap-1 overflow-y-auto">
+      <nav
+        ref={navRef}
+        onScroll={(e) => { savedNavScroll = e.currentTarget.scrollTop; }}
+        className="flex-1 flex flex-col gap-1 overflow-y-auto"
+      >
         <DashboardSiteHomeLink variant="admin-sidebar" />
         {navItems.map((it) => {
           const active = it.exact ? pathname === it.href : pathname.startsWith(it.href);

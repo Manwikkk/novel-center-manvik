@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import AdminPageGuard from '@/components/layout/AdminPageGuard';
 import DashboardShell from '@/components/layout/DashboardShell';
 import DashboardSiteHomeLink from '@/components/layout/DashboardSiteHomeLink';
+import ModerationQueue from '@/components/admin/ModerationQueue';
 import Icon from '@/components/ui/Icon';
 import { api } from '@/lib/api';
 import { formatTokens } from '@/lib/format';
@@ -29,25 +30,34 @@ function AdminOverview() {
     && hasAdminPermission(user, 'reports');
   const [stats, setStats] = useState(null);
   const [transactions, setTransactions] = useState([]);
-  const [comments, setComments] = useState([]);
+  // Open reader reports (comments, reviews, novels) — the actual moderation queue.
+  const [queue, setQueue] = useState({ items: [], total: 0 });
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       api.get('/admin/stats').catch(() => null),
       api.get('/admin/transactions', { query: { pageSize: 6 } }).catch(() => ({ items: [] })),
-      api.get('/admin/comments', { query: { status: 'pending', pageSize: 6 } })
-        .catch(() => api.get('/admin/comments', { query: { pageSize: 6 } }).catch(() => ({ items: [] }))),
-    ]).then(([s, t, c]) => {
+      api.get('/admin/moderation/queue', { query: { status: 'open', pageSize: 6 } })
+        .catch(() => ({ items: [], total: 0 })),
+    ]).then(([s, t, q]) => {
       if (cancelled) return;
       setStats(s);
       setTransactions(t.items || []);
-      setComments(c.items || []);
+      setQueue({ items: q.items || [], total: Number(q.total) || 0 });
     });
     return () => { cancelled = true; };
   }, []);
 
-  const pendingCount = comments.length;
+  const pendingCount = queue.total;
+  const removeQueueItem = (item) => setQueue((q) => ({
+    items: q.items.filter((it) => !(it.kind === item.kind && it.targetId === item.targetId)),
+    total: Math.max(0, q.total - 1),
+  }));
+  const updateQueueItem = (item) => setQueue((q) => ({
+    ...q,
+    items: q.items.map((it) => (it.kind === item.kind && it.targetId === item.targetId ? item : it)),
+  }));
 
   return (
     <DashboardShell kind="admin">
@@ -94,8 +104,8 @@ function AdminOverview() {
               label="Pending Moderation"
               value={pendingCount.toString()}
               hint={pendingCount > 0
-                ? `Requires immediate review. ${comments.filter((c) => c.status === 'pending').length} flagged for severe violations.`
-                : 'No pending items at this time.'}
+                ? `${pendingCount} reported item${pendingCount === 1 ? '' : 's'} (comments, reviews, novels) awaiting review.`
+                : 'No open reports at this time.'}
               href="/admin/comments"
             />
           </div>
@@ -103,7 +113,12 @@ function AdminOverview() {
           {/* TWO COL */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter mb-16">
             <TransactionsCard transactions={transactions} />
-            <ModerationQueueCard comments={comments} />
+            <ModerationQueueCard
+              items={queue.items}
+              total={queue.total}
+              onRemove={removeQueueItem}
+              onUpdate={updateQueueItem}
+            />
           </div>
         </div>
       </main>
@@ -227,54 +242,31 @@ function TxTypePill({ type }) {
   return <span className={`px-2 py-1 rounded text-xs ${m.cls}`}>{m.label}</span>;
 }
 
-function ModerationQueueCard({ comments }) {
+function ModerationQueueCard({ items, total, onRemove, onUpdate }) {
   return (
     <div className="lg:col-span-1 bg-surface-container-lowest border border-surface-variant rounded-lg flex flex-col">
-      <div className="p-6 border-b border-surface-variant bg-surface-container-low">
-        <h3 className="font-headline-md text-[20px] text-on-surface">Moderation Queue</h3>
-        <p className="font-ui-label-sm text-ui-label-sm text-on-surface-variant mt-1">
-          High priority alerts
-        </p>
+      <div className="p-6 border-b border-surface-variant bg-surface-container-low flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-headline-md text-[20px] text-on-surface">Moderation Queue</h3>
+          <p className="font-ui-label-sm text-ui-label-sm text-on-surface-variant mt-1">
+            Reported comments, reviews &amp; novels
+          </p>
+        </div>
+        <Link
+          href="/admin/comments"
+          className="font-ui-label-sm text-ui-label-sm text-secondary hover:text-on-surface uppercase underline tracking-widest whitespace-nowrap"
+        >
+          {total > items.length ? `All ${total}` : 'View All'}
+        </Link>
       </div>
-      <div className="flex-1 overflow-y-auto divide-y divide-surface-variant">
-        {comments.length === 0 && (
-          <div className="p-8 text-center text-on-surface-variant text-sm">
-            No flagged content.
-          </div>
-        )}
-        {comments.map((c, i) => (
-          <div key={c.id} className="p-4 hover:bg-surface-container-low transition-colors">
-            <div className="flex justify-between items-start mb-2 gap-2">
-              <span className={`font-ui-label-sm text-ui-label-sm font-bold uppercase tracking-widest ${
-                i === 0 ? 'text-error' : 'text-on-surface-variant'
-              }`}>
-                {c.status === 'pending' ? 'Pending Review' : c.status}
-              </span>
-              <span className="font-ui-label-sm text-ui-label-sm text-outline whitespace-nowrap">
-                {formatRelative(c.createdAt)}
-              </span>
-            </div>
-            <p className="font-reading-body text-sm text-on-surface mb-3 line-clamp-2">
-              <span className="font-semibold">{c.author?.displayName || 'User'}: </span>
-              {(c.body || 'Comment removed.').slice(0, 160)}
-            </p>
-            <div className="flex gap-2">
-              <Link
-                href={`/admin/comments`}
-                className="flex-1 bg-primary text-on-primary font-ui-label-sm text-ui-label-sm py-2 rounded uppercase tracking-widest text-xs text-center"
-              >
-                Review
-              </Link>
-              <button
-                type="button"
-                className="px-3 border border-outline text-on-surface rounded hover:bg-surface-variant flex items-center justify-center"
-                aria-label="More"
-              >
-                <Icon name="more_horiz" size={18} />
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="flex-1 overflow-y-auto">
+        <ModerationQueue
+          items={items}
+          compact
+          onRemove={onRemove}
+          onUpdate={onUpdate}
+          emptyText="No reported content."
+        />
       </div>
     </div>
   );

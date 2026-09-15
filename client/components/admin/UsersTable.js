@@ -83,6 +83,16 @@ export default function UsersTable({ items, onChange }) {
     if (updated) closeManageIfClear(updated);
   }
 
+  async function addRestrictions(keys) {
+    if (!manageUser) return;
+    const updated = await patch(
+      manageUser.id,
+      { addRestrictions: keys },
+      keys.length === 1 ? 'Restriction added' : 'Restrictions added',
+    );
+    if (updated) setManageUser(updated);
+  }
+
   async function reinstateAll() {
     if (!manageUser) return;
     const updated = await patch(
@@ -122,11 +132,13 @@ export default function UsersTable({ items, onChange }) {
                       value={u.role}
                       disabled={busyId === u.id || restricted || !canManageRoles}
                       onChange={(e) => patch(u.id, { role: e.target.value })}
-                      className="bg-transparent border-b border-outline-variant text-on-surface focus:border-on-surface focus:outline-none py-1 disabled:opacity-50"
+                      // color-scheme keeps the native option list on the site theme; otherwise
+                      // dark mode paints light text on the browser's white popup.
+                      className="bg-transparent border-b border-outline-variant text-on-surface focus:border-on-surface focus:outline-none py-1 disabled:opacity-50 [color-scheme:light] dark:[color-scheme:dark]"
                     >
-                      <option value="user">user</option>
-                      <option value="author">author</option>
-                      <option value="admin">admin</option>
+                      <option value="user" className="bg-surface-container-lowest text-on-surface">user</option>
+                      <option value="author" className="bg-surface-container-lowest text-on-surface">author</option>
+                      <option value="admin" className="bg-surface-container-lowest text-on-surface">admin</option>
                     </select>
                   </td>
                   <td className="px-4 py-4">
@@ -217,6 +229,7 @@ export default function UsersTable({ items, onChange }) {
         busy={manageUser != null && busyId === manageUser.id}
         onClose={() => { if (busyId !== manageUser?.id) setManageUser(null); }}
         onRemoveRestrictions={removeRestrictions}
+        onAddRestrictions={addRestrictions}
         onReinstateAll={reinstateAll}
       />
     </>

@@ -71,6 +71,31 @@ async function upsertProgress(userId, chapterId, percent, position) {
   };
 }
 
+// Latest saved position in one book (published, non-recycled chapters only).
+async function latestForBook(userId, bookId) {
+  const [rows] = await pool.execute(
+    `SELECT rp.chapter_id, rp.percent, rp.position, rp.updated_at,
+            c.idx AS chapter_idx, c.title AS chapter_title
+       FROM reader_progress rp
+       JOIN chapters c ON c.id = rp.chapter_id
+      WHERE rp.user_id = ? AND rp.book_id = ?
+        AND c.status = 'published' AND c.recycled_at IS NULL
+      ORDER BY rp.updated_at DESC, rp.chapter_id DESC
+      LIMIT 1`,
+    [userId, bookId],
+  );
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    chapterId: Number(r.chapter_id),
+    chapterIdx: Number(r.chapter_idx),
+    chapterTitle: r.chapter_title,
+    percent: Number(r.percent) || 0,
+    position: Number(r.position) || 0,
+    updatedAt: r.updated_at,
+  };
+}
+
 async function recent(userId, { page, pageSize, limit } = {}) {
   // limit takes precedence (used by /recent?limit=N); pagination is exposed
   // for completeness so the same endpoint can power a future "history" view.
@@ -157,4 +182,4 @@ async function recent(userId, { page, pageSize, limit } = {}) {
   };
 }
 
-module.exports = { upsertProgress, recent, htmlToWordCount, minutesFromWords, WPM };
+module.exports = { upsertProgress, latestForBook, recent, htmlToWordCount, minutesFromWords, WPM };

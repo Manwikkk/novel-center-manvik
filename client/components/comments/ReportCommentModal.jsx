@@ -12,8 +12,15 @@ const REASONS = [
   { value: 'other', label: 'Other' },
 ];
 
-export default function ReportCommentModal({ open, onClose, onSubmit, reader = false }) {
-  const [reason, setReason] = useState('spam');
+export default function ReportCommentModal({
+  open,
+  onClose,
+  onSubmit,
+  reader = false,
+  title = 'Report comment',
+  reasons = REASONS,
+}) {
+  const [reason, setReason] = useState(reasons[0]?.value || 'spam');
   const [details, setDetails] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -32,11 +39,11 @@ export default function ReportCommentModal({ open, onClose, onSubmit, reader = f
 
   useEffect(() => {
     if (!open) {
-      setReason('spam');
+      setReason(reasons[0]?.value || 'spam');
       setDetails('');
       setBusy(false);
     }
-  }, [open]);
+  }, [open, reasons]);
 
   if (!open) return null;
 
@@ -79,7 +86,7 @@ export default function ReportCommentModal({ open, onClose, onSubmit, reader = f
         className={cn('relative w-full max-w-md rounded-xl border shadow-2xl', shell)}
       >
         <div className="flex items-center justify-between gap-4 border-b border-inherit px-5 py-4">
-          <h2 className="font-serif text-[20px] leading-tight">Report comment</h2>
+          <h2 className="font-serif text-[20px] leading-tight">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -104,7 +111,7 @@ export default function ReportCommentModal({ open, onClose, onSubmit, reader = f
               Reason
             </span>
             <select value={reason} onChange={(e) => setReason(e.target.value)} className={cn('mt-2', field)}>
-              {REASONS.map((r) => (
+              {reasons.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.label}
                 </option>

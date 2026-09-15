@@ -24,7 +24,7 @@ export default function YouMayAlsoLikeSection({ items = [] }) {
   const visible = items.slice(0, 7);
 
   return (
-    <section className="max-w-[1280px] mx-auto px-4 md:px-edge mt-14 md:mt-16">
+    <section className="mt-14 md:mt-16">
       <h2 className="font-headline-md text-headline-md text-ink-900 dark:text-neutral-100 mb-6">
         You May Also Like
       </h2>

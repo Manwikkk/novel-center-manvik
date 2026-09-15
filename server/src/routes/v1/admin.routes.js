@@ -74,6 +74,9 @@ router.get('/comments/by-chapter', requireAdminPermission('comments'), validate(
 router.get('/comments', requireAdminPermission('comments'), validate(v.listComments), ctrl.listComments);
 router.patch('/comments/:id/status', requireAdminPermission('comments'), requireAdminCapability('comments.moderate'), validate({ params: idParam, body: v.moderateComment.body }), ctrl.moderateComment);
 
+router.get('/moderation/queue', requireAdminPermission('comments'), validate(v.moderationQueue), ctrl.moderationQueue);
+router.post('/moderation/resolve', requireAdminPermission('comments'), requireAdminCapability('comments.moderate'), validate(v.resolveReports), ctrl.resolveReports);
+
 router.get('/stats', requireAdminPermission('dashboard'), ctrl.stats);
 
 router.get('/page-sections', requireAdminPermission('page_configuration'), ctrl.getPageSections);

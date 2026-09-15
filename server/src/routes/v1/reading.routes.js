@@ -10,6 +10,7 @@ const v = require('../../validators/reading.validators');
 router.use(authRequired);
 
 router.get('/recent',    validate(v.recent),       ctrl.recent);
+router.get('/books/:bookId', validate(v.bookProgress), ctrl.bookProgress);
 router.post('/progress', validate(v.saveProgress), ctrl.saveProgress);
 
 module.exports = router;

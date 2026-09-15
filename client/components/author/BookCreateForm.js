@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
 import { emptyBookForm, formToPayload } from '@/lib/bookFormOptions';
 import {
   FormSection,
@@ -16,6 +17,9 @@ import {
 export default function BookCreateForm() {
   const router = useRouter();
   const pushToast = useUiStore((s) => s.pushToast);
+  const user = useAuthStore((s) => s.user);
+  const becomeAuthor = useAuthStore((s) => s.becomeAuthor);
+  const isReader = user?.role === 'user';
   const { catalog, loading: catalogLoading, addContentTag } = useBookCatalog();
   const [form, setForm] = useState(emptyBookForm());
   const [coverFile, setCoverFile] = useState(null);
@@ -54,6 +58,11 @@ export default function BookCreateForm() {
     }
     setBusy(true);
     try {
+      // A reader's first novel turns their account into an author account
+      // (server reissues tokens with the new role before the book is created).
+      if (useAuthStore.getState().user?.role === 'user') {
+        await becomeAuthor();
+      }
       const payload = formToPayload(form, { includeStatus: true });
       const r = await api.post('/books', payload);
       let saved = r.book;
@@ -68,9 +77,9 @@ export default function BookCreateForm() {
       pushToast({
         type: 'success',
         title: saved.status === 'published' ? 'Book published' : 'Draft saved',
-        message: 'Add chapters on the next screen.',
+        message: 'Opening your first chapter.',
       });
-      router.push(`/author/books/${saved.id}/edit?created=1`);
+      router.push(`/author/books/${saved.id}/chapters/new`);
     } catch (err) {
       pushToast({ type: 'error', title: 'Create failed', message: err.message });
     } finally {
@@ -90,6 +99,15 @@ export default function BookCreateForm() {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-5xl space-y-6">
+      {isReader ? (
+        <div className="rounded-xl border border-studio-accent/40 bg-studio-accent/10 px-5 py-4 text-[13px] leading-relaxed text-on-surface">
+          <p className="font-bold uppercase tracking-wider text-[11px] text-studio-accent">Become an author</p>
+          <p className="mt-1">
+            You&rsquo;re signed in as a reader. Creating your first novel turns on the author
+            studio for your account — you keep your library, wallet, and reading history.
+          </p>
+        </div>
+      ) : null}
       <div className="grid lg:grid-cols-2 gap-6">
         <FormSection title="Novel information">
           <NovelInformationFields

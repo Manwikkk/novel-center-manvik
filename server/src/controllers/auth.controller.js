@@ -2,6 +2,7 @@
 
 const asyncHandler = require('../utils/asyncHandler');
 const authService = require('../services/auth.service');
+const passwordResetService = require('../services/passwordReset.service');
 
 const register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body);
@@ -20,6 +21,25 @@ const googleAuth = asyncHandler(async (req, res) => {
 
 const completeOnboarding = asyncHandler(async (req, res) => {
   const result = await authService.completeOnboarding(req.user.id, req.body);
+  res.json(result);
+});
+
+const becomeAuthor = asyncHandler(async (req, res) => {
+  const result = await authService.becomeAuthor(req.user.id);
+  res.json(result);
+});
+
+const forgotPassword = asyncHandler(async (req, res) => {
+  const result = await passwordResetService.requestReset(req.body.email);
+  res.json(result);
+});
+
+const resetPasswordToken = asyncHandler(async (req, res) => {
+  res.json(await passwordResetService.inspect(req.query.token));
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const result = await passwordResetService.resetPassword(req.body);
   res.json(result);
 });
 
@@ -43,6 +63,10 @@ module.exports = {
   login,
   googleAuth,
   completeOnboarding,
+  becomeAuthor,
+  forgotPassword,
+  resetPasswordToken,
+  resetPassword,
   refresh,
   me,
   updateMe,

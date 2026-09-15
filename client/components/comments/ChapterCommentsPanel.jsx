@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { openAuthModal } from '@/lib/authModal';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
@@ -45,6 +45,11 @@ export default function ChapterCommentsPanel({
 
   const sort = tab === 'liked' ? 'likes' : 'newest';
 
+  // Latest count callback without making it a fetch dependency (a parent re-render
+  // with a fresh callback must not refetch the thread).
+  const onCountChangeRef = useRef(onCountChange);
+  useEffect(() => { onCountChangeRef.current = onCountChange; }, [onCountChange]);
+
   const fetchPage = useCallback(
     async (pageNum, { append } = { append: false }) => {
       const data = await api.get('/comments', {
@@ -55,11 +60,11 @@ export default function ChapterCommentsPanel({
       setHasMore(Boolean(data.hasMore));
       const total = Number(data.totalRoots) || 0;
       setTotalRoots(total);
-      onCountChange?.(total);
+      onCountChangeRef.current?.(total);
       setPage(pageNum);
       return data;
     },
-    [chapterId, sort, onCountChange],
+    [chapterId, sort],
   );
 
   useEffect(() => {
@@ -77,9 +82,9 @@ export default function ChapterCommentsPanel({
     if (!chapterId) return;
     api
       .get('/comments', { query: { chapterId, pageSize: 1, page: 1, sort: 'newest' } })
-      .then((d) => onCountChange?.(Number(d.totalRoots) || 0))
+      .then((d) => onCountChangeRef.current?.(Number(d.totalRoots) || 0))
       .catch(() => {});
-  }, [chapterId, onCountChange]);
+  }, [chapterId]);
 
   const tree = buildCommentTree(items);
 
@@ -199,23 +204,25 @@ export default function ChapterCommentsPanel({
 
   return (
     <>
+      {/* The panel lives inside the reader, so it follows the reader theme
+          (cream / sepia / dark) rather than the site-wide dark mode. */}
       <div
-        className="fixed top-0 bottom-0 z-[48] flex flex-col border-l border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
+        className="fixed top-0 bottom-0 z-[48] flex flex-col border-l border-[var(--reader-rule)] bg-[var(--reader-bg)] text-[var(--reader-fg)] shadow-2xl"
         style={{ right: railPx, width: PANEL_W }}
       >
-        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-[var(--reader-rule)] shrink-0">
           <div className="min-w-0">
-            <h2 className="font-semibold text-[15px] text-ink-900 dark:text-neutral-100 truncate">
+            <h2 className="font-semibold text-[15px] text-[var(--reader-fg)] truncate">
               Chapter comments
             </h2>
-            <p className="text-[12px] text-ink-400 dark:text-neutral-500 tabular-nums">
+            <p className="text-[12px] text-[var(--reader-muted)] tabular-nums">
               {totalRoots}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-ink-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            className="p-2 rounded-lg text-[var(--reader-muted)] hover:bg-[var(--reader-fg)]/[0.06] hover:text-[var(--reader-fg)]"
             aria-label="Close comments"
           >
             <Icon name="close" size={22} />
@@ -226,13 +233,13 @@ export default function ChapterCommentsPanel({
           <button
             type="button"
             onClick={() => openComposer(null)}
-            className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-left text-[14px] text-ink-400 hover:border-neutral-300 hover:bg-neutral-100 transition-colors dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-500 dark:hover:border-neutral-600"
+            className="w-full rounded-full border border-[var(--reader-rule)] bg-[var(--reader-fg)]/[0.04] px-4 py-2.5 text-left text-[14px] text-[var(--reader-muted)] hover:bg-[var(--reader-fg)]/[0.08] transition-colors"
           >
             What&apos;s your thought?
           </button>
         </div>
 
-        <div className="flex border-b border-neutral-200 dark:border-neutral-800 shrink-0">
+        <div className="flex border-b border-[var(--reader-rule)] shrink-0">
           {[
             { id: 'liked', label: 'Liked' },
             { id: 'newest', label: 'Newest' },
@@ -245,7 +252,7 @@ export default function ChapterCommentsPanel({
                 'flex-1 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors',
                 tab === id
                   ? 'text-[#2563eb] border-b-2 border-[#2563eb]'
-                  : 'text-ink-400 border-b-2 border-transparent dark:text-neutral-500',
+                  : 'text-[var(--reader-muted)] border-b-2 border-transparent',
               )}
             >
               {label}
@@ -255,9 +262,9 @@ export default function ChapterCommentsPanel({
 
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {loading ? (
-            <p className="text-sm text-ink-400 dark:text-neutral-500 py-8 text-center">Loading…</p>
+            <p className="text-sm text-[var(--reader-muted)] py-8 text-center">Loading…</p>
           ) : tree.length === 0 ? (
-            <p className="text-sm text-ink-400 dark:text-neutral-500 py-8 text-center">
+            <p className="text-sm text-[var(--reader-muted)] py-8 text-center">
               No comments yet. Be the first.
             </p>
           ) : (
@@ -343,7 +350,9 @@ function ChapterCommentRow({
     setReportOpen(true);
   }
 
-  const actionLink = 'hover:text-ink-700 dark:hover:text-neutral-300';
+  const actionLink = 'hover:text-[var(--reader-fg)]';
+  // Readers cannot react to their own comments (the API rejects it too).
+  const reactTitle = isOwner ? "You can't react to your own comment" : undefined;
 
   return (
     <li>
@@ -351,24 +360,26 @@ function ChapterCommentRow({
         <Avatar name={node.author?.displayName} src={node.author?.avatarUrl} size={32} />
         <div className="flex-1 min-w-0">
           {replyToName ? (
-            <p className="mb-1 text-[11px] text-ink-400 dark:text-neutral-500">
+            <p className="mb-1 text-[11px] text-[var(--reader-muted)]">
               Replied to{' '}
-              <span className="font-medium text-ink-600 dark:text-neutral-300">{replyToName}</span>
+              <span className="font-medium text-[var(--reader-fg)]">{replyToName}</span>
             </p>
           ) : null}
-          <p className="font-semibold text-[13px] text-ink-900 dark:text-neutral-100 truncate">
+          <p className="font-semibold text-[13px] text-[var(--reader-fg)] truncate">
             {node.author?.displayName || 'Reader'}
           </p>
-          <p className="mt-1 text-[14px] leading-snug text-ink-600 dark:text-neutral-400 whitespace-pre-line">
-            {isHidden ? <em className="text-ink-400">[hidden]</em> : node.body}
+          <p className="mt-1 text-[14px] leading-snug text-[var(--reader-fg)] opacity-85 whitespace-pre-line">
+            {isHidden ? <em className="text-[var(--reader-muted)]">[hidden]</em> : node.body}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-400 dark:text-neutral-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--reader-muted)]">
             <span>{formatRelative(node.createdAt)}</span>
             <button
               type="button"
+              disabled={isOwner}
+              title={reactTitle}
               onClick={() => onVote(node.id, nextReaction('like'))}
               className={cn(
-                'inline-flex items-center gap-1',
+                'inline-flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-60',
                 my === 'like' && 'text-[#2563eb] font-medium',
               )}
             >
@@ -377,9 +388,11 @@ function ChapterCommentRow({
             </button>
             <button
               type="button"
+              disabled={isOwner}
+              title={reactTitle}
               onClick={() => onVote(node.id, nextReaction('dislike'))}
               className={cn(
-                'inline-flex items-center gap-1',
+                'inline-flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-60',
                 my === 'dislike' && 'text-rose-500 font-medium',
               )}
             >
@@ -414,6 +427,7 @@ function ChapterCommentRow({
           </div>
           <ReportCommentModal
             open={reportOpen}
+            reader
             onClose={() => setReportOpen(false)}
             onSubmit={async (payload) => {
               await onReport?.(node.id, payload);

@@ -5,6 +5,7 @@ const { withTransaction } = require('../db/tx');
 const { errors } = require('../utils/HttpError');
 const { clampPagination } = require('../utils/pagination');
 const { resolveUserRow, assertRestriction } = require('./suspension.service');
+const { assertMatureAccess } = require('./ageGate');
 const finance = require('./finance.service');
 
 const PACKS = finance.PACKS;
@@ -113,7 +114,7 @@ async function unlockChapter(userId, chapterId) {
   return withTransaction(async (conn) => {
     const [cRows] = await conn.execute(
       `SELECT c.id, c.is_paid, c.token_price, c.status, c.book_id, c.title,
-              b.status AS book_status, b.author_id, b.title AS book_title
+              b.status AS book_status, b.author_id, b.title AS book_title, b.warning_notice
        FROM chapters c JOIN books b ON b.id = c.book_id
        WHERE c.id = ? FOR UPDATE`,
       [chapterId],
@@ -123,6 +124,8 @@ async function unlockChapter(userId, chapterId) {
     if (chapter.status !== 'published' || chapter.book_status !== 'published') {
       throw errors.notFound('Chapter not available');
     }
+    // No point spending tokens on a chapter the reader is not allowed to open.
+    assertMatureAccess({ warningNotice: chapter.warning_notice, authorId: chapter.author_id }, userRow);
 
     const bookAuthorId = Number(chapter.author_id);
     if (bookAuthorId === Number(userId)) {
