@@ -4,6 +4,7 @@
 const PAGE_PERMISSION_DEFS = [
   { key: 'dashboard', label: 'Dashboard', kind: 'page' },
   { key: 'page_configuration', label: 'Page Configuration', kind: 'page' },
+  { key: 'check_in', label: 'Daily Check-In', kind: 'page' },
   { key: 'catalog', label: 'Catalog', kind: 'page' },
   { key: 'users', label: 'User Management', kind: 'page' },
   { key: 'comments', label: 'Moderation', kind: 'page' },

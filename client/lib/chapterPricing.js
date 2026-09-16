@@ -1,3 +1,5 @@
+import { analyzeContent } from '@/lib/contentIntegrity';
+
 const SPLIT_WARNING =
   'This chapter exceeds 3,600 words. Consider splitting it into two chapters for a better reading experience.';
 
@@ -41,10 +43,18 @@ export function getSplitWarning(wordCount) {
 
 export function pricingFromContent(isPaid, contentHtml) {
   const wordCount = htmlToWordCount(contentHtml);
-  const tokenPrice = isPaid ? computeTokenPrice(wordCount) : 0;
+  // Repeated paragraphs count once: the price tier and the word gate use unique words.
+  const integrity = analyzeContent(contentHtml);
+  const uniqueWordCount = Math.min(wordCount, integrity.uniqueWordCount);
+  const tokenPrice = isPaid ? computeTokenPrice(uniqueWordCount) : 0;
   return {
     wordCount,
+    uniqueWordCount,
+    duplicatedWords: integrity.duplicatedWords,
+    duplicateRatio: integrity.duplicateRatio,
+    repeated: integrity.repeated,
+    blocking: integrity.blocking,
     tokenPrice,
-    pricingNote: isPaid ? getSplitWarning(wordCount) : null,
+    pricingNote: isPaid ? getSplitWarning(uniqueWordCount) : null,
   };
 }

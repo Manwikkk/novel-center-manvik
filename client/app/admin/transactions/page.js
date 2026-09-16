@@ -11,7 +11,7 @@ import { SkeletonRow } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { useUiStore } from '@/stores/uiStore';
 
-const TYPES = ['All', 'purchase', 'unlock', 'admin_adjust'];
+const TYPES = ['All', 'purchase', 'unlock', 'reward', 'admin_adjust'];
 const PAGE_SIZE = 20;
 
 function Inner() {

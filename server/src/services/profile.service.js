@@ -9,12 +9,14 @@ const { publicUser } = require('../utils/publicUser');
 const { readImageDimensions } = require('../utils/imageDimensions');
 const { levelFromXp, xpProgress, XP_THRESHOLDS } = require('./levels');
 const { dateOnly } = require('../utils/dateOnly');
+const checkinConfig = require('./checkinConfig.service');
+const checkin = require('./checkin.service');
+const notifications = require('./notifications.service');
 
 const BANNER_MIN_WIDTH = 1080;
 const BANNER_MIN_HEIGHT = 420;
 
 const SOCIAL_KEYS = ['website', 'twitter', 'discord', 'instagram', 'facebook', 'youtube'];
-const CHECKIN_XP = 10;
 const READING_XP = 5;
 
 function parseJson(value, fallback) {
@@ -28,12 +30,6 @@ function parseJson(value, fallback) {
 }
 
 function toDateStr(d = new Date()) {
-  return d.toISOString().slice(0, 10);
-}
-
-function yesterdayStr() {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
 }
 
@@ -62,6 +58,7 @@ function profilePublicFields(row, { isOwner = false, viewerId = null } = {}) {
     level: xpProgress(row.xp),
     currentStreak: Number(row.current_streak) || 0,
     longestStreak: Number(row.longest_streak) || 0,
+    totalCheckIns: Number(row.total_checkins) || 0,
     membershipTier: row.membership_tier || 'none',
   };
 
@@ -179,7 +176,7 @@ async function awardXp(userId, source, amount, meta = null, conn = pool) {
 }
 
 async function tryGrantAchievement(userId, code) {
-  const [ach] = await pool.execute('SELECT id, xp_reward FROM achievements WHERE code = ? LIMIT 1', [code]);
+  const [ach] = await pool.execute('SELECT id, title, xp_reward FROM achievements WHERE code = ? LIMIT 1', [code]);
   if (!ach[0]) return null;
   try {
     await pool.execute(
@@ -189,6 +186,12 @@ async function tryGrantAchievement(userId, code) {
     if (ach[0].xp_reward > 0) {
       await awardXp(userId, 'events', Number(ach[0].xp_reward), { achievement: code });
     }
+    await notifications.notify(userId, {
+      type: 'badge',
+      title: `Badge unlocked: ${ach[0].title}`,
+      body: ach[0].xp_reward > 0 ? `+${ach[0].xp_reward} EXP added to your reader level.` : null,
+      linkUrl: '/account?tab=achievements',
+    });
     return code;
   } catch (_e) {
     return null; // already earned
@@ -196,87 +199,62 @@ async function tryGrantAchievement(userId, code) {
 }
 
 /**
- * Re-evaluate milestone achievements from live activity and grant any newly earned.
- * Safe to call often — INSERT IGNORE style via tryGrantAchievement.
+ * Achievement rules: badge code → the activity metric it tracks and the value
+ * that earns it. Used both to grant badges and to show progress on locked ones.
  */
-async function syncAchievements(userId) {
-  if (!userId) return [];
-  const earned = [];
-  const grant = async (code) => {
-    const codeGranted = await tryGrantAchievement(userId, code);
-    if (codeGranted) earned.push(codeGranted);
-  };
+const ACHIEVEMENT_RULES = {
+  first_read: { metric: 'progressRows', target: 1 },
+  books_read_5: { metric: 'booksRead', target: 5 },
+  books_read_25: { metric: 'booksRead', target: 25 },
+  library_10: { metric: 'library', target: 10 },
+  library_50: { metric: 'library', target: 50 },
+  first_review: { metric: 'reviews', target: 1 },
+  critic: { metric: 'reviews', target: 5 },
+  first_comment: { metric: 'comments', target: 1 },
+  social_butterfly: { metric: 'comments', target: 25 },
+  first_follow: { metric: 'following', target: 1 },
+  followers_10: { metric: 'followers', target: 10 },
+  followers_100: { metric: 'followers', target: 100 },
+  first_novel: { metric: 'novels', target: 1 },
+  streak_7: { metric: 'bestStreak', target: 7 },
+  streak_30: { metric: 'bestStreak', target: 30 },
+  streak_100: { metric: 'bestStreak', target: 100 },
+  streak_365: { metric: 'bestStreak', target: 365 },
+  checkins_100: { metric: 'totalCheckIns', target: 100 },
+  checkins_500: { metric: 'totalCheckIns', target: 500 },
+  verified_reader: { metric: 'verified', target: 1 },
+  premium_member: { metric: 'premium', target: 1 },
+  genre_fantasy: { metric: 'genreFantasy', target: 1 },
+  genre_eastern: { metric: 'genreEastern', target: 1 },
+  genre_romance: { metric: 'genreRomance', target: 1 },
+  genre_horror: { metric: 'genreHorror', target: 1 },
+  genre_scifi: { metric: 'genreScifi', target: 1 },
+};
 
-  const [[progress]] = await pool.execute(
-    'SELECT COUNT(*) AS c FROM reader_progress WHERE user_id = ?',
-    [userId],
+/** Live activity counters behind every rule-based achievement. */
+async function collectAchievementMetrics(userId) {
+  const [[stats]] = await pool.execute(
+    `SELECT
+       (SELECT COUNT(*) FROM reader_progress WHERE user_id = ?) AS progress_rows,
+       (SELECT COUNT(*) FROM library WHERE user_id = ?) AS library_count,
+       (SELECT COUNT(*) FROM comments
+         WHERE user_id = ? AND chapter_id IS NULL AND parent_id IS NULL
+           AND review_ratings IS NOT NULL AND status = 'visible') AS reviews,
+       (SELECT COUNT(*) FROM comments
+         WHERE user_id = ? AND status = 'visible'
+           AND (review_ratings IS NULL OR chapter_id IS NOT NULL)) AS comments,
+       (SELECT COUNT(*) FROM user_follows WHERE follower_id = ?) AS following,
+       (SELECT COUNT(*) FROM user_follows WHERE followee_id = ?) AS followers,
+       (SELECT COUNT(*) FROM books
+         WHERE author_id = ? AND status = 'published' AND recycled_at IS NULL) AS novels`,
+    [userId, userId, userId, userId, userId, userId, userId],
   );
-  if (Number(progress.c) > 0) await grant('first_read');
-
   const booksRead = await booksReadCount(userId);
-  if (booksRead >= 5) await grant('books_read_5');
-  if (booksRead >= 25) await grant('books_read_25');
-
-  const [[lib]] = await pool.execute(
-    'SELECT COUNT(*) AS c FROM library WHERE user_id = ?',
-    [userId],
-  );
-  if (Number(lib.c) >= 10) await grant('library_10');
-  if (Number(lib.c) >= 50) await grant('library_50');
-
-  const [[reviews]] = await pool.execute(
-    `SELECT COUNT(*) AS c FROM comments
-      WHERE user_id = ? AND chapter_id IS NULL AND parent_id IS NULL
-        AND review_ratings IS NOT NULL AND status = 'visible'`,
-    [userId],
-  );
-  if (Number(reviews.c) > 0) await grant('first_review');
-  if (Number(reviews.c) >= 5) await grant('critic');
-
-  const [[comments]] = await pool.execute(
-    `SELECT COUNT(*) AS c FROM comments
-      WHERE user_id = ? AND status = 'visible'
-        AND (review_ratings IS NULL OR chapter_id IS NOT NULL)`,
-    [userId],
-  );
-  if (Number(comments.c) > 0) await grant('first_comment');
-  if (Number(comments.c) >= 25) await grant('social_butterfly');
-
-  const [[follows]] = await pool.execute(
-    'SELECT COUNT(*) AS c FROM user_follows WHERE follower_id = ?',
-    [userId],
-  );
-  if (Number(follows.c) > 0) await grant('first_follow');
-
-  const counts = await followCounts(userId);
-  if (counts.followers >= 10) await grant('followers_10');
-  if (counts.followers >= 100) await grant('followers_100');
-
-  const [[novels]] = await pool.execute(
-    `SELECT COUNT(*) AS c FROM books
-      WHERE author_id = ? AND status = 'published' AND recycled_at IS NULL`,
-    [userId],
-  );
-  if (Number(novels.c) > 0) await grant('first_novel');
-
   const [userRows] = await pool.execute(
-    'SELECT current_streak, longest_streak, is_verified, is_premium, membership_tier FROM users WHERE id = ? LIMIT 1',
+    'SELECT current_streak, longest_streak, total_checkins, is_verified, is_premium, membership_tier FROM users WHERE id = ? LIMIT 1',
     [userId],
   );
-  const streak = Math.max(
-    Number(userRows[0]?.current_streak || 0),
-    Number(userRows[0]?.longest_streak || 0),
-  );
-  if (streak >= 7) await grant('streak_7');
-  if (streak >= 30) await grant('streak_30');
-  if (streak >= 365) await grant('streak_365');
-  if (Number(userRows[0]?.is_verified) === 1) await grant('verified_reader');
-  if (
-    Number(userRows[0]?.is_premium) === 1
-    || ['plus', 'premium'].includes(userRows[0]?.membership_tier)
-  ) {
-    await grant('premium_member');
-  }
+  const u = userRows[0] || {};
 
   // Genre badges from library categories / genres
   const [genreRows] = await pool.execute(
@@ -287,12 +265,43 @@ async function syncAchievements(userId) {
     [userId],
   );
   const joined = genreRows.map((r) => String(r.g || '')).join(' ');
-  if (/fantasy|isekai|magic/i.test(joined)) await grant('genre_fantasy');
-  if (/eastern|xianxia|wuxia|cultivat/i.test(joined)) await grant('genre_eastern');
-  if (/romance|yuri|yaoi|love/i.test(joined)) await grant('genre_romance');
-  if (/horror|thriller|dark/i.test(joined)) await grant('genre_horror');
-  if (/sci-?fi|science|cyber|space/i.test(joined)) await grant('genre_scifi');
 
+  return {
+    progressRows: Number(stats.progress_rows || 0),
+    booksRead,
+    library: Number(stats.library_count || 0),
+    reviews: Number(stats.reviews || 0),
+    comments: Number(stats.comments || 0),
+    following: Number(stats.following || 0),
+    followers: Number(stats.followers || 0),
+    novels: Number(stats.novels || 0),
+    bestStreak: Math.max(Number(u.current_streak || 0), Number(u.longest_streak || 0)),
+    totalCheckIns: Number(u.total_checkins || 0),
+    verified: Number(u.is_verified) === 1 ? 1 : 0,
+    premium: Number(u.is_premium) === 1 || ['plus', 'premium'].includes(u.membership_tier) ? 1 : 0,
+    genreFantasy: /fantasy|isekai|magic/i.test(joined) ? 1 : 0,
+    genreEastern: /eastern|xianxia|wuxia|cultivat/i.test(joined) ? 1 : 0,
+    genreRomance: /romance|yuri|yaoi|love/i.test(joined) ? 1 : 0,
+    genreHorror: /horror|thriller|dark/i.test(joined) ? 1 : 0,
+    genreScifi: /sci-?fi|science|cyber|space/i.test(joined) ? 1 : 0,
+  };
+}
+
+/**
+ * Re-evaluate milestone achievements from live activity and grant any newly earned.
+ * Safe to call often — INSERT IGNORE style via tryGrantAchievement.
+ */
+async function syncAchievements(userId) {
+  if (!userId) return [];
+  const metrics = await collectAchievementMetrics(userId);
+  const earned = [];
+  for (const [code, rule] of Object.entries(ACHIEVEMENT_RULES)) {
+    if (Number(metrics[rule.metric] || 0) >= rule.target) {
+      // eslint-disable-next-line no-await-in-loop
+      const granted = await tryGrantAchievement(userId, code);
+      if (granted) earned.push(granted);
+    }
+  }
   return earned;
 }
 
@@ -420,6 +429,7 @@ async function getOverview(userId, viewerId = null) {
   const { profile } = await getProfile(userId, viewerId);
   const isOwner = profile.isOwner;
   const isAuthor = !!profile.isAuthor;
+  const checkinCfg = isOwner ? await checkinConfig.getConfig() : null;
 
   const jobs = [
     pool.execute(
@@ -468,11 +478,12 @@ async function getOverview(userId, viewerId = null) {
       bonus: profile.bonusBalance,
       membership: profile.membershipTier,
       membershipExpiresAt: profile.membershipExpiresAt,
-      checkedInToday: profile.lastCheckinDate === toDateStr(),
+      checkedInToday: checkin.isClaimedToday({ last_checkin_date: profile.lastCheckinDate }, checkinCfg),
       readingStreak: profile.currentStreak,
       unreadNotifications: Number(unread) || 0,
       booksRead: profile.booksRead,
       longestStreak: profile.longestStreak,
+      totalCheckIns: profile.totalCheckIns,
     };
   }
 
@@ -492,10 +503,12 @@ async function getOverview(userId, viewerId = null) {
   };
 }
 
-async function listAchievements(userId, { earnedOnly = false, limit } = {}) {
+const BADGE_SHOWCASE_MAX = 4;
+
+async function listAchievements(userId, { earnedOnly = false, limit, withProgress = false } = {}) {
   let sql = `
     SELECT a.id, a.code, a.title, a.description, a.icon, a.category, a.xp_reward,
-           ua.earned_at
+           ua.earned_at, ua.pinned_order
       FROM achievements a
       LEFT JOIN user_achievements ua ON ua.achievement_id = a.id AND ua.user_id = ?
   `;
@@ -504,8 +517,22 @@ async function listAchievements(userId, { earnedOnly = false, limit } = {}) {
   if (limit) sql += ` LIMIT ${Number(limit)}`;
 
   const [rows] = await pool.execute(sql, [userId]);
-  return {
-    items: rows.map((r) => ({
+  // Progress towards locked badges is derived from the owner's own activity
+  // counters, so it is only computed for the profile owner.
+  const metrics = withProgress ? await collectAchievementMetrics(userId) : null;
+
+  const items = rows.map((r) => {
+    const rule = ACHIEVEMENT_RULES[r.code] || null;
+    let progress = null;
+    if (rule && !r.earned_at) {
+      if (metrics) {
+        const current = Math.min(rule.target, Number(metrics[rule.metric] || 0));
+        progress = { current, target: rule.target, percent: Math.round((current / rule.target) * 100) };
+      } else {
+        progress = { current: null, target: rule.target, percent: null };
+      }
+    }
+    return {
       id: r.id,
       code: r.code,
       title: r.title,
@@ -515,8 +542,75 @@ async function listAchievements(userId, { earnedOnly = false, limit } = {}) {
       xpReward: Number(r.xp_reward),
       earnedAt: r.earned_at || null,
       earned: !!r.earned_at,
-    })),
+      pinned: r.pinned_order != null,
+      pinnedOrder: r.pinned_order != null ? Number(r.pinned_order) : null,
+      progress,
+    };
+  });
+
+  const earnedCount = items.filter((a) => a.earned).length;
+  return {
+    items,
+    summary: {
+      earned: earnedCount,
+      total: earnedOnly ? null : items.length,
+      xpFromBadges: items.filter((a) => a.earned).reduce((sum, a) => sum + a.xpReward, 0),
+      pinned: items.filter((a) => a.pinned).length,
+      showcaseMax: BADGE_SHOWCASE_MAX,
+    },
   };
+}
+
+/** Pin up to BADGE_SHOWCASE_MAX earned badges (ordered) to the profile header. */
+async function setBadgeShowcase(userId, codes) {
+  const wanted = [...new Set((Array.isArray(codes) ? codes : []).map((c) => String(c)))].slice(0, BADGE_SHOWCASE_MAX);
+  if (wanted.length) {
+    const placeholders = wanted.map(() => '?').join(',');
+    const [rows] = await pool.execute(
+      `SELECT a.code FROM user_achievements ua
+         JOIN achievements a ON a.id = ua.achievement_id
+        WHERE ua.user_id = ? AND a.code IN (${placeholders})`,
+      [userId, ...wanted],
+    );
+    const earnedCodes = new Set(rows.map((r) => r.code));
+    const missing = wanted.filter((c) => !earnedCodes.has(c));
+    if (missing.length) throw errors.badRequest('You can only showcase badges you have earned');
+  }
+  await pool.execute('UPDATE user_achievements SET pinned_order = NULL WHERE user_id = ?', [userId]);
+  for (let i = 0; i < wanted.length; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await pool.execute(
+      `UPDATE user_achievements ua JOIN achievements a ON a.id = ua.achievement_id
+          SET ua.pinned_order = ? WHERE ua.user_id = ? AND a.code = ?`,
+      [i + 1, userId, wanted[i]],
+    );
+  }
+  return listAchievements(userId, { withProgress: true });
+}
+
+/** Full badge objects for a list of codes (used for unlock celebrations). */
+async function achievementsByCodes(userId, codes) {
+  const list = [...new Set((codes || []).filter(Boolean))];
+  if (!list.length) return [];
+  const placeholders = list.map(() => '?').join(',');
+  const [rows] = await pool.execute(
+    `SELECT a.id, a.code, a.title, a.description, a.icon, a.category, a.xp_reward, ua.earned_at
+       FROM achievements a
+       LEFT JOIN user_achievements ua ON ua.achievement_id = a.id AND ua.user_id = ?
+      WHERE a.code IN (${placeholders})`,
+    [userId, ...list],
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    code: r.code,
+    title: r.title,
+    description: r.description,
+    icon: r.icon,
+    category: r.category,
+    xpReward: Number(r.xp_reward),
+    earnedAt: r.earned_at || null,
+    earned: !!r.earned_at,
+  }));
 }
 
 async function listProfileNovels(userId, {
@@ -914,18 +1008,90 @@ async function follow(followerId, followeeId) {
   const target = await getUserRow(followeeId);
   if (!target || target.status === 'suspended') throw errors.notFound('User not found');
 
+  let created = false;
   try {
-    await pool.execute(
+    const [r] = await pool.execute(
       'INSERT INTO user_follows (follower_id, followee_id) VALUES (?, ?)',
       [followerId, followeeId],
     );
+    created = r.affectedRows > 0;
   } catch (_e) {
     // already following
   }
   await tryGrantAchievement(followerId, 'first_follow');
   const counts = await followCounts(followeeId);
   if (counts.followers >= 10) await tryGrantAchievement(followeeId, 'followers_10');
+  if (counts.followers >= 100) await tryGrantAchievement(followeeId, 'followers_100');
+  if (created) {
+    const follower = await getUserRow(followerId);
+    await notifications.notify(followeeId, {
+      type: 'follow',
+      title: `${follower?.display_name || 'Someone'} started following you`,
+      body: `You now have ${counts.followers} follower${counts.followers === 1 ? '' : 's'}.`,
+      linkUrl: `/users/${followerId}`,
+    });
+  }
   return { isFollowing: true, followers: counts.followers, following: counts.following };
+}
+
+/** Public user card used by follower / following lists. */
+function followRowToCard(r) {
+  return {
+    id: r.id,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+    bio: r.bio || '',
+    role: r.role,
+    isAuthor: r.role === 'author' || r.role === 'admin',
+    isVerified: Number(r.is_verified) === 1,
+    readerLevel: Number(r.reader_level) || 1,
+    bookCount: Number(r.book_count || 0),
+    followers: Number(r.follower_count || 0),
+    isFollowing: Number(r.viewer_follows || 0) > 0,
+    followedAt: r.followed_at,
+  };
+}
+
+async function listFollowRelations(userId, viewerId, direction, { page = 1, pageSize = 24 } = {}) {
+  const { page: safePage, pageSize: safePageSize, offset } = clampPagination(page, pageSize, {
+    defaultSize: 24,
+    max: 60,
+  });
+  // followers: people who follow `userId`; following: people `userId` follows.
+  const joinCol = direction === 'followers' ? 'uf.follower_id' : 'uf.followee_id';
+  const whereCol = direction === 'followers' ? 'uf.followee_id' : 'uf.follower_id';
+  const [rows] = await pool.execute(
+    `SELECT u.id, u.display_name, u.avatar_url, u.bio, u.role, u.is_verified, u.reader_level,
+            uf.created_at AS followed_at,
+            (SELECT COUNT(*) FROM books b WHERE b.author_id = u.id AND b.status = 'published' AND b.recycled_at IS NULL) AS book_count,
+            (SELECT COUNT(*) FROM user_follows f2 WHERE f2.followee_id = u.id) AS follower_count,
+            (SELECT COUNT(*) FROM user_follows f3 WHERE f3.follower_id = ? AND f3.followee_id = u.id) AS viewer_follows
+       FROM user_follows uf
+       JOIN users u ON u.id = ${joinCol}
+      WHERE ${whereCol} = ? AND u.status = 'active'
+      ORDER BY uf.created_at DESC
+      LIMIT ${safePageSize} OFFSET ${offset}`,
+    [viewerId || 0, userId],
+  );
+  const [[c]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM user_follows uf JOIN users u ON u.id = ${joinCol}
+      WHERE ${whereCol} = ? AND u.status = 'active'`,
+    [userId],
+  );
+  return {
+    items: rows.map(followRowToCard),
+    page: safePage,
+    pageSize: safePageSize,
+    total: Number(c.total || 0),
+  };
+}
+
+async function listFollowers(userId, viewerId, opts) {
+  return listFollowRelations(userId, viewerId, 'followers', opts);
+}
+
+async function listFollowing(userId, viewerId, opts) {
+  return listFollowRelations(userId, viewerId, 'following', opts);
 }
 
 async function unfollow(followerId, followeeId) {
@@ -937,51 +1103,10 @@ async function unfollow(followerId, followeeId) {
   return { isFollowing: false, followers: counts.followers, following: counts.following };
 }
 
+// Daily Check-In lives in checkin.service (streak rules, rewards, milestones);
+// this legacy entry point keeps /profiles/me/check-in working.
 async function checkIn(userId) {
-  const today = toDateStr();
-  const row = await getUserRow(userId);
-  if (!row) throw errors.notFound('User not found');
-  // DATE columns arrive as Date objects; compare calendar dates, not toString() output.
-  const last = dateOnly(row.last_checkin_date);
-  if (last === today) {
-    throw errors.conflict('Already checked in today');
-  }
-
-  try {
-    await pool.execute(
-      'INSERT INTO daily_checkins (user_id, checkin_date, xp_awarded) VALUES (?, ?, ?)',
-      [userId, today, CHECKIN_XP],
-    );
-  } catch (_e) {
-    throw errors.conflict('Already checked in today');
-  }
-
-  let streak = 1;
-  if (last === yesterdayStr()) {
-    streak = Number(row.current_streak || 0) + 1;
-  }
-  const longest = Math.max(Number(row.longest_streak || 0), streak);
-
-  await pool.execute(
-    `UPDATE users
-        SET last_checkin_date = ?, current_streak = ?, longest_streak = ?,
-            bonus_balance = bonus_balance + IF(reader_level >= 3, 5, 0)
-      WHERE id = ?`,
-    [today, streak, longest, userId],
-  );
-
-  await awardXp(userId, 'check_in', CHECKIN_XP, { date: today });
-  if (streak >= 7) await tryGrantAchievement(userId, 'streak_7');
-  if (streak >= 30) await tryGrantAchievement(userId, 'streak_30');
-
-  const updated = await getUserRow(userId);
-  return {
-    checkedIn: true,
-    xpAwarded: CHECKIN_XP,
-    currentStreak: Number(updated.current_streak),
-    longestStreak: Number(updated.longest_streak),
-    level: xpProgress(updated.xp),
-  };
+  return checkin.claim(userId);
 }
 
 async function updateProfile(userId, patch) {
@@ -1164,6 +1289,8 @@ module.exports = {
   getPublicCollection,
   follow,
   unfollow,
+  listFollowers,
+  listFollowing,
   checkIn,
   updateProfile,
   uploadAvatar,
@@ -1175,6 +1302,10 @@ module.exports = {
   awardXp,
   tryGrantAchievement,
   syncAchievements,
+  collectAchievementMetrics,
+  ACHIEVEMENT_RULES,
+  setBadgeShowcase,
+  achievementsByCodes,
   enrichPublicUser,
   profilePublicFields,
 };

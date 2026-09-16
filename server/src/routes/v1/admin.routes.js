@@ -15,8 +15,10 @@ const {
 const ctrl = require('../../controllers/admin.controller');
 const catCtrl = require('../../controllers/adminCatalog.controller');
 const finCtrl = require('../../controllers/financeAdmin.controller');
+const checkinCtrl = require('../../controllers/checkin.controller');
 const v = require('../../validators/admin.validators');
 const catv = require('../../validators/adminCatalog.validators');
+const checkinv = require('../../validators/checkin.validators');
 
 const idParam = Joi.object({ id: Joi.number().integer().positive().required() });
 const reportTypeParam = Joi.object({
@@ -87,6 +89,12 @@ router.patch('/books/:id/home-tags', requireAdminPermission('page_configuration'
 router.post('/home-shelves/all', requireAdminPermission('page_configuration'), validate(v.addHomeShelfBook), ctrl.addBookToAllHomeShelves);
 router.post('/home-shelves/:tag/books', requireAdminPermission('page_configuration'), validate({ params: v.homeShelfTagParam.params, body: v.addHomeShelfBook.body }), ctrl.addHomeShelfBook);
 router.delete('/home-shelves/:tag/books/:bookId', requireAdminPermission('page_configuration'), validate(v.removeHomeShelfBook), ctrl.removeHomeShelfBook);
+
+router.get('/check-in', requireAdminPermission('check_in'), checkinCtrl.adminOverview);
+router.put('/check-in/config', requireAdminPermission('check_in'), validate(checkinv.adminConfig), checkinCtrl.adminUpdateConfig);
+router.post('/check-in/campaigns', requireAdminPermission('check_in'), validate(checkinv.adminCampaign), checkinCtrl.adminCreateCampaign);
+router.patch('/check-in/campaigns/:id', requireAdminPermission('check_in'), validate(checkinv.adminCampaignPatch), checkinCtrl.adminUpdateCampaign);
+router.delete('/check-in/campaigns/:id', requireAdminPermission('check_in'), validate({ params: idParam }), checkinCtrl.adminDeleteCampaign);
 
 router.get('/settings', requireAdminPermission('users'), ctrl.getSettings);
 router.patch('/settings', requireSuperAdmin(), validate(v.patchAdminSettings), ctrl.patchSettings);

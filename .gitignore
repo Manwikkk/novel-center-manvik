@@ -28,3 +28,8 @@ yarn-error.log*
 .vscode/
 .idea/
 coverage/
+
+# local secrets and generated output
+config.txt
+.next/
+.playwright-mcp/

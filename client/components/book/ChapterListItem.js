@@ -35,9 +35,14 @@ export default function ChapterListItem({ chapter, onUnlockClick, busy = false }
               <Check size={14} /> Unlocked
             </span>
           )}
-          {chapter.isPaid && !chapter.isUnlocked && !freeReader && (
+          {chapter.isPaid && !chapter.isUnlocked && !freeReader && chapter.passAccess && (
+            <span className="inline-flex items-center gap-1 text-[12px] tracking-labelTight uppercase text-gold-dim">
+              <BookOpen size={14} /> Free with pass
+            </span>
+          )}
+          {chapter.isPaid && !chapter.isUnlocked && !freeReader && !chapter.passAccess && (
             <span className="inline-flex items-center gap-1 text-[12px] tracking-labelTight uppercase text-ink-400">
-              <Lock size={14} /> {formatTokens(chapter.tokenPrice)} tokens
+              <Lock size={14} /> {formatTokens(chapter.unlockQuote?.price ?? chapter.tokenPrice)} tokens
             </span>
           )}
         </div>

@@ -24,7 +24,7 @@ function highlightMatch(text, query) {
   );
 }
 
-export default function HeaderSearch({ className }) {
+export default function HeaderSearch({ className, variant = 'underline' }) {
   const router = useRouter();
   const rootRef = useRef(null);
   const inputRef = useRef(null);
@@ -92,6 +92,22 @@ export default function HeaderSearch({ className }) {
     return () => document.removeEventListener('mousedown', onDown);
   }, [showPanel]);
 
+  // ⌘K / Ctrl+K focuses the first visible search box on the page.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        const el = inputRef.current;
+        if (!el || el.offsetParent === null) return;
+        e.preventDefault();
+        el.focus();
+        el.select();
+        setOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   function goDiscover(value = trimmed) {
     setOpen(false);
     const q = value.trim();
@@ -142,9 +158,14 @@ export default function HeaderSearch({ className }) {
           e.preventDefault();
           goDiscover();
         }}
-        className="flex items-center gap-2 border-b border-ink-300 dark:border-neutral-600 pb-1"
+        className={cn(
+          'flex items-center gap-2',
+          variant === 'pill'
+            ? 'h-10 rounded-full border border-neutral-200 bg-neutral-50/80 px-3.5 transition-colors focus-within:border-ink-900 focus-within:bg-white dark:border-neutral-800 dark:bg-neutral-900/70 dark:focus-within:border-neutral-400 dark:focus-within:bg-neutral-950'
+            : 'border-b border-ink-300 dark:border-neutral-600 pb-1',
+        )}
       >
-        <Icon name="search" size={20} className="text-ink-500 dark:text-neutral-500 shrink-0" />
+        <Icon name="search" size={variant === 'pill' ? 18 : 20} className="text-ink-500 dark:text-neutral-500 shrink-0" />
         <input
           ref={inputRef}
           name="q"
@@ -180,6 +201,10 @@ export default function HeaderSearch({ className }) {
           >
             <Icon name="close" size={16} />
           </button>
+        ) : variant === 'pill' ? (
+          <kbd className="hidden shrink-0 rounded-md border border-neutral-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-semibold text-ink-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-500 lg:inline-block" aria-hidden="true">
+            ⌘K
+          </kbd>
         ) : null}
       </form>
 

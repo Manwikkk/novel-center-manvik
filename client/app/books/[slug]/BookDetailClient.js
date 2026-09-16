@@ -124,11 +124,17 @@ export default function BookDetailClient({ book, initialChapters, mode = 'all' }
     if (!guardReadingAccess()) return;
     setBusy(true);
     try {
-      const res = await api.post(`/chapters/${ch.id}/unlock`);
+      const res = await api.post(`/chapters/${ch.id}/unlock`, {});
       setBalance(res.balance);
-      setChapters((prev) => prev.map((c) => (c.id === ch.id ? { ...c, isUnlocked: true } : c)));
+      setChapters((prev) => prev.map((c) => (c.id === ch.id ? { ...c, isUnlocked: true, canRead: true, unlockQuote: undefined } : c)));
       setTarget(null);
-      pushToast({ type: 'success', title: 'Chapter unlocked', message: `${ch.title} is yours to read.` });
+      pushToast({
+        type: 'success',
+        title: 'Chapter unlocked',
+        message: res.discount
+          ? `${ch.title} is yours to read — ${res.voucher?.title || 'voucher'} saved ${formatTokens(res.discount)} tokens.`
+          : `${ch.title} is yours to read.`,
+      });
     } catch (err) {
       if (err.code === 'INSUFFICIENT_TOKENS') {
         pushToast({ type: 'error', title: 'Not enough tokens', message: 'Visit your wallet to add more.' });
@@ -336,6 +342,10 @@ function ChapterRow({
   const isTrulyFree = !chapter.isPaid || Number(chapter.tokenPrice) === 0;
   // Paid chapters unlocked with coins (readers only — not admin free-pass).
   const showUnlocked = !freeReader && !authPending && chapter.isPaid && chapter.isUnlocked;
+  // Paid chapters readable through an active Novel / Platform Pass (Daily Check-In reward).
+  const viaPass = !freeReader && !authPending && chapter.isPaid && !chapter.isUnlocked && !!chapter.passAccess && !suspended;
+  const quote = chapter.unlockQuote || null;
+  const quotedPrice = Number(quote?.price ?? chapter.tokenPrice) || 0;
   const dateLabel = new Date(chapter.updatedAt || chapter.createdAt || Date.now())
     .toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -390,6 +400,14 @@ function ChapterRow({
             <Icon name="check_circle" filled size={14} /> Unlocked
           </span>
         )}
+        {viaPass && (
+          <span
+            className="px-2 py-1 bg-gold/20 text-gold-dim dark:text-gold font-ui-label-sm uppercase rounded text-[10px] inline-flex items-center gap-1"
+            title={`Free with your ${chapter.passAccess.title}`}
+          >
+            <Icon name="auto_stories" filled size={14} /> Pass
+          </span>
+        )}
         {suspended && (
           <button
             type="button"
@@ -405,7 +423,11 @@ function ChapterRow({
             <div className="hidden sm:flex items-center gap-1 bg-tertiary-fixed/20 dark:bg-tertiary-container/60 px-3 py-1 rounded-full border border-tertiary-fixed-dim/30 dark:border-on-tertiary-container/40">
               <Icon name="toll" filled size={14} className="text-on-tertiary-container" />
               <span className="font-ui-label-sm text-ui-label-sm text-on-tertiary-container">
-                {formatTokens(chapter.tokenPrice)} Tokens
+                {quote?.voucher ? (
+                  <>
+                    <s className="opacity-60">{formatTokens(quote.basePrice)}</s> {formatTokens(quotedPrice)} Tokens
+                  </>
+                ) : `${formatTokens(chapter.tokenPrice)} Tokens`}
               </span>
             </div>
             <button
@@ -418,7 +440,7 @@ function ChapterRow({
             </button>
           </>
         )}
-        {(freeReader || showUnlocked) && !suspended && (
+        {(freeReader || showUnlocked || viaPass) && !suspended && (
           <button
             type="button"
             onClick={() => onReadClick?.(chapter.id)}

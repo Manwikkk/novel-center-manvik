@@ -228,10 +228,11 @@ function ChapterEditInner() {
   const otherChaptersWords = useMemo(() => {
     if (!Array.isArray(bookChapters)) return 0;
     return bookChapters.reduce((sum, c) => (
-      Number(c.id) === Number(chapterId) ? sum : sum + (Number(c.wordCount) || 0)
+      Number(c.id) === Number(chapterId) ? sum : sum + (Number(c.uniqueWordCount ?? c.wordCount) || 0)
     ), 0);
   }, [bookChapters, chapterId]);
-  const novelWords = otherChaptersWords + chapterPricing.wordCount;
+  // Repeated paragraphs count once (the server also checks against other chapters).
+  const novelWords = otherChaptersWords + chapterPricing.uniqueWordCount;
   const paidGateReady = Array.isArray(bookChapters);
   const paidAllowed = !!chapter?.isPaid || (paidGateReady && novelWords >= PAID_CHAPTER_MIN_BOOK_WORDS);
   const needsTitleToPublish = !!chapter
@@ -664,6 +665,11 @@ function ChapterEditInner() {
                     {chapterPricing.wordCount.toLocaleString()}
                   </span>
                   {' '}words in this chapter
+                  {chapterPricing.duplicatedWords > 0 ? (
+                    <span className="text-amber-700 dark:text-amber-400">
+                      {' '}· {chapterPricing.uniqueWordCount.toLocaleString()} count (repeated text excluded)
+                    </span>
+                  ) : null}
                 </span>
                 <span>
                   Novel total:{' '}
@@ -820,13 +826,40 @@ function ChapterEditInner() {
                 </p>
               )}
             </div>
+            {chapterPricing.duplicatedWords > 0 && (
+              <div
+                role="status"
+                className={cn(
+                  'rounded-md border px-3 py-2 text-[11px] leading-relaxed',
+                  chapterPricing.blocking
+                    ? 'border-danger/40 bg-danger/5 text-danger'
+                    : 'border-amber-600/30 text-amber-700 dark:text-amber-400',
+                )}
+              >
+                <p className="font-semibold">
+                  Repeated text: {chapterPricing.repeated.length} paragraph{chapterPricing.repeated.length === 1 ? '' : 's'}
+                  {' '}({chapterPricing.duplicatedWords.toLocaleString()} words, {Math.round(chapterPricing.duplicateRatio * 100)}%)
+                </p>
+                <p className="mt-1">
+                  Duplicated passages never count toward the novel&apos;s word total or the chapter price.
+                  {chapterPricing.blocking
+                    ? ' Publishing is refused until the copied passages are removed.'
+                    : ''}
+                </p>
+                <ul className="mt-1 space-y-0.5 opacity-80">
+                  {chapterPricing.repeated.slice(0, 3).map((r, i) => (
+                    <li key={i} className="truncate">“{r.preview}” · {r.words} words</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {chapter.isPaid && (
               <div className="space-y-2">
                 <p className="label-sm uppercase text-on-surface-variant">Chapter price</p>
                 <p className="text-[14px] text-on-surface font-semibold">
                   {chapterPricing.tokenPrice} coins
                   <span className="font-normal text-on-surface-variant">
-                    {' '}(based on {chapterPricing.wordCount.toLocaleString()} words)
+                    {' '}(based on {chapterPricing.uniqueWordCount.toLocaleString()} unique words)
                   </span>
                 </p>
                 <p className="text-[11px] text-on-surface-variant leading-relaxed">

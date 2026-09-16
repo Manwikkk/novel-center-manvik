@@ -41,10 +41,12 @@ async function walletCoin({ from, to, generatedBy, h = baseH }) {
   let unlockOut = 0;
   let adminIn = 0;
   let adminOut = 0;
+  let rewardIn = 0;
   for (const r of ledger) {
     const d = Number(r.tokens_delta);
     if (r.type === 'purchase') purchasedIn += d;
     else if (r.type === 'unlock') unlockOut += Math.abs(d);
+    else if (r.type === 'reward') rewardIn += d;
     else if (r.type === 'admin_adjust') {
       if (d >= 0) adminIn += d; else adminOut += Math.abs(d);
     }
@@ -59,6 +61,7 @@ async function walletCoin({ from, to, generatedBy, h = baseH }) {
   h.writeTable(summary, ['Metric', 'Value'], [
     ['Purchased Coins Issued', purchasedIn],
     ['Coins Spent (Unlocks)', unlockOut],
+    ['Reward Coins Issued', rewardIn],
     ['Admin Credits', adminIn],
     ['Admin Debits', adminOut],
     ['Outstanding Wallet Liability', outstanding],

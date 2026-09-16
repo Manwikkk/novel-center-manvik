@@ -37,6 +37,27 @@ Seeded accounts (password: `Password123!` for all):
 | author | author@novelcenter.io |
 | user   | reader@novelcenter.io |
 
+### Daily Check-In (migration 027)
+
+The Daily Check-In / reward system needs one extra migration on existing databases:
+
+```bash
+cd server
+npm run db:migrate:daily-checkin
+```
+
+It adds streak bookkeeping to `daily_checkins` and `users`, the reward inventory
+(`user_rewards`), milestone claims, the admin configuration document and campaigns.
+Rules (EXP schedule, Day 7 / Day 14 reward options, lucky 72-hour pass odds, pass
+eligibility, campaigns) are edited in the admin panel under **Daily Check-In**;
+readers use `/check-in`.
+
+Badge showcase (pinning up to four earned badges on the profile) needs migration 028:
+
+```bash
+npm run db:migrate:badge-showcase
+```
+
 ## 2. Server
 
 ```bash

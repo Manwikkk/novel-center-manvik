@@ -9,8 +9,11 @@ import Avatar from '@/components/ui/Avatar';
 import Icon from '@/components/ui/Icon';
 import Button from '@/components/ui/Button';
 import ProfileNovelCard from '@/components/profile/ProfileNovelCard';
-import BadgePin, { BadgePinRow } from '@/components/profile/BadgePin';
+import BadgeShowcase from '@/components/badges/BadgeShowcase';
+import BadgeGallery from '@/components/badges/BadgeGallery';
+import FollowListModal from '@/components/profile/FollowListModal';
 import ProfileActivityItem from '@/components/profile/ProfileActivityItem';
+import CheckInCard from '@/components/checkin/CheckInCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { profileApi } from '@/lib/profileApi';
 import { resolveImageUrl } from '@/lib/image';
@@ -148,6 +151,7 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
   const [collectionDetail, setCollectionDetail] = useState(null);
   const [showLevels, setShowLevels] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [followList, setFollowList] = useState(null); // 'followers' | 'following' | null
 
   const bannerInput = useRef(null);
   const avatarInput = useRef(null);
@@ -205,8 +209,14 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
   }, [mode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!tab && tabs.length) setTab(defaultTab);
-    else if (tab && !tabs.find((t) => t.id === tab)) setTab(defaultTab);
+    if (!tab && tabs.length) {
+      // Deep links such as /account?tab=achievements open straight on that tab.
+      let wanted = null;
+      if (typeof window !== 'undefined') {
+        wanted = new URLSearchParams(window.location.search).get('tab');
+      }
+      setTab(wanted && tabs.find((t) => t.id === wanted) ? wanted : defaultTab);
+    } else if (tab && !tabs.find((t) => t.id === tab)) setTab(defaultTab);
   }, [tabs, tab, defaultTab]);
 
   const loadTab = useCallback(async () => {
@@ -323,45 +333,30 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
     setMoreOpen(false);
   }
 
-  async function doCheckIn() {
-    setBusy(true);
-    try {
-      const res = await profileApi.checkIn();
-      setData((prev) => ({
-        ...prev,
-        profile: {
-          ...prev.profile,
-          currentStreak: res.currentStreak,
-          longestStreak: res.longestStreak,
-          level: res.level,
-          readerLevel: res.level.level,
-          xp: res.level.xp,
-          continuousWritingDays: prev.profile.isAuthor ? res.currentStreak : prev.profile.continuousWritingDays,
-          lastCheckinDate: new Date().toISOString().slice(0, 10),
-        },
-        dashboard: prev.dashboard
-          ? {
-              ...prev.dashboard,
-              checkedInToday: true,
-              readingStreak: res.currentStreak,
-              longestStreak: res.longestStreak,
-            }
-          : prev.dashboard,
-      }));
-    } catch (err) {
-      if (err.status === 409) {
-        // Already checked in today (e.g. from another tab): reflect it instead of erroring.
-        setData((prev) => ({
-          ...prev,
-          profile: { ...prev.profile, lastCheckinDate: new Date().toISOString().slice(0, 10) },
-          dashboard: prev.dashboard ? { ...prev.dashboard, checkedInToday: true } : prev.dashboard,
-        }));
-      } else {
-        setError(err.message);
-      }
-    } finally {
-      setBusy(false);
-    }
+  // Streak facts come from the Daily Check-In API (see CheckInCard); the
+  // profile only mirrors the result into its own header stats.
+  function onCheckedIn(res) {
+    setData((prev) => ({
+      ...prev,
+      profile: {
+        ...prev.profile,
+        currentStreak: res.currentStreak,
+        longestStreak: res.longestStreak,
+        level: res.level,
+        readerLevel: res.level.level,
+        xp: res.level.xp,
+        continuousWritingDays: prev.profile.isAuthor ? res.currentStreak : prev.profile.continuousWritingDays,
+      },
+      dashboard: prev.dashboard
+        ? {
+            ...prev.dashboard,
+            checkedInToday: true,
+            readingStreak: res.currentStreak,
+            longestStreak: res.longestStreak,
+            totalCheckIns: res.claim?.streak != null ? (prev.dashboard.totalCheckIns || 0) + 1 : prev.dashboard.totalCheckIns,
+          }
+        : prev.dashboard,
+    }));
   }
 
   async function toggleNovelVisibility(novel) {
@@ -486,11 +481,18 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
     }
   }
 
+  // Showcase edits come back with the full badge list; mirror pins into the
+  // overview strip and the achievements tab without a refetch.
+  function onShowcaseChange(res) {
+    const items = res?.items || [];
+    setData((prev) => (prev ? { ...prev, achievements: items.filter((a) => a.earned) } : prev));
+    setTabPayload((prev) => (prev?.tab === 'achievements' ? { ...res, tab: 'achievements' } : prev));
+  }
+
   const bannerUrl = resolveImageUrl(profile?.bannerUrl);
   const joined = formatJoined(profile?.joinedAt);
   const social = profile?.socialLinks || {};
   const earnedBadges = (data?.achievements || []).filter((a) => a.earned);
-  const badgeCount = earnedBadges.length;
 
   const streakDays = isAuthor
     ? (profile?.continuousWritingDays ?? profile?.currentStreak ?? 0)
@@ -595,19 +597,21 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
               <div className="mb-1 flex items-center gap-2 sm:mb-2 sm:gap-3">
                 <button
                   type="button"
-                  disabled={busy || isOwner}
-                  onClick={toggleFollow}
+                  disabled={busy}
+                  onClick={isOwner ? () => setFollowList('followers') : toggleFollow}
                   className={cn(
-                    'inline-flex h-9 items-center gap-1.5 rounded px-3 text-[13px] font-semibold sm:h-10 sm:px-4',
-                    isOwner || profile.isFollowing
-                      ? 'bg-[#ff6b9d] text-white'
-                      : 'bg-[#ff6b9d] text-white hover:bg-[#ff5a90]',
-                    isOwner && 'cursor-default',
+                    'inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold uppercase tracking-widest transition-colors sm:h-10 sm:px-4',
+                    isOwner
+                      ? 'border border-neutral-300 text-ink-800 hover:border-ink-900 dark:border-neutral-700 dark:text-neutral-200 dark:hover:border-neutral-300'
+                      : profile.isFollowing
+                        ? 'border border-[#ff6b9d] text-[#e0447d] hover:bg-[#ff6b9d]/10'
+                        : 'bg-[#ff6b9d] text-white hover:bg-[#ff5a90]',
                   )}
-                  title={isOwner ? 'Followers' : profile.isFollowing ? 'Unfollow' : 'Follow'}
+                  title={isOwner ? 'See your followers' : profile.isFollowing ? 'Unfollow' : 'Follow'}
                 >
-                  <Icon name="favorite" filled size={18} />
-                  <span className="tabular-nums">{profile.followers ?? 0}</span>
+                  <Icon name={profile.isFollowing || isOwner ? 'favorite' : 'favorite_border'} filled={profile.isFollowing || isOwner} size={18} />
+                  <span>{isOwner ? 'Followers' : profile.isFollowing ? 'Following' : 'Follow'}</span>
+                  <span className="tabular-nums opacity-80">{profile.followers ?? 0}</span>
                 </button>
 
                 <div className="relative">
@@ -707,7 +711,13 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
                 ) : null}
                 <span className="inline-flex items-center gap-1.5">
                   <Icon name="group" size={16} />
-                  {profile.followers ?? 0} Followers · {profile.following ?? 0} Following
+                  <button type="button" onClick={() => setFollowList('followers')} className="hover:text-ink-800 hover:underline dark:hover:text-neutral-200">
+                    {profile.followers ?? 0} Followers
+                  </button>
+                  ·
+                  <button type="button" onClick={() => setFollowList('following')} className="hover:text-ink-800 hover:underline dark:hover:text-neutral-200">
+                    {profile.following ?? 0} Following
+                  </button>
                 </span>
                 <button
                   type="button"
@@ -770,7 +780,7 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
 
             {/* ── Tabs ── */}
             <div className="mt-6 border-b border-neutral-300 px-2 dark:border-neutral-800 sm:px-4">
-              <div className="flex gap-1 overflow-x-auto">
+              <div className="no-scrollbar flex gap-1 overflow-x-auto overflow-y-hidden">
                 {tabs.map((t) => (
                   <button
                     key={t.id}
@@ -796,17 +806,15 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
             <div className="mt-6 px-2 sm:px-4">
               {tab === 'overview' ? (
                 <div className="space-y-8">
-                  {/* Badges */}
-                  <section>
-                    <h2 className="flex items-baseline gap-2 text-[18px] font-bold text-ink-900 dark:text-neutral-100">
-                      Badges
-                      <span className="text-[14px] font-semibold text-ink-400">{badgeCount}</span>
-                    </h2>
-                    <BadgePinRow
-                      badges={earnedBadges}
-                      emptyText="No badges yet. Keep reading and checking in to earn them."
-                    />
-                  </section>
+                  <BadgeShowcase
+                    badges={earnedBadges}
+                    isOwner={isOwner}
+                    profile={profile}
+                    onChange={onShowcaseChange}
+                    onViewAll={() => setTab('achievements')}
+                  />
+
+                  {isOwner ? <CheckInCard onClaimed={onCheckedIn} /> : null}
 
                   {isOwner && data?.dashboard ? (
                     <section className="rounded-lg bg-white p-4 shadow-sm dark:bg-neutral-900 sm:p-5">
@@ -819,9 +827,10 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
                           {
                             label: 'Check-in',
                             value: data.dashboard.checkedInToday ? 'Done' : 'Available',
-                            action: data.dashboard.checkedInToday ? null : doCheckIn,
+                            href: '/check-in',
+                            hrefLabel: 'Rewards',
                           },
-                          { label: 'Streak', value: `${data.dashboard.readingStreak || 0}d` },
+                          { label: 'Streak', value: `${data.dashboard.readingStreak || 0}d`, href: '/check-in', hrefLabel: 'History' },
                           { label: 'Unread', value: data.dashboard.unreadNotifications || 0 },
                         ].map((card) => (
                           <div key={card.label} className="rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
@@ -830,12 +839,7 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
                               {card.value}
                             </p>
                             {card.href ? (
-                              <Link href={card.href} className="mt-1 inline-block text-[11px] text-[#1e80ff]">Open</Link>
-                            ) : null}
-                            {card.action ? (
-                              <button type="button" disabled={busy} onClick={card.action} className="mt-1 text-[11px] font-semibold text-[#1e80ff]">
-                                Check in
-                              </button>
+                              <Link href={card.href} className="mt-1 inline-block text-[11px] text-[#1e80ff]">{card.hrefLabel || 'Open'}</Link>
                             ) : null}
                           </div>
                         ))}
@@ -1028,29 +1032,13 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
               ) : null}
 
               {tab === 'achievements' ? (
-                tabLoading || tabPayload?.tab !== 'achievements' ? (
-                  <p className="text-ink-500">Loading…</p>
-                ) : tabPayload?.items?.length ? (
-                  <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-                    {tabPayload.items.map((a) => (
-                      <div key={a.id} className="flex flex-col items-center text-center">
-                        <BadgePin badge={a} size="lg" />
-                        <p className={cn(
-                          'mt-2 text-[12px] font-semibold',
-                          a.earned ? 'text-ink-900 dark:text-neutral-100' : 'text-ink-400',
-                        )}
-                        >
-                          {a.title}
-                        </p>
-                        <p className="mt-0.5 line-clamp-2 text-[10px] text-ink-500 dark:text-neutral-500">
-                          {a.earned ? 'Earned' : a.description}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState title="No achievements yet." body="Keep reading and checking in to unlock badges." />
-                )
+                <BadgeGallery
+                  payload={tabPayload?.tab === 'achievements' ? tabPayload : null}
+                  loading={tabLoading || tabPayload?.tab !== 'achievements'}
+                  isOwner={isOwner}
+                  profile={profile}
+                  onShowcaseChange={onShowcaseChange}
+                />
               ) : null}
 
               {tab === 'settings' && isOwner ? (
@@ -1156,6 +1144,28 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
           </div>
         )}
       </main>
+      {profile ? (
+        <FollowListModal
+          userId={profile.id}
+          open={!!followList}
+          initialTab={followList || 'followers'}
+          onClose={() => setFollowList(null)}
+          onCountsChange={({ targetId, isFollowing, followers }) => {
+            setData((prev) => {
+              if (!prev?.profile) return prev;
+              const next = { ...prev.profile };
+              if (Number(targetId) === Number(prev.profile.id)) {
+                next.isFollowing = isFollowing;
+                next.followers = followers;
+              } else if (authUser && Number(prev.profile.id) === Number(authUser.id)) {
+                // Viewing my own lists: following count moves with each toggle.
+                next.following = Math.max(0, (prev.profile.following || 0) + (isFollowing ? 1 : -1));
+              }
+              return { ...prev, profile: next };
+            });
+          }}
+        />
+      ) : null}
       <SiteFooter />
     </div>
   );

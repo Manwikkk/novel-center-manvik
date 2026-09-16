@@ -3,6 +3,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { errors } = require('../utils/HttpError');
 const catalog = require('../services/catalog.service');
+const rankings = require('../services/rankings.service');
 
 const listCategories = asyncHandler(async (_req, res) => {
   res.json({ items: await catalog.listCategoriesPublic() });
@@ -16,6 +17,10 @@ const listContentTags = asyncHandler(async (_req, res) => {
   res.json({ items: await catalog.listContentTagsPublic() });
 });
 
+const rankingsHandler = asyncHandler(async (_req, res) => {
+  res.json(await rankings.getRankings());
+});
+
 const createContentTag = asyncHandler(async (req, res) => {
   if (!req.user || !['author', 'admin'].includes(req.user.role)) {
     throw errors.forbidden('Only authors can create tags');
@@ -24,4 +29,6 @@ const createContentTag = asyncHandler(async (req, res) => {
   res.status(201).json({ tag });
 });
 
-module.exports = { listCategories, listLanguages, listContentTags, createContentTag };
+module.exports = { listCategories, listLanguages, listContentTags, createContentTag,
+  rankings: rankingsHandler,
+};

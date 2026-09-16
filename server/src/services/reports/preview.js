@@ -333,10 +333,12 @@ async function previewWalletCoin(from, to, generatedBy) {
 
   let purchasedIn = 0;
   let unlockOut = 0;
+  let rewardIn = 0;
   for (const r of ledger) {
     const d = Number(r.tokens_delta);
     if (r.type === 'purchase') purchasedIn += d;
     else if (r.type === 'unlock') unlockOut += Math.abs(d);
+    else if (r.type === 'reward') rewardIn += d;
   }
   const outstanding = wallets.reduce((s, w) => s + Number(w.balance), 0);
 
@@ -350,6 +352,7 @@ async function previewWalletCoin(from, to, generatedBy) {
     executiveSummary: [
       metric('Purchased Coins Issued', purchasedIn, 'number'),
       metric('Coins Spent (Unlocks)', unlockOut, 'number'),
+      metric('Reward Coins Issued', rewardIn, 'number'),
       metric('Outstanding Liability', outstanding, 'number'),
       metric('Ledger Entries', ledger.length, 'number'),
     ],
@@ -361,6 +364,7 @@ async function previewWalletCoin(from, to, generatedBy) {
           valueKey: 'coins',
           items: [
             { source: 'Purchases', coins: purchasedIn },
+            { source: 'Rewards', coins: rewardIn },
             { source: 'Unlocks', coins: unlockOut },
           ],
         },
@@ -371,6 +375,7 @@ async function previewWalletCoin(from, to, generatedBy) {
           ],
           [
             { source: 'Coin Packs', coins: purchasedIn },
+            { source: 'Check-in & Campaign Rewards', coins: rewardIn },
             { source: 'Chapter Unlocks', coins: unlockOut },
           ],
         ),

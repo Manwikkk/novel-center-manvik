@@ -17,6 +17,9 @@ router.post('/me/check-in', authRequired, ctrl.checkIn);
 router.post('/me/password', authRequired, validate(v.changePassword), ctrl.changePassword);
 router.patch('/me/email', authRequired, validate(v.updateEmail), ctrl.updateEmail);
 router.post('/me/delete', authRequired, validate(v.deleteAccount), ctrl.deleteAccount);
+router.patch('/me/badges/showcase', authRequired, validate(v.badgeShowcase), ctrl.setBadgeShowcase);
+router.get('/me/notifications', authRequired, validate(v.notificationsQuery), ctrl.notifications);
+router.post('/me/notifications/read', authRequired, validate(v.markNotificationsRead), ctrl.markNotificationsRead);
 router.patch(
   '/me/novels/:bookId',
   authRequired,
@@ -28,6 +31,8 @@ router.get('/:id', authOptional, validate(v.idParam), ctrl.getById);
 router.post('/:id/follow', authRequired, validate(v.idParam), ctrl.follow);
 router.delete('/:id/follow', authRequired, validate(v.idParam), ctrl.unfollow);
 
+router.get('/:id/followers', authOptional, validate({ ...v.idParam, ...v.pagination }), ctrl.followers);
+router.get('/:id/following', authOptional, validate({ ...v.idParam, ...v.pagination }), ctrl.following);
 router.get('/:id/novels', authOptional, validate({ ...v.idParam, ...v.novelsQuery }), ctrl.novels);
 router.get('/:id/library', authRequired, validate({ ...v.idParam, ...v.pagination }), ctrl.library);
 router.get('/:id/reviews', authOptional, validate({ ...v.idParam, ...v.pagination }), ctrl.reviews);

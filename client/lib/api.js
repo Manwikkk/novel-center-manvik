@@ -168,6 +168,7 @@ export const api = {
   get:    (path, opts) => request(path, { method: 'GET',    ...opts }),
   post:   (path, body, opts) => request(path, { method: 'POST',   body, ...opts }),
   patch:  (path, body, opts) => request(path, { method: 'PATCH',  body, ...opts }),
+  put:    (path, body, opts) => request(path, { method: 'PUT',    body, ...opts }),
   delete: (path, opts) => request(path, { method: 'DELETE', ...opts }),
   upload: (path, formData, opts) => request(path, { method: 'POST', formData, ...opts }),
   downloadBlob,

@@ -30,8 +30,18 @@ const remove = asyncHandler(async (req, res) => {
 });
 
 const unlock = asyncHandler(async (req, res) => {
-  const result = await wallet.unlockChapter(req.user.id, Number(req.params.id));
+  const result = await wallet.unlockChapter(req.user.id, Number(req.params.id), {
+    useVoucher: req.body?.useVoucher !== false,
+  });
   res.json(result);
 });
 
-module.exports = { listForBook, createInBook, getById, update, remove, unlock };
+const unlockBundle = asyncHandler(async (req, res) => {
+  const result = await wallet.unlockBundle(req.user.id, Number(req.params.id), {
+    count: req.body?.count,
+    useVoucher: req.body?.useVoucher !== false,
+  });
+  res.json(result);
+});
+
+module.exports = { listForBook, createInBook, getById, update, remove, unlock, unlockBundle };

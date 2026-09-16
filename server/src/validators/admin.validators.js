@@ -108,7 +108,7 @@ module.exports = {
   },
   listTransactions: {
     query: Joi.object({
-      type: Joi.string().valid('purchase', 'unlock', 'admin_adjust'),
+      type: Joi.string().valid('purchase', 'unlock', 'admin_adjust', 'reward'),
       userId: Joi.number().integer().positive(),
       page: Joi.number().integer().min(1).default(1),
       pageSize: Joi.number().integer().min(1).max(100).default(20),

@@ -6,13 +6,16 @@ const { sanitizeChapterHtml, sanitizeAuthorThought } = require('../utils/htmlSan
 const booksService = require('./books.service');
 const { htmlToWordCount, minutesFromWords } = require('./reading.service');
 const {
-  pricingFromContent,
+  computeTokenPrice,
   getSplitWarning,
   PAID_CHAPTER_MIN_BOOK_WORDS,
   paidGateMessage,
 } = require('./chapterPricing.service');
 const { resolveUserRow, hasRestriction, assertRestriction } = require('./suspension.service');
 const { assertMatureAccess } = require('./ageGate');
+const integrity = require('./contentIntegrity');
+const rewards = require('./rewards.service');
+const notifications = require('./notifications.service');
 
 // Placeholder title given to auto-created chapters; it never counts as a real name.
 const DEFAULT_CHAPTER_TITLE = 'Untitled chapter';
@@ -30,44 +33,172 @@ function assertNamedForPublish(title, { status, scheduledAt }) {
   }
 }
 
-// Total words across every non-recycled chapter of a book (drafts included).
-async function bookWordCount(bookId, { excludeChapterId = null } = {}) {
+// Unique words across a novel's other chapters (drafts included) plus the
+// fingerprints of everything they contain, so the chapter being saved can be
+// checked for passages pasted from elsewhere in the same novel. Cached per
+// book and invalidated whenever any other chapter changes, because paid
+// chapters recalculate on every autosave.
+const integrityCache = new Map();
+const INTEGRITY_CACHE_MAX = 64;
+
+async function bookIntegrityContext(bookId, { excludeChapterId = null } = {}) {
+  const [[meta]] = await pool.execute(
+    `SELECT COUNT(*) AS n, MAX(updated_at) AS latest
+       FROM chapters WHERE book_id = ? AND recycled_at IS NULL AND id <> ?`,
+    [bookId, excludeChapterId == null ? 0 : excludeChapterId],
+  );
+  const key = `${bookId}:${excludeChapterId == null ? 0 : excludeChapterId}`;
+  const stamp = `${meta.n}:${meta.latest ? new Date(meta.latest).getTime() : 0}`;
+  const cached = integrityCache.get(key);
+  if (cached && cached.stamp === stamp) return cached.value;
+
   const [rows] = await pool.execute(
-    'SELECT id, content_html FROM chapters WHERE book_id = ? AND recycled_at IS NULL',
+    'SELECT id, idx, content_html FROM chapters WHERE book_id = ? AND recycled_at IS NULL ORDER BY idx ASC, id ASC',
     [bookId],
   );
-  return rows.reduce((sum, r) => (
-    Number(r.id) === Number(excludeChapterId) ? sum : sum + htmlToWordCount(r.content_html)
-  ), 0);
+  const prior = new Set();
+  let uniqueWords = 0;
+  for (const r of rows) {
+    if (Number(r.id) === Number(excludeChapterId)) continue;
+    const report = integrity.analyzeContent(r.content_html, { prior });
+    uniqueWords += report.uniqueWordCount;
+    for (const s of report.shingles) prior.add(s);
+  }
+  const value = { uniqueWords, prior };
+  if (integrityCache.size >= INTEGRITY_CACHE_MAX) {
+    integrityCache.delete(integrityCache.keys().next().value);
+  }
+  integrityCache.set(key, { stamp, value });
+  return value;
+}
+
+// Unique words across every non-recycled chapter of a book (drafts included).
+// Repeated paragraphs — within a chapter or pasted from another chapter of the
+// same novel — count once, so copy-pasting cannot inflate word-based criteria.
+async function bookWordCount(bookId, { excludeChapterId = null } = {}) {
+  return (await bookIntegrityContext(bookId, { excludeChapterId })).uniqueWords;
+}
+
+// Full repeated-text report for a chapter against the rest of its novel.
+async function inspectChapter(bookId, contentHtml, { excludeChapterId = null } = {}) {
+  const ctx = await bookIntegrityContext(bookId, { excludeChapterId });
+  const report = integrity.analyzeContent(contentHtml, { prior: ctx.prior, priorLabel: 'another chapter of this novel' });
+  return { ctx, report };
 }
 
 // Making a chapter paid requires the whole novel to have reached the word threshold.
 async function assertPaidAllowed(bookId, { excludeChapterId = null, contentHtml = '' } = {}) {
-  const total = await bookWordCount(bookId, { excludeChapterId }) + htmlToWordCount(contentHtml);
+  const { ctx, report } = await inspectChapter(bookId, contentHtml, { excludeChapterId });
+  const total = ctx.uniqueWords + report.uniqueWordCount;
   if (total < PAID_CHAPTER_MIN_BOOK_WORDS) {
-    throw errors.badRequest(paidGateMessage(total));
+    const note = report.duplicatedWords > 0 ? ' Repeated passages are not counted.' : '';
+    throw errors.badRequest(paidGateMessage(total) + note);
   }
   return total;
+}
+
+// Chapters that are (or are about to be) visible to readers must not be made
+// of copied text. Drafts are left alone so authors can edit freely.
+function assertNotDuplicated(report) {
+  if (!report.blocking) return;
+  throw errors.duplicateContent(integrity.duplicateMessage(report), integrity.publicReport(report));
+}
+
+// Token price from the chapter's unique words (duplicates never raise the tier).
+function priceFor(isPaid, report) {
+  return isPaid ? computeTokenPrice(report.uniqueWordCount) : 0;
 }
 
 function isPaidChapter(row) {
   return !!row.is_paid && Number(row.token_price) > 0;
 }
 
+// Tell everyone following the author that a chapter is out. Best-effort: a
+// notification failure never blocks publishing.
+async function notifyFollowersOfChapter(chapterRow) {
+  try {
+    if (!chapterRow || chapterRow.status !== 'published') return;
+    const [[book]] = await pool.execute(
+      `SELECT b.id, b.slug, b.title, b.author_id, b.status, u.display_name AS author_name
+         FROM books b JOIN users u ON u.id = b.author_id WHERE b.id = ? LIMIT 1`,
+      [chapterRow.book_id],
+    );
+    if (!book || book.status !== 'published') return;
+    const [followers] = await pool.execute(
+      'SELECT follower_id FROM user_follows WHERE followee_id = ?',
+      [book.author_id],
+    );
+    await notifications.notifyMany(followers.map((f) => f.follower_id), {
+      type: 'chapter',
+      title: `${book.author_name} published Chapter ${chapterRow.idx} of ${book.title}`,
+      body: chapterRow.title && !isUnnamedTitle(chapterRow.title) ? chapterRow.title : null,
+      linkUrl: `/read/${chapterRow.id}`,
+    });
+  } catch (_e) {
+    /* best-effort */
+  }
+}
+
 function isAdminOrStaff(viewer) {
   return viewer?.role === 'admin' || viewer?.role === 'staff';
 }
 
-function canReadChapter(row, { viewer, bookAuthorId, unlocked, viewerRow }) {
+function canReadChapter(row, { viewer, bookAuthorId, unlocked, viewerRow, pass = null }) {
   // Super-admins and staff can preview/read all novels for free in the admin panel.
   if (isAdminOrStaff(viewer)) return true;
   if (viewerRow && hasRestriction(viewerRow, 'reading')) return false;
   if (viewer && bookAuthorId && viewer.id === bookAuthorId) return true;
   if (!isPaidChapter(row)) return true;
-  return !!unlocked;
+  if (unlocked) return true;
+  // An active Novel / Platform Pass (Daily Check-In reward) is a temporary
+  // entitlement: readable while it runs, locked again once it expires.
+  return !!pass;
 }
 
-function rowToChapter(row, { includeContent = false, isUnlocked = false, canRead = false } = {}) {
+/**
+ * Reader-facing access facts for a paid chapter: the pass that opens it for
+ * free right now, or the voucher-adjusted price of unlocking it.
+ */
+function accessFacts(row, { unlocked, pass, voucher, bundleVoucher }) {
+  if (!isPaidChapter(row) || unlocked) return {};
+  const out = {};
+  if (pass) {
+    out.passAccess = {
+      rewardId: pass.id,
+      type: pass.type,
+      title: pass.title,
+      expiresAt: pass.expiresAt,
+      remainingSeconds: pass.remainingSeconds,
+    };
+  }
+  const basePrice = Number(row.token_price);
+  const discount = voucher ? rewards.computeDiscount(basePrice, voucher) : 0;
+  out.unlockQuote = {
+    basePrice,
+    discount,
+    price: basePrice - discount,
+    voucher: voucher && discount > 0
+      ? { id: voucher.id, title: voucher.title, percent: voucher.percent, maxDiscountCoins: voucher.maxDiscountCoins, validUntil: voucher.validUntil }
+      : null,
+    bundleVoucher: bundleVoucher
+      ? { id: bundleVoucher.id, title: bundleVoucher.title, percent: bundleVoucher.percent, bundleSize: bundleVoucher.bundleSize || 5, maxDiscountCoins: bundleVoucher.maxDiscountCoins, validUntil: bundleVoucher.validUntil }
+      : null,
+  };
+  return out;
+}
+
+/** Pass + vouchers a signed-in reader holds, fetched once per request. */
+async function readerEntitlements(viewer, bookId) {
+  if (!viewer || isAdminOrStaff(viewer)) return { pass: null, voucher: null, bundleVoucher: null };
+  const [pass, voucher, bundleVoucher] = await Promise.all([
+    rewards.passCovering(viewer.id, bookId),
+    rewards.bestVoucher(viewer.id, 'CHAPTER_DISCOUNT'),
+    rewards.bestVoucher(viewer.id, 'BUNDLE_DISCOUNT'),
+  ]);
+  return { pass, voucher, bundleVoucher };
+}
+
+function rowToChapter(row, { includeContent = false, isUnlocked = false, canRead = false, integrityReport = null, withIntegrity = false, access = null } = {}) {
   if (!row) return null;
   const wordCount = htmlToWordCount(row.content_html);
   const out = {
@@ -89,8 +220,15 @@ function rowToChapter(row, { includeContent = false, isUnlocked = false, canRead
     readingMinutes: minutesFromWords(wordCount, 100),
     authorThought: row.author_thought || '',
     pricingNote: getSplitWarning(wordCount),
+    ...(access || {}),
   };
   if (includeContent && canRead) out.contentHtml = row.content_html || '';
+  if (withIntegrity || integrityReport) {
+    // Author/admin views only: unique words (repeated paragraphs counted once).
+    const report = integrityReport || integrity.analyzeContent(row.content_html);
+    out.uniqueWordCount = report.uniqueWordCount;
+    out.integrity = integrity.publicReport(report);
+  }
   return out;
 }
 
@@ -186,16 +324,31 @@ async function listForBook(bookId, viewer) {
     unlockedSet = new Set(u.map((x) => x.chapter_id));
   }
 
+  const entitlements = viewer && !showDrafts
+    ? await readerEntitlements(viewer, bookId)
+    : { pass: null, voucher: null, bundleVoucher: null };
+
+  // Studio view: each chapter's unique words relative to every earlier
+  // chapter, so the novel total matches the paid-chapter gate.
+  const prior = showDrafts ? new Set() : null;
   return rows.map((r) => {
     const unlocked = unlockedSet.has(r.id);
     const canRead = canReadChapter(r, {
-      viewer, bookAuthorId: book.author_id, unlocked, viewerRow,
+      viewer, bookAuthorId: book.author_id, unlocked, viewerRow, pass: entitlements.pass,
     });
-    return rowToChapter(r, {
+    const chapter = rowToChapter(r, {
       includeContent: false,
       isUnlocked: unlocked,
       canRead,
+      access: accessFacts(r, { unlocked, ...entitlements }),
     });
+    if (prior) {
+      const report = integrity.analyzeContent(r.content_html, { prior, priorLabel: 'an earlier chapter' });
+      for (const s of report.shingles) prior.add(s);
+      chapter.uniqueWordCount = report.uniqueWordCount;
+      chapter.duplicatedWords = report.duplicatedWords;
+    }
+    return chapter;
   });
 }
 
@@ -220,11 +373,21 @@ async function getById(id, viewer) {
   let unlocked = false;
   if (viewer) unlocked = await isUnlockedFor(viewer.id, id);
 
+  const entitlements = viewer && !isAuthor && isPaidChapter(row) && !unlocked
+    ? await readerEntitlements(viewer, row.book_id)
+    : { pass: null, voucher: null, bundleVoucher: null };
+
   const canRead = canReadChapter(row, {
-    viewer, bookAuthorId: book.author_id, unlocked, viewerRow,
+    viewer, bookAuthorId: book.author_id, unlocked, viewerRow, pass: entitlements.pass,
   });
 
-  return rowToChapter(row, { includeContent: canRead, isUnlocked: unlocked, canRead });
+  return rowToChapter(row, {
+    includeContent: canRead,
+    isUnlocked: unlocked,
+    canRead,
+    withIntegrity: !!isAuthor,
+    access: accessFacts(row, { unlocked, ...entitlements }),
+  });
 }
 
 async function createInBook(bookId, body, user) {
@@ -247,8 +410,15 @@ async function createInBook(bookId, body, user) {
   assertNamedForPublish(body.title, { status: chapterStatus, scheduledAt });
 
   const isPaid = !!body.isPaid;
+  const goesLive = chapterStatus === 'published' || !!scheduledAt;
+  // Repeated-text check against the rest of the novel (needed for the paid
+  // gate, the price tier and the publish guard); drafts get the cheap in-chapter report.
+  const { report } = (isPaid || goesLive)
+    ? await inspectChapter(bookId, html)
+    : { report: integrity.analyzeContent(html) };
   if (isPaid) await assertPaidAllowed(bookId, { contentHtml: html });
-  const { tokenPrice } = pricingFromContent(isPaid, html);
+  if (goesLive) assertNotDuplicated(report);
+  const tokenPrice = priceFor(isPaid, report);
 
   const [r] = await pool.execute(
     `INSERT INTO chapters (book_id, idx, title, content_html, author_thought, is_paid, token_price, status, scheduled_publish_at)
@@ -256,7 +426,8 @@ async function createInBook(bookId, body, user) {
     [bookId, idx, body.title, html, thought || null, isPaid ? 1 : 0, tokenPrice, chapterStatus, scheduledAt],
   );
   const created = await getRawById(r.insertId);
-  return rowToChapter(created, { includeContent: true, isUnlocked: true, canRead: true });
+  if (created.status === 'published') notifyFollowersOfChapter(created);
+  return rowToChapter(created, { includeContent: true, isUnlocked: true, canRead: true, integrityReport: report });
 }
 
 async function update(id, patch, user) {
@@ -310,20 +481,30 @@ async function update(id, patch, user) {
 
   const nextIsPaid = patch.isPaid != null ? !!patch.isPaid : !!row.is_paid;
   const nextHtml = patch.contentHtml != null ? sanitizeChapterHtml(patch.contentHtml) : row.content_html;
+  const goesLive = nextStatus === 'published' || !!nextScheduledAt;
+  const contentChanged = patch.contentHtml != null && nextHtml !== row.content_html;
+  const becomesLive = goesLive && (row.status !== 'published' && !row.scheduled_publish_at);
+  // Novel-wide repeated-text report when it matters (paid pricing, going live,
+  // live content edits); otherwise the cheap in-chapter report.
+  const needsNovelReport = nextIsPaid || becomesLive || (goesLive && contentChanged);
+  const { report } = needsNovelReport
+    ? await inspectChapter(row.book_id, nextHtml, { excludeChapterId: id })
+    : { report: integrity.analyzeContent(nextHtml) };
   if (nextIsPaid && !row.is_paid) {
     await assertPaidAllowed(row.book_id, { excludeChapterId: id, contentHtml: nextHtml });
   }
+  if (becomesLive || (goesLive && contentChanged)) assertNotDuplicated(report);
   if (patch.isPaid != null || patch.contentHtml != null) {
-    const { tokenPrice } = pricingFromContent(nextIsPaid, nextHtml);
     fields.push('token_price = ?');
-    params.push(tokenPrice);
+    params.push(priceFor(nextIsPaid, report));
   }
 
-  if (fields.length === 0) return rowToChapter(row, { includeContent: true, isUnlocked: true, canRead: true });
+  if (fields.length === 0) return rowToChapter(row, { includeContent: true, isUnlocked: true, canRead: true, integrityReport: report });
   params.push(id);
   await pool.execute(`UPDATE chapters SET ${fields.join(', ')} WHERE id = ?`, params);
   const fresh = await getRawById(id);
-  return rowToChapter(fresh, { includeContent: true, isUnlocked: true, canRead: true });
+  if (fresh.status === 'published' && row.status !== 'published') notifyFollowersOfChapter(fresh);
+  return rowToChapter(fresh, { includeContent: true, isUnlocked: true, canRead: true, integrityReport: report });
 }
 
 // Soft delete: the chapter moves to the admin recycle bin instead of being dropped.
@@ -342,6 +523,6 @@ async function remove(id, user) {
 
 module.exports = {
   listForBook, getById, createInBook, update, remove,
-  rowToChapter, getRawById,
+  rowToChapter, getRawById, notifyFollowersOfChapter,
   DEFAULT_CHAPTER_TITLE, isUnnamedTitle, bookWordCount,
 };

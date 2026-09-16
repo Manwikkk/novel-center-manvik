@@ -11,6 +11,7 @@ class HttpError extends Error {
 
 const errors = {
   badRequest:   (m, d) => new HttpError(400, 'BAD_REQUEST',         m || 'Bad request', d),
+  duplicateContent: (m, d) => new HttpError(400, 'DUPLICATE_CONTENT', m || 'Duplicated content', d),
   unauthorized: (m)    => new HttpError(401, 'UNAUTHORIZED',        m || 'Unauthorized'),
   forbidden:    (m)    => new HttpError(403, 'FORBIDDEN',           m || 'Forbidden'),
   accountSuspended: (m) => new HttpError(403, 'ACCOUNT_SUSPENDED', m || 'Account suspended'),

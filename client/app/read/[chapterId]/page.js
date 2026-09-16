@@ -19,6 +19,7 @@ import { libraryApi } from '@/lib/library';
 import { formatTokens } from '@/lib/format';
 import { openAuthModal } from '@/lib/authModal';
 import { isChapterLocked, isStaffFreeReader } from '@/lib/chapterAccess';
+import { formatDuration, secondsUntil } from '@/lib/checkinApi';
 import {
   hasReadingRestriction,
   READING_RESTRICTED_MESSAGE,
@@ -443,21 +444,29 @@ export default function ReadingInterfacePage() {
     }
   }
 
-  async function unlock(entry) {
+  async function unlock(entry, { bundle = false } = {}) {
     if (!useAuthStore.getState().user) {
-      openAuthModal({ message: 'Sign in to unlock this chapter.', onSuccess: () => unlock(entry) });
+      openAuthModal({ message: 'Sign in to unlock this chapter.', onSuccess: () => unlock(entry, { bundle }) });
       return;
     }
     setBusy(true);
     try {
-      const r = await api.post(`/chapters/${entry.id}/unlock`);
+      const r = bundle
+        ? await api.post(`/chapters/${entry.id}/unlock-bundle`, {})
+        : await api.post(`/chapters/${entry.id}/unlock`, {});
       setBalance(r.balance);
+      const unlockedIds = new Set(bundle ? r.unlockedChapterIds : [entry.id]);
       const fresh = await api.get(`/chapters/${entry.id}`);
       setEntries((cur) => cur.map((e) => (e.id === entry.id ? fresh.chapter : e)));
       setSiblings((cur) => cur.map((c) => (
-        c.id === entry.id ? { ...c, isUnlocked: true, canRead: fresh.chapter.canRead } : c
+        unlockedIds.has(c.id) ? { ...c, isUnlocked: true, canRead: true, unlockQuote: undefined } : c
       )));
-      pushToast({ type: 'success', title: 'Chapter unlocked' });
+      const saved = r.discount ? ` · ${r.voucher?.title || 'voucher'} saved ${formatTokens(r.discount)} tokens` : '';
+      pushToast({
+        type: 'success',
+        title: bundle ? `${r.count} chapters unlocked` : 'Chapter unlocked',
+        message: `${formatTokens(r.tokensSpent)} tokens spent${saved}`,
+      });
     } catch (err) {
       pushToast({ type: 'error', title: 'Unlock failed', message: err.message });
     } finally {
@@ -632,7 +641,7 @@ export default function ReadingInterfacePage() {
                 busy={busy}
                 commentCount={commentCounts[entry.id] || 0}
                 onUnlock={unlock}
-                onTopUp={(entryToUnlock) => setTopUp({ requiredTokens: Number(entryToUnlock.tokenPrice) || 0 })}
+                onTopUp={(entryToUnlock) => setTopUp({ requiredTokens: Number(entryToUnlock.unlockQuote?.price ?? entryToUnlock.tokenPrice) || 0 })}
                 onOpenComments={openComments}
                 onBackToBook={leaveToBook}
                 sectionRef={(el) => {
@@ -695,6 +704,27 @@ export default function ReadingInterfacePage() {
   );
 }
 
+/** Slim notice above a paid chapter opened with an active Novel / Platform Pass. */
+function PassBanner({ pass }) {
+  const [left, setLeft] = useState(() => secondsUntil(pass.expiresAt));
+  useEffect(() => {
+    const t = setInterval(() => setLeft(secondsUntil(pass.expiresAt)), 30_000);
+    return () => clearInterval(t);
+  }, [pass.expiresAt]);
+  return (
+    <div className="mb-8 flex flex-wrap items-center gap-3 rounded-lg border border-[var(--reader-accent)]/60 bg-[var(--reader-accent)]/10 px-4 py-3 text-[13px]">
+      <Icon name="auto_stories" filled size={18} className="text-[var(--reader-accent)]" />
+      <span className="flex-1">
+        Reading free with your <strong>{pass.title}</strong>
+        {left > 0 ? ` · ${formatDuration(left)} left` : ' · ending now'}
+      </span>
+      <Link href="/check-in" className="font-ui-label-sm text-ui-label-sm uppercase tracking-widest underline underline-offset-4 opacity-80 hover:opacity-100">
+        Rewards
+      </Link>
+    </div>
+  );
+}
+
 /** One chapter in the stream: header, body (or unlock / restricted card), author's thought, comment trigger. */
 const ChapterSection = memo(function ChapterSection({
   entry,
@@ -719,7 +749,13 @@ const ChapterSection = memo(function ChapterSection({
   const awaitingFreeContent = freeReader && !entry.contentHtml;
   const isPaidLocked = locked && !readingBlocked && !freeReader && entry.isPaid && Number(entry.tokenPrice) > 0;
   const showTitlePage = entry.idx === 1 && book?.isOriginal;
-  const price = Number(entry.tokenPrice) || 0;
+  // Server-quoted price: a Daily Check-In discount voucher may already apply.
+  const quote = entry.unlockQuote || null;
+  const basePrice = Number(quote?.basePrice ?? entry.tokenPrice) || 0;
+  const price = Number(quote?.price ?? entry.tokenPrice) || 0;
+  const voucher = quote?.voucher || null;
+  const bundleVoucher = quote?.bundleVoucher || null;
+  const passAccess = entry.passAccess || null;
 
   return (
     <article
@@ -768,17 +804,41 @@ const ChapterSection = memo(function ChapterSection({
           </p>
           <h2 className="mt-3 font-headline-md text-headline-md">Unlock to keep reading.</h2>
           <p className="mt-3 opacity-80">
-            This chapter costs {formatTokens(price)} tokens. Your balance: {formatTokens(balance)} tokens.
+            This chapter costs {formatTokens(price)} tokens
+            {voucher ? (
+              <>
+                {' '}<s className="opacity-60">{formatTokens(basePrice)}</s>
+                {' '}· {voucher.title} applied
+              </>
+            ) : null}
+            . Your balance: {formatTokens(balance)} tokens.
           </p>
-          <div className="mt-6 flex items-center justify-center gap-3">
+          {voucher || bundleVoucher ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--reader-accent)] px-3 py-1 text-[11px] uppercase tracking-widest text-[var(--reader-accent)]">
+              <Icon name="sell" filled size={14} />
+              {voucher ? `Saving ${formatTokens(quote.discount)} tokens with your check-in voucher` : `${bundleVoucher.title} available`}
+            </p>
+          ) : null}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => onUnlock(entry)}
               disabled={busy || balance < price}
               className="px-6 py-3 bg-primary text-on-primary font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:opacity-90 disabled:opacity-60 transition-opacity"
             >
-              {busy ? 'Unlocking…' : 'Unlock chapter'}
+              {busy ? 'Unlocking…' : `Unlock for ${formatTokens(price)}`}
             </button>
+            {bundleVoucher ? (
+              <button
+                type="button"
+                onClick={() => onUnlock(entry, { bundle: true })}
+                disabled={busy}
+                className="px-6 py-3 border border-[var(--reader-accent)] text-[var(--reader-fg)] font-ui-label-sm text-ui-label-sm uppercase tracking-widest rounded hover:bg-[var(--reader-fg)]/5 disabled:opacity-60 transition-colors"
+                title={`Unlock the next ${bundleVoucher.bundleSize} locked chapters with ${bundleVoucher.percent}% off`}
+              >
+                Next {bundleVoucher.bundleSize} · {bundleVoucher.percent}% off
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => onTopUp(entry)}
@@ -789,14 +849,17 @@ const ChapterSection = memo(function ChapterSection({
           </div>
         </div>
       ) : (
-        <div
-          className="prose-reader prose-stitch space-y-8 leading-relaxed select-none"
-          onCopy={blockCopy}
-          onCut={blockCopy}
-          onContextMenu={blockCopy}
-          onDragStart={blockCopy}
-          dangerouslySetInnerHTML={{ __html: cleanHtml }}
-        />
+        <>
+          {passAccess && !entry.isUnlocked ? <PassBanner pass={passAccess} /> : null}
+          <div
+            className="prose-reader prose-stitch space-y-8 leading-relaxed select-none"
+            onCopy={blockCopy}
+            onCut={blockCopy}
+            onContextMenu={blockCopy}
+            onDragStart={blockCopy}
+            dangerouslySetInnerHTML={{ __html: cleanHtml }}
+          />
+        </>
       )}
 
       <CreatorsThoughtCard

@@ -198,7 +198,8 @@ function WalletInner() {
                 >
                   <div>
                     <p className="font-serif text-[16px] text-ink-900 dark:text-neutral-100 capitalize">
-                      {t.type.replace('_', ' ')}
+                      {t.type === 'reward' ? (t.meta?.title ? `Reward · ${t.meta.title}` : 'Reward') : t.type.replace('_', ' ')}
+                      {t.type === 'unlock' && t.meta?.bundle ? ' · bundle' : ''}
                     </p>
                     <p className="text-[12px] text-ink-500 dark:text-neutral-500">
                       {formatDate(t.createdAt)}

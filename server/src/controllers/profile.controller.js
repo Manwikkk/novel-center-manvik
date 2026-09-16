@@ -2,6 +2,7 @@
 
 const asyncHandler = require('../utils/asyncHandler');
 const svc = require('../services/profile.service');
+const notificationsSvc = require('../services/notifications.service');
 
 const getMe = asyncHandler(async (req, res) => {
   const data = await svc.getOverview(req.user.id, req.user.id);
@@ -44,6 +45,30 @@ const unfollow = asyncHandler(async (req, res) => {
   res.json(data);
 });
 
+const followers = asyncHandler(async (req, res) => {
+  const data = await svc.listFollowers(Number(req.params.id), req.user?.id || null, req.query);
+  res.json(data);
+});
+
+const following = asyncHandler(async (req, res) => {
+  const data = await svc.listFollowing(Number(req.params.id), req.user?.id || null, req.query);
+  res.json(data);
+});
+
+const notifications = asyncHandler(async (req, res) => {
+  const data = await notificationsSvc.list(req.user.id, {
+    page: req.query.page,
+    pageSize: req.query.pageSize,
+    unreadOnly: req.query.unread === true || req.query.unread === 'true',
+  });
+  res.json(data);
+});
+
+const markNotificationsRead = asyncHandler(async (req, res) => {
+  const data = await notificationsSvc.markRead(req.user.id, { ids: req.body.ids, all: !!req.body.all });
+  res.json(data);
+});
+
 const novels = asyncHandler(async (req, res) => {
   const viewerId = req.user?.id || null;
   const data = await svc.listProfileNovels(Number(req.params.id), {
@@ -82,7 +107,14 @@ const comments = asyncHandler(async (req, res) => {
 });
 
 const achievements = asyncHandler(async (req, res) => {
-  const data = await svc.listAchievements(Number(req.params.id));
+  const userId = Number(req.params.id);
+  const isOwner = req.user?.id != null && Number(req.user.id) === userId;
+  const data = await svc.listAchievements(userId, { withProgress: isOwner });
+  res.json(data);
+});
+
+const setBadgeShowcase = asyncHandler(async (req, res) => {
+  const data = await svc.setBadgeShowcase(req.user.id, req.body.codes);
   res.json(data);
 });
 
@@ -131,12 +163,17 @@ module.exports = {
   checkIn,
   follow,
   unfollow,
+  followers,
+  following,
+  notifications,
+  markNotificationsRead,
   novels,
   setNovelVisibility,
   library,
   reviews,
   comments,
   achievements,
+  setBadgeShowcase,
   collections,
   collectionDetail,
   levelBenefits,

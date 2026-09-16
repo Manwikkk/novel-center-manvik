@@ -7,6 +7,7 @@ const { clampPagination } = require('../utils/pagination');
 const { resolveUserRow, assertRestriction } = require('./suspension.service');
 const { assertMatureAccess } = require('./ageGate');
 const finance = require('./finance.service');
+const rewards = require('./rewards.service');
 
 const PACKS = finance.PACKS;
 
@@ -107,7 +108,7 @@ async function purchase(userId, { pack, tokens, couponCode }) {
   });
 }
 
-async function unlockChapter(userId, chapterId) {
+async function unlockChapter(userId, chapterId, { useVoucher = true } = {}) {
   const userRow = await resolveUserRow(userId);
   assertRestriction(userRow, 'reading', 'Reading is restricted on your account');
 
@@ -157,9 +158,25 @@ async function unlockChapter(userId, chapterId) {
       return { balance: Number(w[0].balance), tokensSpent: 0, alreadyUnlocked: true };
     }
 
+    // An active Novel / Platform Pass already makes this chapter readable; never
+    // let a tap spend coins on it while the pass runs.
+    const pass = await rewards.passCovering(userId, chapter.book_id, { conn });
+    if (pass) {
+      throw errors.conflict(`This chapter is free to read with your ${pass.title} until it expires`);
+    }
+
     const price = Number(chapter.token_price);
-    const debit = await finance.debitWalletBuckets(conn, userId, price);
+    // Discount vouchers are platform-funded: the author's unlock value stays at
+    // the full price while the reader's wallet is charged the discounted one.
+    const voucher = useVoucher ? await rewards.bestVoucher(userId, 'CHAPTER_DISCOUNT', conn) : null;
+    const discount = voucher ? rewards.computeDiscount(price, voucher) : 0;
+    const charge = price - discount;
+
+    const debit = await finance.debitWalletBuckets(conn, userId, charge);
     if (!debit) throw errors.payment('Insufficient tokens');
+    if (voucher && discount > 0) {
+      await rewards.consumeVoucher(conn, userId, voucher.id, { chapterId, basePrice: price, discount });
+    }
 
     await conn.execute(
       `INSERT INTO chapter_unlocks (user_id, chapter_id, tokens_spent) VALUES (?, ?, ?)`,
@@ -168,21 +185,134 @@ async function unlockChapter(userId, chapterId) {
     await conn.execute(
       `INSERT INTO transactions (user_id, type, tokens_delta, ref_chapter_id, meta)
        VALUES (?, 'unlock', ?, ?, JSON_OBJECT(
-         'chapterId', ?, 'bookId', ?, 'bookTitle', ?, 'chapterTitle', ?, 'authorId', ?
+         'chapterId', ?, 'bookId', ?, 'bookTitle', ?, 'chapterTitle', ?, 'authorId', ?,
+         'basePrice', ?, 'discount', ?, 'voucherId', ?
        ))`,
       [
         userId,
-        -price,
+        -charge,
         chapterId,
         chapterId,
         chapter.book_id,
         chapter.book_title || '',
         chapter.title || '',
         bookAuthorId,
+        price,
+        discount,
+        voucher && discount > 0 ? voucher.id : null,
       ],
     );
-    return { balance: debit.balance, tokensSpent: price, alreadyUnlocked: false };
+    return {
+      balance: debit.balance,
+      tokensSpent: charge,
+      basePrice: price,
+      discount,
+      voucher: voucher && discount > 0 ? { id: voucher.id, title: voucher.title, percent: voucher.percent } : null,
+      alreadyUnlocked: false,
+    };
   });
 }
 
-module.exports = { PACKS, getMine, listTransactions, purchase, unlockChapter };
+/**
+ * Unlock a run of consecutive locked chapters starting at `chapterId` in one
+ * charge. A Bundle Discount voucher (Day 14 milestone reward) applies to the
+ * combined price; the author still earns the full value of every chapter.
+ */
+async function unlockBundle(userId, chapterId, { count, useVoucher = true } = {}) {
+  const userRow = await resolveUserRow(userId);
+  assertRestriction(userRow, 'reading', 'Reading is restricted on your account');
+
+  return withTransaction(async (conn) => {
+    const [cRows] = await conn.execute(
+      `SELECT c.id, c.idx, c.status, c.book_id,
+              b.status AS book_status, b.author_id, b.title AS book_title, b.warning_notice
+         FROM chapters c JOIN books b ON b.id = c.book_id
+        WHERE c.id = ? AND c.recycled_at IS NULL FOR UPDATE`,
+      [chapterId],
+    );
+    const start = cRows[0];
+    if (!start) throw errors.notFound('Chapter not found');
+    if (start.status !== 'published' || start.book_status !== 'published') {
+      throw errors.notFound('Chapter not available');
+    }
+    assertMatureAccess({ warningNotice: start.warning_notice, authorId: start.author_id }, userRow);
+    if (Number(start.author_id) === Number(userId)) {
+      throw errors.badRequest('You already have access to your own novel');
+    }
+
+    const pass = await rewards.passCovering(userId, start.book_id, { conn });
+    if (pass) {
+      throw errors.conflict(`These chapters are free to read with your ${pass.title} until it expires`);
+    }
+
+    const voucher = useVoucher ? await rewards.bestVoucher(userId, 'BUNDLE_DISCOUNT', conn) : null;
+    const wanted = Math.max(2, Math.min(20, Number(count) || voucher?.bundleSize || 5));
+
+    const [candidates] = await conn.execute(
+      `SELECT c.id, c.idx, c.title, c.token_price
+         FROM chapters c
+         LEFT JOIN chapter_unlocks cu ON cu.chapter_id = c.id AND cu.user_id = ?
+        WHERE c.book_id = ? AND c.idx >= ? AND c.status = 'published' AND c.recycled_at IS NULL
+          AND c.is_paid = 1 AND c.token_price > 0 AND cu.chapter_id IS NULL
+        ORDER BY c.idx ASC
+        LIMIT ${wanted}`,
+      [userId, start.book_id, start.idx],
+    );
+    if (!candidates.length) throw errors.badRequest('Nothing left to unlock from here');
+
+    const basePrice = candidates.reduce((sum, c) => sum + Number(c.token_price), 0);
+    const bundleVoucher = voucher && candidates.length >= 2 ? voucher : null;
+    const discount = bundleVoucher ? rewards.computeDiscount(basePrice, bundleVoucher) : 0;
+    const charge = basePrice - discount;
+
+    const debit = await finance.debitWalletBuckets(conn, userId, charge);
+    if (!debit) throw errors.payment('Insufficient tokens');
+    if (bundleVoucher && discount > 0) {
+      await rewards.consumeVoucher(conn, userId, bundleVoucher.id, {
+        chapterIds: candidates.map((c) => c.id), basePrice, discount,
+      });
+    }
+
+    for (const c of candidates) {
+      // eslint-disable-next-line no-await-in-loop
+      await conn.execute(
+        'INSERT INTO chapter_unlocks (user_id, chapter_id, tokens_spent) VALUES (?, ?, ?)',
+        [userId, c.id, Number(c.token_price)],
+      );
+    }
+    await conn.execute(
+      `INSERT INTO transactions (user_id, type, tokens_delta, ref_chapter_id, meta)
+       VALUES (?, 'unlock', ?, ?, JSON_OBJECT(
+         'bundle', true, 'chapterIds', CAST(? AS JSON), 'bookId', ?, 'bookTitle', ?, 'authorId', ?,
+         'chapterTitle', ?, 'basePrice', ?, 'discount', ?, 'voucherId', ?
+       ))`,
+      [
+        userId,
+        -charge,
+        candidates[0].id,
+        JSON.stringify(candidates.map((c) => c.id)),
+        start.book_id,
+        start.book_title || '',
+        Number(start.author_id),
+        `${candidates.length} chapters from Chapter ${candidates[0].idx}`,
+        basePrice,
+        discount,
+        bundleVoucher && discount > 0 ? bundleVoucher.id : null,
+      ],
+    );
+
+    return {
+      balance: debit.balance,
+      tokensSpent: charge,
+      basePrice,
+      discount,
+      voucher: bundleVoucher && discount > 0
+        ? { id: bundleVoucher.id, title: bundleVoucher.title, percent: bundleVoucher.percent }
+        : null,
+      unlockedChapterIds: candidates.map((c) => c.id),
+      count: candidates.length,
+    };
+  });
+}
+
+module.exports = { PACKS, getMine, listTransactions, purchase, unlockChapter, unlockBundle };

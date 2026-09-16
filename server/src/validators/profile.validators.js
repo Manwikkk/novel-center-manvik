@@ -32,7 +32,31 @@ const socialLinks = Joi.object({
   youtube: Joi.string().trim().max(300).allow('', null),
 }).unknown(false);
 
+const notificationsQuery = {
+  query: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    pageSize: Joi.number().integer().min(1).max(50).default(20),
+    unread: Joi.boolean(),
+  }),
+};
+
+const markNotificationsRead = {
+  body: Joi.object({
+    ids: Joi.array().items(Joi.number().integer().positive()).max(200),
+    all: Joi.boolean(),
+  }),
+};
+
+const badgeShowcase = {
+  body: Joi.object({
+    codes: Joi.array().items(Joi.string().trim().pattern(/^[a-z0-9_]{1,64}$/)).max(4).required(),
+  }),
+};
+
 module.exports = {
+  badgeShowcase,
+  notificationsQuery,
+  markNotificationsRead,
   idParam: { params: idParam },
   bookIdParam: { params: bookIdParam },
   collectionParam: { params: collectionParam },

@@ -9,7 +9,7 @@ import { STAFF_ROLE_TEMPLATES, permissionsForStaffRole, staffRoleByKey } from '@
 import { cn } from '@/lib/cn';
 
 const PAGE_KEYS = new Set([
-  'dashboard', 'page_configuration', 'catalog', 'users', 'comments', 'transactions', 'books',
+  'dashboard', 'page_configuration', 'check_in', 'catalog', 'users', 'comments', 'transactions', 'books',
 ]);
 
 function groupCapabilities() {
