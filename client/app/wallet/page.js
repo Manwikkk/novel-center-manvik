@@ -122,7 +122,7 @@ function WalletInner() {
     <div className="min-h-screen flex flex-col bg-cream-100 dark:bg-black">
       <SiteHeader variant="solid" />
 
-      <main className="mx-auto max-w-shell w-full px-4 md:px-edge py-12 md:py-16">
+      <main className="mx-auto max-w-shell w-full px-4 md:px-edge pt-28 pb-12 md:pt-32 md:pb-16">
         <p className="label-sm uppercase text-ink-500 dark:text-neutral-500">Your wallet</p>
         <h1 className="mt-2 font-serif text-[36px] md:text-[44px] leading-[1.15] text-ink-900 dark:text-neutral-100">
           Top up coins to unlock chapters

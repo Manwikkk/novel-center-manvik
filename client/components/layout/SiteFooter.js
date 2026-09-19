@@ -47,19 +47,20 @@ export default function SiteFooter() {
           <FooterColumn title="Contacts">
             <FooterLink href="/about">Translators &amp; Editors</FooterLink>
             <FooterLink href="/about">Commercial</FooterLink>
-            <FooterLink href="/about">Help Center</FooterLink>
+            <FooterLink href="/help">Help Center</FooterLink>
             <FooterLink href="/legal/copyright">DMCA Notification</FooterLink>
-            <FooterLink href="/about">Online service</FooterLink>
-            <FooterLink href="/about">Vulnerability Report</FooterLink>
+            <FooterLink href="/help">Online service</FooterLink>
+            <FooterLink href="/legal/security">Vulnerability Report</FooterLink>
           </FooterColumn>
 
           <FooterColumn title="Resources">
             <FooterLink href="/about">Download Apps</FooterLink>
             <FooterLink href="/author/books/new">Be an Author</FooterLink>
-            <FooterLink href="/about">Help Center</FooterLink>
+            <FooterLink href="/help">Help Center</FooterLink>
             <FooterLink href="/legal/privacy">Privacy Policy</FooterLink>
-            <FooterLink href="/legal/privacy">Cookie Policy</FooterLink>
+            <FooterLink href="/legal/cookies">Cookie Policy</FooterLink>
             <FooterLink href="/legal/terms">Terms of Service</FooterLink>
+            <FooterLink href="/legal/community">Content Guidelines</FooterLink>
             <FooterLink href="/about">Affiliate</FooterLink>
           </FooterColumn>
         </div>

@@ -38,10 +38,13 @@ export default function GoogleSignInButton({ onSuccess, label = 'continue_with',
     >
       {buttonWidth > 0 ? (
         <GoogleLogin
+          type="standard"
           theme="outline"
           size="large"
           shape="rectangular"
-          width={buttonWidth}
+          logo_alignment="left"
+          locale="en"
+          width={String(Math.min(400, Math.max(240, buttonWidth)))}
           text={label}
           onSuccess={async (response) => {
             if (!response.credential) return;

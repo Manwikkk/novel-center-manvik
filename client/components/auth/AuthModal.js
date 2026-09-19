@@ -169,8 +169,10 @@ function RegisterPanel({ onSuccess }) {
         <span className="text-[12px] leading-relaxed text-ink-600">
           I agree to the{' '}
           <a href="/legal/terms" className="font-semibold text-ink-900 underline">Terms &amp; Conditions</a>
+          {', '}
+          <a href="/legal/privacy" className="font-semibold text-ink-900 underline">Privacy Policy</a>
           {' '}and{' '}
-          <a href="/legal/privacy" className="font-semibold text-ink-900 underline">Privacy Policy</a>.
+          <a href="/legal/cookies" className="font-semibold text-ink-900 underline">Cookie Policy</a>.
         </span>
       </label>
       {fieldErrors.terms ? <p className="text-[12px] text-danger -mt-2">{fieldErrors.terms}</p> : null}

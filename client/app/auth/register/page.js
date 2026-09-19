@@ -164,6 +164,10 @@ export default function RegisterPage() {
             <Link href="/legal/privacy" className="font-semibold text-ink-900 underline decoration-gold/80 underline-offset-2 hover:text-ink-700">
               Privacy Policy
             </Link>
+            {' '}and{' '}
+            <Link href="/legal/cookies" className="font-semibold text-ink-900 underline decoration-gold/80 underline-offset-2 hover:text-ink-700">
+              Cookie Policy
+            </Link>
             .
           </span>
         </label>

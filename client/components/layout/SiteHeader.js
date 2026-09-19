@@ -168,12 +168,10 @@ function CheckInChip({ user, compact = false }) {
 }
 
 /**
- * Site chrome. Full-width bar at the top of the page; once the reader scrolls
- * it lifts into a floating glass bar. Pages keep their existing top padding
- * (the fixed header is 80px tall at rest).
+ * Site chrome. A floating glass bar pinned to the top of the viewport (12px
+ * inset + 64px tall). Pages keep their existing top padding, which clears it.
  */
 export default function SiteHeader({ variant = 'translucent' }) {
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
@@ -193,13 +191,6 @@ export default function SiteHeader({ variant = 'translucent' }) {
   useEffect(() => {
     if (user) refreshWallet();
   }, [user, refreshWallet]);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 14);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   useEffect(() => {
     if (!profileOpen) return undefined;
@@ -239,24 +230,22 @@ export default function SiteHeader({ variant = 'translucent' }) {
 
   const closeAll = () => { setProfileOpen(false); setOpen(false); };
 
-  const restBar = variant === 'solid'
-    ? 'bg-white dark:bg-black border-b border-neutral-200/80 dark:border-neutral-800'
-    : 'bg-white/85 dark:bg-black/80 backdrop-blur-nav border-b border-neutral-200/60 dark:border-neutral-800';
+  const barSurface = variant === 'solid'
+    ? 'bg-white dark:bg-neutral-950'
+    : 'bg-white/85 backdrop-blur-xl dark:bg-neutral-950/85';
 
   return (
-    <header className={cn('fixed inset-x-0 top-0 z-50 transition-[padding] duration-300', scrolled ? 'px-3 pt-3 sm:px-5' : 'px-0 pt-0')}>
+    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5">
       <div
         className={cn(
-          'mx-auto transition-all duration-300',
-          scrolled
-            ? 'max-w-[1240px] rounded-2xl border border-neutral-200/80 bg-white/85 shadow-[0_18px_50px_-18px_rgba(10,10,10,0.35)] backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950/85'
-            : cn('max-w-none', restBar),
+          'mx-auto max-w-[1240px] rounded-2xl border border-neutral-200/80 shadow-[0_18px_50px_-18px_rgba(10,10,10,0.35)] dark:border-neutral-800',
+          barSurface,
         )}
       >
-        <div className={cn('mx-auto flex items-center gap-3 px-4 transition-all duration-300 md:px-6', scrolled ? 'h-16 max-w-[1240px]' : 'h-20 max-w-[1280px] md:px-8')}>
+        <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-3 px-4 md:px-6">
           {/* Brand */}
           <div className="flex shrink-0 items-center gap-2.5">
-            <Logo className="shrink-0" size={scrolled ? 40 : 52} label={false} />
+            <Logo className="shrink-0" size={40} label={false} />
             <Link href="/" className="hidden font-serif text-[20px] leading-none text-ink-900 dark:text-neutral-50 xl:block">Novel Centre</Link>
           </div>
 
@@ -437,7 +426,7 @@ export default function SiteHeader({ variant = 'translucent' }) {
 
         {/* Mobile / tablet panel */}
         {open ? (
-          <div className={cn('border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 lg:hidden', scrolled && 'rounded-b-2xl')}>
+          <div className="rounded-b-2xl border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 lg:hidden">
             <div className="max-h-[75vh] overflow-y-auto px-4 py-4">
               <HeaderSearch variant="pill" className="mb-4 md:hidden" />
               <div className="grid grid-cols-2 gap-2">

@@ -5,7 +5,7 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-black">
       <SiteHeader />
-      <main className="mx-auto max-w-shell w-full px-4 md:px-edge py-16 md:py-24">
+      <main className="mx-auto max-w-shell w-full px-4 md:px-edge pt-28 pb-16 md:pt-36 md:pb-24">
         <p className="label-sm uppercase text-ink-400 dark:text-neutral-500">About</p>
         <h1 className="mt-4 font-serif text-[40px] md:text-[56px] leading-[1.1] tracking-tightDisplay text-ink-900 dark:text-neutral-100 max-w-3xl">
           A small, deliberate platform for long-form fiction.

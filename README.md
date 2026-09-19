@@ -58,6 +58,24 @@ Badge showcase (pinning up to four earned badges on the profile) needs migration
 npm run db:migrate:badge-showcase
 ```
 
+### Showcase content (demo authors, readers and books)
+
+To try search, author profiles, followers/following, rankings, badges, reviews,
+comments and paid chapters with realistic data, load the showcase set:
+
+```bash
+cd server
+npm run db:seed:showcase          # add / refresh the showcase set
+npm run db:seed:showcase -- --wipe  # remove it again
+```
+
+It creates 8 authors and 10 readers (`<name>@showcase.novelcentre.dev`, password
+`Password123!`, e.g. `priya@…`, `amara@…`), 18 books with ~160 generated chapters
+(free openers + paid chapters, author thoughts), follows, reviews, chapter comments,
+library entries, reading progress, coin orders, unlocks, check-in streaks and badges.
+Cover, avatar and banner images live in `client/public/stitch/seed/`. Re-running the
+script replaces the previous showcase rows; it never touches other accounts.
+
 ## 2. Server
 
 ```bash

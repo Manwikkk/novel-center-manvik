@@ -24,7 +24,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${newsreader.variable} ${manrope.variable}`} data-reader-theme="cream">
+    <html lang="en" className={`${newsreader.variable} ${manrope.variable}`} data-reader-theme="cream" suppressHydrationWarning>
       <head>
         <link
           rel="stylesheet"

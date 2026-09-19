@@ -134,8 +134,10 @@ export default function LoginPage() {
           <p className="mt-4 text-[12px] text-ink-500">
             By signing in you agree to our{' '}
             <Link href="/legal/terms" className="text-ink-700 underline hover:text-ink-900">Terms</Link>
+            {', '}
+            <Link href="/legal/privacy" className="text-ink-700 underline hover:text-ink-900">Privacy</Link>
             {' '}and{' '}
-            <Link href="/legal/privacy" className="text-ink-700 underline hover:text-ink-900">Privacy</Link>.
+            <Link href="/legal/cookies" className="text-ink-700 underline hover:text-ink-900">Cookies</Link>.
           </p>
         </>
       }
