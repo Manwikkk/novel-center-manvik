@@ -54,13 +54,19 @@ async function upsertProgress(userId, chapterId, percent, position) {
 
   try {
     const profileSvc = require('./profile.service');
+    const tasks = require('./tasks.service');
     await profileSvc.recordReadingActivity(userId);
-    if (safePercent >= 95) {
+    const qualifiedNow = safePercent >= 80
+      ? await tasks.markChapterQualified(userId, chapterId)
+      : false;
+    if (safePercent >= 95 || qualifiedNow) {
       await profileSvc.syncAchievements(userId);
     } else {
       await profileSvc.tryGrantAchievement(userId, 'first_read');
     }
-  } catch (_e) { /* non-fatal */ }
+  } catch (err) {
+    console.error('[tasks] progress hook', err && err.message ? err.message : err);
+  }
 
   return {
     chapterId: Number(r.chapter_id),
@@ -182,4 +188,42 @@ async function recent(userId, { page, pageSize, limit } = {}) {
   };
 }
 
-module.exports = { upsertProgress, latestForBook, recent, htmlToWordCount, minutesFromWords, WPM };
+/**
+ * Credit reading time from a steady heartbeat. The client does not send a
+ * duration — the server measures the gap since the previous beat for this
+ * chapter and ignores gaps that are too short (farming) or too long (the
+ * tab was not actually heartbeating).
+ */
+async function creditReadingTime(userId, chapterId) {
+  const userRow = await resolveUserRow(userId);
+  assertRestriction(userRow, 'reading', 'Reading is restricted on your account');
+
+  const tasks = require('./tasks.service');
+  const readable = await tasks.chapterIsReadable(userId, chapterId);
+  if (!readable) return { creditedSeconds: 0 };
+
+  const now = Date.now();
+  const [cur] = await pool.execute(
+    'SELECT chapter_id, last_ms FROM reading_time_cursors WHERE user_id = ? LIMIT 1',
+    [userId],
+  );
+  let credited = 0;
+  if (cur[0] && Number(cur[0].chapter_id) === Number(chapterId)) {
+    const elapsed = Math.floor((now - Number(cur[0].last_ms)) / 1000);
+    if (elapsed >= 8 && elapsed <= 50) credited = elapsed;
+  }
+  await pool.execute(
+    `INSERT INTO reading_time_cursors (user_id, chapter_id, last_ms)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE chapter_id = VALUES(chapter_id), last_ms = VALUES(last_ms)`,
+    [userId, chapterId, now],
+  );
+  if (credited > 0) {
+    await tasks.recordReadingSeconds(userId, chapterId, credited);
+  }
+  return { creditedSeconds: credited };
+}
+
+module.exports = {
+  upsertProgress, latestForBook, recent, creditReadingTime, htmlToWordCount, minutesFromWords, WPM,
+};

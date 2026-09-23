@@ -35,6 +35,20 @@ router.post('/:id/report',
   ctrl.report,
 );
 
+router.get('/:id/rating',
+  authOptional,
+  validate({ params: idParam }),
+  ctrl.rating,
+);
+router.put('/:id/rating',
+  authRequired,
+  validate({
+    params: idParam,
+    body: Joi.object({ score: Joi.number().integer().min(1).max(5).required() }),
+  }),
+  ctrl.rate,
+);
+
 router.get('/:id/chapters',
   authOptional,
   validate({ params: idParam }),

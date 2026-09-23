@@ -15,6 +15,11 @@ module.exports = {
       bookId: Joi.number().integer().positive().required(),
     }),
   },
+  heartbeat: {
+    body: Joi.object({
+      chapterId: Joi.number().integer().positive().required(),
+    }),
+  },
   recent: {
     query: Joi.object({
       limit:    Joi.number().integer().min(1).max(24),

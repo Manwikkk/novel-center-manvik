@@ -16,6 +16,8 @@ router.use('/reading',  require('./reading.routes'));
 router.use('/author',   require('./author.routes'));
 router.use('/profiles', require('./profile.routes'));
 router.use('/check-in', require('./checkin.routes'));
+router.use('/tasks',    require('./tasks.routes'));
+router.use('/events',   require('./events.routes'));
 router.use('/admin',    require('./admin.routes'));
 
 module.exports = router;

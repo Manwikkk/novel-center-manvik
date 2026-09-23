@@ -91,6 +91,12 @@ async function create(userId, { name, visibility = 'private' }) {
       'SELECT * FROM user_collections WHERE id = ? LIMIT 1',
       [result.insertId],
     );
+    try {
+      const tasks = require('./tasks.service');
+      await tasks.safeIngest(userId);
+    } catch (err) {
+      console.error('[tasks] collection hook', err && err.message ? err.message : err);
+    }
     return rowToCollection({ ...rows[0], book_count: 0 });
   } catch (err) {
     if (err && err.code === 'ER_DUP_ENTRY') {

@@ -60,6 +60,8 @@ function profilePublicFields(row, { isOwner = false, viewerId = null } = {}) {
     longestStreak: Number(row.longest_streak) || 0,
     totalCheckIns: Number(row.total_checkins) || 0,
     membershipTier: row.membership_tier || 'none',
+    profileTitle: row.profile_title || null,
+    profileCosmetic: row.profile_cosmetic || null,
   };
 
   if (isOwner) {
@@ -192,6 +194,12 @@ async function tryGrantAchievement(userId, code) {
       body: ach[0].xp_reward > 0 ? `+${ach[0].xp_reward} EXP added to your reader level.` : null,
       linkUrl: '/account?tab=achievements',
     });
+    try {
+      const tasks = require('./tasks.service');
+      await tasks.safeIngest(userId);
+    } catch (err) {
+      console.error('[tasks] achievement hook', err && err.message ? err.message : err);
+    }
     return code;
   } catch (_e) {
     return null; // already earned
@@ -222,6 +230,10 @@ const ACHIEVEMENT_RULES = {
   streak_365: { metric: 'bestStreak', target: 365 },
   checkins_100: { metric: 'totalCheckIns', target: 100 },
   checkins_500: { metric: 'totalCheckIns', target: 500 },
+  chapters_100: { metric: 'chaptersRead', target: 100 },
+  chapters_1000: { metric: 'chaptersRead', target: 1000 },
+  novels_completed_1: { metric: 'novelsCompleted', target: 1 },
+  novels_completed_10: { metric: 'novelsCompleted', target: 10 },
   verified_reader: { metric: 'verified', target: 1 },
   premium_member: { metric: 'premium', target: 1 },
   genre_fantasy: { metric: 'genreFantasy', target: 1 },
@@ -246,8 +258,10 @@ async function collectAchievementMetrics(userId) {
        (SELECT COUNT(*) FROM user_follows WHERE follower_id = ?) AS following,
        (SELECT COUNT(*) FROM user_follows WHERE followee_id = ?) AS followers,
        (SELECT COUNT(*) FROM books
-         WHERE author_id = ? AND status = 'published' AND recycled_at IS NULL) AS novels`,
-    [userId, userId, userId, userId, userId, userId, userId],
+         WHERE author_id = ? AND status = 'published' AND recycled_at IS NULL) AS novels,
+       (SELECT COUNT(*) FROM reader_progress WHERE user_id = ? AND qualified_at IS NOT NULL) AS chapters_read,
+       (SELECT COUNT(*) FROM novel_completions WHERE user_id = ?) AS novels_completed`,
+    [userId, userId, userId, userId, userId, userId, userId, userId, userId],
   );
   const booksRead = await booksReadCount(userId);
   const [userRows] = await pool.execute(
@@ -275,6 +289,8 @@ async function collectAchievementMetrics(userId) {
     following: Number(stats.following || 0),
     followers: Number(stats.followers || 0),
     novels: Number(stats.novels || 0),
+    chaptersRead: Number(stats.chapters_read || 0),
+    novelsCompleted: Number(stats.novels_completed || 0),
     bestStreak: Math.max(Number(u.current_streak || 0), Number(u.longest_streak || 0)),
     totalCheckIns: Number(u.total_checkins || 0),
     verified: Number(u.is_verified) === 1 ? 1 : 0,
@@ -1023,6 +1039,26 @@ async function follow(followerId, followeeId) {
   if (counts.followers >= 10) await tryGrantAchievement(followeeId, 'followers_10');
   if (counts.followers >= 100) await tryGrantAchievement(followeeId, 'followers_100');
   if (created) {
+    const isAuthor = target.role === 'author'
+      || target.role === 'admin';
+    let followsAuthor = isAuthor && target.role === 'author';
+    if (!followsAuthor) {
+      const [books] = await pool.execute(
+        `SELECT 1 FROM books
+          WHERE author_id = ? AND status = 'published' AND recycled_at IS NULL
+          LIMIT 1`,
+        [followeeId],
+      );
+      followsAuthor = !!books[0];
+    }
+    if (followsAuthor) {
+      try {
+        const tasks = require('./tasks.service');
+        await tasks.safeIngest(followerId);
+      } catch (err) {
+        console.error('[tasks] follow hook', err && err.message ? err.message : err);
+      }
+    }
     const follower = await getUserRow(followerId);
     await notifications.notify(followeeId, {
       type: 'follow',

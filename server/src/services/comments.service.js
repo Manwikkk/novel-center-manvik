@@ -252,6 +252,19 @@ async function create({ bookId, chapterId, parentId, body, isSpoiler, reviewRati
 
   try {
     const profileSvc = require('./profile.service');
+    const tasks = require('./tasks.service');
+    const taskRules = require('./taskRules');
+    const review = taskRules.isEligibleReview({
+      body: clean, reviewRatings, chapterId, parentId, status: 'visible',
+    });
+    const comment = taskRules.isEligibleComment({
+      body: clean, reviewRatings, chapterId, parentId, status: 'visible',
+    });
+    if (review) {
+      await tasks.recordReview(userId, { commentId: ins.insertId, bookId });
+    } else if (comment) {
+      await tasks.safeIngest(userId);
+    }
     if (ratingsJson && !chapterId && !parentId) {
       await profileSvc.awardXp(userId, 'reviews', 15, { bookId });
       await profileSvc.tryGrantAchievement(userId, 'first_review');
@@ -259,7 +272,9 @@ async function create({ bookId, chapterId, parentId, body, isSpoiler, reviewRati
       await profileSvc.awardXp(userId, 'comments', 5, { bookId, chapterId });
       await profileSvc.tryGrantAchievement(userId, 'first_comment');
     }
-  } catch (_e) { /* non-fatal */ }
+  } catch (err) {
+    console.error('[tasks] comment hook', err && err.message ? err.message : err);
+  }
 
   return getById(ins.insertId, { id: userId });
 }

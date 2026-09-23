@@ -390,6 +390,12 @@ async function claim(userId) {
     const got = await grant(userId, code).catch(() => null);
     if (got) earned.push(got);
   }
+  try {
+    const tasks = require('./tasks.service');
+    await tasks.safeIngest(userId);
+  } catch (err) {
+    console.error('[tasks] check-in hook', err && err.message ? err.message : err);
+  }
 
   if (outcome.milestone) {
     await notifications.notify(userId, {

@@ -12,5 +12,6 @@ router.use(authRequired);
 router.get('/recent',    validate(v.recent),       ctrl.recent);
 router.get('/books/:bookId', validate(v.bookProgress), ctrl.bookProgress);
 router.post('/progress', validate(v.saveProgress), ctrl.saveProgress);
+router.post('/heartbeat', validate(v.heartbeat), ctrl.heartbeat);
 
 module.exports = router;

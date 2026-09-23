@@ -10,7 +10,7 @@ const pool = require('../db/pool');
 const { clampPagination } = require('../utils/pagination');
 
 const TYPES = new Set([
-  'follow', 'chapter', 'badge', 'reward', 'checkin', 'system',
+  'follow', 'chapter', 'badge', 'reward', 'checkin', 'task', 'event', 'system',
 ]);
 
 function serialize(r) {

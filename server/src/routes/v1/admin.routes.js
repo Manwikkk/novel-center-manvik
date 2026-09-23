@@ -16,9 +16,13 @@ const ctrl = require('../../controllers/admin.controller');
 const catCtrl = require('../../controllers/adminCatalog.controller');
 const finCtrl = require('../../controllers/financeAdmin.controller');
 const checkinCtrl = require('../../controllers/checkin.controller');
+const tasksCtrl = require('../../controllers/tasks.controller');
+const eventsCtrl = require('../../controllers/events.controller');
 const v = require('../../validators/admin.validators');
 const catv = require('../../validators/adminCatalog.validators');
 const checkinv = require('../../validators/checkin.validators');
+const tasksv = require('../../validators/tasks.validators');
+const eventsv = require('../../validators/events.validators');
 
 const idParam = Joi.object({ id: Joi.number().integer().positive().required() });
 const reportTypeParam = Joi.object({
@@ -89,6 +93,17 @@ router.patch('/books/:id/home-tags', requireAdminPermission('page_configuration'
 router.post('/home-shelves/all', requireAdminPermission('page_configuration'), validate(v.addHomeShelfBook), ctrl.addBookToAllHomeShelves);
 router.post('/home-shelves/:tag/books', requireAdminPermission('page_configuration'), validate({ params: v.homeShelfTagParam.params, body: v.addHomeShelfBook.body }), ctrl.addHomeShelfBook);
 router.delete('/home-shelves/:tag/books/:bookId', requireAdminPermission('page_configuration'), validate(v.removeHomeShelfBook), ctrl.removeHomeShelfBook);
+
+router.get('/tasks', requireAdminPermission('tasks'), tasksCtrl.adminList);
+router.get('/tasks/conditions', requireAdminPermission('tasks'), tasksCtrl.adminList);
+router.post('/tasks', requireAdminPermission('tasks'), validate(tasksv.create), tasksCtrl.adminCreate);
+router.patch('/tasks/:id', requireAdminPermission('tasks'), validate(tasksv.update), tasksCtrl.adminUpdate);
+router.delete('/tasks/:id', requireAdminPermission('tasks'), validate({ params: idParam }), tasksCtrl.adminRemove);
+
+router.get('/events', requireAdminPermission('events'), eventsCtrl.adminList);
+router.post('/events', requireAdminPermission('events'), validate(eventsv.create), eventsCtrl.adminCreate);
+router.patch('/events/:id', requireAdminPermission('events'), validate(eventsv.update), eventsCtrl.adminUpdate);
+router.delete('/events/:id', requireAdminPermission('events'), validate({ params: idParam }), eventsCtrl.adminRemove);
 
 router.get('/check-in', requireAdminPermission('check_in'), checkinCtrl.adminOverview);
 router.put('/check-in/config', requireAdminPermission('check_in'), validate(checkinv.adminConfig), checkinCtrl.adminUpdateConfig);

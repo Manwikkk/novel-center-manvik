@@ -43,4 +43,14 @@ const report = asyncHandler(async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
-module.exports = { list, getBySlug, getById, create, update, remove, uploadCover, report };
+const rating = asyncHandler(async (req, res) => {
+  const ratings = require('../services/ratings.service');
+  res.json({ rating: await ratings.getMine(req.user ? req.user.id : null, Number(req.params.id)) });
+});
+
+const rate = asyncHandler(async (req, res) => {
+  const ratings = require('../services/ratings.service');
+  res.json({ rating: await ratings.rate(req.user.id, Number(req.params.id), req.body.score) });
+});
+
+module.exports = { list, getBySlug, getById, create, update, remove, uploadCover, report, rating, rate };

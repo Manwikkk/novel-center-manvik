@@ -18,4 +18,9 @@ const bookProgress = asyncHandler(async (req, res) => {
   res.json({ progress });
 });
 
-module.exports = { saveProgress, recent, bookProgress };
+const heartbeat = asyncHandler(async (req, res) => {
+  const out = await svc.creditReadingTime(req.user.id, Number(req.body.chapterId));
+  res.json(out);
+});
+
+module.exports = { saveProgress, recent, bookProgress, heartbeat };

@@ -99,7 +99,7 @@ async function add(userId, bookId, readingStatus = 'active') {
   await assertPublishableBook(bookId);
   const status = READING_STATUSES.has(readingStatus) ? readingStatus : 'active';
 
-  await pool.execute(
+  const [inserted] = await pool.execute(
     'INSERT IGNORE INTO library (user_id, book_id, reading_status) VALUES (?, ?, ?)',
     [userId, bookId, status],
   );
@@ -107,7 +107,13 @@ async function add(userId, bookId, readingStatus = 'active') {
   try {
     const profileSvc = require('./profile.service');
     await profileSvc.syncAchievements(userId);
-  } catch (_e) { /* non-fatal */ }
+  } catch (err) {
+    console.error('[tasks] library achievements', err && err.message ? err.message : err);
+  }
+  if (inserted.affectedRows > 0) {
+    const tasks = require('./tasks.service');
+    await tasks.safeIngest(userId);
+  }
 
   const [rows] = await pool.execute(
     'SELECT user_id, book_id, added_at, reading_status FROM library WHERE user_id = ? AND book_id = ? LIMIT 1',
@@ -139,6 +145,12 @@ async function setStatus(userId, bookId, readingStatus) {
       'INSERT INTO library (user_id, book_id, reading_status) VALUES (?, ?, ?)',
       [userId, bookId, readingStatus],
     );
+    try {
+      const tasks = require('./tasks.service');
+      await tasks.safeIngest(userId);
+    } catch (err) {
+      console.error('[tasks] library hook', err && err.message ? err.message : err);
+    }
   } else {
     await pool.execute(
       'UPDATE library SET reading_status = ? WHERE user_id = ? AND book_id = ?',
