@@ -37,6 +37,7 @@ const notificationsQuery = {
     page: Joi.number().integer().min(1).default(1),
     pageSize: Joi.number().integer().min(1).max(50).default(20),
     unread: Joi.boolean(),
+    category: Joi.string().valid('all', 'tasks', 'rewards', 'achievements', 'events', 'system').default('all'),
   }),
 };
 
@@ -44,6 +45,12 @@ const markNotificationsRead = {
   body: Joi.object({
     ids: Joi.array().items(Joi.number().integer().positive()).max(200),
     all: Joi.boolean(),
+  }),
+};
+
+const markNotificationsPresented = {
+  body: Joi.object({
+    ids: Joi.array().items(Joi.number().integer().positive()).max(50).required(),
   }),
 };
 
@@ -57,6 +64,7 @@ module.exports = {
   badgeShowcase,
   notificationsQuery,
   markNotificationsRead,
+  markNotificationsPresented,
   idParam: { params: idParam },
   bookIdParam: { params: bookIdParam },
   collectionParam: { params: collectionParam },

@@ -26,6 +26,7 @@ import {
   READING_RESTRICTED_TITLE,
 } from '@/lib/readingRestriction';
 import { cn } from '@/lib/cn';
+import { refreshEngagementSurface } from '@/components/engagement/EngagementHost';
 
 const WPM = 220;
 const RAIL_W = 56; // px — w-14
@@ -290,7 +291,7 @@ export default function ReadingInterfacePage() {
     const id = activeId;
     const beat = () => {
       if (document.visibilityState !== 'visible') return;
-      readingApi.heartbeat(id).catch(() => {});
+      readingApi.heartbeat(id).then(() => refreshEngagementSurface()).catch(() => {});
     };
     beat();
     const timer = window.setInterval(beat, 20_000);

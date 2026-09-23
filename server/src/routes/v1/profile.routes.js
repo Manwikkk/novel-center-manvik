@@ -19,7 +19,9 @@ router.patch('/me/email', authRequired, validate(v.updateEmail), ctrl.updateEmai
 router.post('/me/delete', authRequired, validate(v.deleteAccount), ctrl.deleteAccount);
 router.patch('/me/badges/showcase', authRequired, validate(v.badgeShowcase), ctrl.setBadgeShowcase);
 router.get('/me/notifications', authRequired, validate(v.notificationsQuery), ctrl.notifications);
+router.get('/me/notifications/pending-surface', authRequired, ctrl.pendingNotificationSurface);
 router.post('/me/notifications/read', authRequired, validate(v.markNotificationsRead), ctrl.markNotificationsRead);
+router.post('/me/notifications/presented', authRequired, validate(v.markNotificationsPresented), ctrl.markNotificationsPresented);
 router.patch(
   '/me/novels/:bookId',
   authRequired,

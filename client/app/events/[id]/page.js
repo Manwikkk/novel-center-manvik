@@ -12,6 +12,7 @@ import { eventsApi, EVENT_REWARD_LABELS } from '@/lib/eventsApi';
 import { formatDateTime } from '@/lib/format';
 import { useUiStore } from '@/stores/uiStore';
 import { cn } from '@/lib/cn';
+import { refreshEngagementSurface } from '@/components/engagement/EngagementHost';
 
 function DetailInner() {
   const { id } = useParams();
@@ -40,7 +41,7 @@ function DetailInner() {
     setBusy(true);
     try {
       setData(await eventsApi.register(id));
-      pushToast({ type: 'success', title: 'You are registered', message: 'Progress starts from now.' });
+      refreshEngagementSurface();
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not register', message: err.message });
     } finally {
@@ -53,7 +54,7 @@ function DetailInner() {
     try {
       const next = await eventsApi.claim(id, rewardId);
       setData(next);
-      pushToast({ type: 'success', title: 'Reward claimed' });
+      refreshEngagementSurface();
     } catch (err) {
       pushToast({ type: 'error', title: 'Could not claim', message: err.message });
     } finally {

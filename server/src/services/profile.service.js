@@ -177,7 +177,7 @@ async function awardXp(userId, source, amount, meta = null, conn = pool) {
   return xpProgress(xp);
 }
 
-async function tryGrantAchievement(userId, code) {
+async function tryGrantAchievement(userId, code, { silent = false } = {}) {
   const [ach] = await pool.execute('SELECT id, title, xp_reward FROM achievements WHERE code = ? LIMIT 1', [code]);
   if (!ach[0]) return null;
   try {
@@ -188,17 +188,28 @@ async function tryGrantAchievement(userId, code) {
     if (ach[0].xp_reward > 0) {
       await awardXp(userId, 'events', Number(ach[0].xp_reward), { achievement: code });
     }
-    await notifications.notify(userId, {
-      type: 'badge',
-      title: `Badge unlocked: ${ach[0].title}`,
-      body: ach[0].xp_reward > 0 ? `+${ach[0].xp_reward} EXP added to your reader level.` : null,
-      linkUrl: '/account?tab=achievements',
-    });
-    try {
-      const tasks = require('./tasks.service');
-      await tasks.safeIngest(userId);
-    } catch (err) {
-      console.error('[tasks] achievement hook', err && err.message ? err.message : err);
+    if (!silent) {
+      await notifications.notifyEngagement(userId, {
+        type: 'badge',
+        category: 'achievements',
+        level: 'celebration',
+        eventType: 'achievement_unlocked',
+        dedupeKey: `achievement:${code}`,
+        title: `Achievement unlocked: ${ach[0].title}`,
+        body: ach[0].xp_reward > 0 ? `+${ach[0].xp_reward} EXP added to your reader level.` : null,
+        linkUrl: '/account?tab=achievements',
+        metadata: {
+          code,
+          title: ach[0].title,
+          exp: Number(ach[0].xp_reward) || 0,
+        },
+      });
+      try {
+        const tasks = require('./tasks.service');
+        await tasks.safeIngest(userId);
+      } catch (err) {
+        console.error('[tasks] achievement hook', err && err.message ? err.message : err);
+      }
     }
     return code;
   } catch (_e) {

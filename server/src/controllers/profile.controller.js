@@ -60,12 +60,23 @@ const notifications = asyncHandler(async (req, res) => {
     page: req.query.page,
     pageSize: req.query.pageSize,
     unreadOnly: req.query.unread === true || req.query.unread === 'true',
+    category: req.query.category || 'all',
   });
+  res.json(data);
+});
+
+const pendingNotificationSurface = asyncHandler(async (req, res) => {
+  const data = await notificationsSvc.listPendingSurface(req.user.id);
   res.json(data);
 });
 
 const markNotificationsRead = asyncHandler(async (req, res) => {
   const data = await notificationsSvc.markRead(req.user.id, { ids: req.body.ids, all: !!req.body.all });
+  res.json(data);
+});
+
+const markNotificationsPresented = asyncHandler(async (req, res) => {
+  const data = await notificationsSvc.markPresented(req.user.id, { ids: req.body.ids });
   res.json(data);
 });
 
@@ -166,7 +177,9 @@ module.exports = {
   followers,
   following,
   notifications,
+  pendingNotificationSurface,
   markNotificationsRead,
+  markNotificationsPresented,
   novels,
   setNovelVisibility,
   library,

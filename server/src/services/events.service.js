@@ -421,11 +421,16 @@ async function register(userId, eventId) {
   );
   await pool.execute('DELETE FROM event_dismissals WHERE event_id = ? AND user_id = ?', [event.id, userId]);
   await syncUser(userId);
-  await notifications.notify(userId, {
+  await notifications.notifyEngagement(userId, {
     type: 'event',
+    category: 'events',
+    level: 'toast',
+    eventType: 'event_registered',
+    dedupeKey: `event:register:${event.id}:${userId}`,
     title: `You're in: ${event.name}`,
     body: 'Event progress starts now and is tracked separately from your usual tasks.',
     linkUrl: `/events/${event.id}`,
+    metadata: { eventId: event.id },
   });
   return detailFor(userId, event.id);
 }
@@ -556,14 +561,39 @@ async function claim(userId, eventId, rewardId) {
 
   if (outcome.granted.badgeCode) {
     const profile = require('./profile.service');
-    await profile.tryGrantAchievement(userId, outcome.granted.badgeCode);
+    await profile.tryGrantAchievement(userId, outcome.granted.badgeCode, { silent: true });
   }
-  await notifications.notify(userId, {
+  const isMajor = ['PLATFORM_WIDE_PASS', 'BADGE', 'TITLE', 'COSMETIC', 'COINS'].includes(outcome.reward.reward_type)
+    || outcome.reward.reward_type === 'EXP';
+  const majorPass = outcome.reward.reward_type === 'PLATFORM_WIDE_PASS';
+  await notifications.notifyEngagement(userId, {
     type: 'event',
+    category: 'events',
+    level: majorPass || outcome.granted.badgeCode ? 'celebration' : (isMajor ? 'toast' : 'center'),
+    eventType: majorPass ? 'event_major_reward' : 'event_reward_claimed',
+    dedupeKey: `event:claim:${outcome.reward.id}:${userId}`,
     title: `Reward claimed: ${outcome.reward.title}`,
     body: outcome.event.name,
     linkUrl: `/events/${outcome.event.id}`,
+    metadata: {
+      eventId: outcome.event.id,
+      rewardId: outcome.reward.id,
+      rewardType: outcome.reward.reward_type,
+    },
   });
+  if (outcome.granted.badgeCode) {
+    await notifications.notifyEngagement(userId, {
+      type: 'badge',
+      category: 'achievements',
+      level: 'center',
+      eventType: 'achievement_unlocked',
+      dedupeKey: `achievement:${outcome.granted.badgeCode}`,
+      title: `Achievement unlocked`,
+      body: outcome.granted.badgeCode.replace(/_/g, ' '),
+      linkUrl: '/account?tab=achievements',
+      metadata: { code: outcome.granted.badgeCode },
+    });
+  }
   const detail = await detailFor(userId, outcome.event.id);
   return { claim: outcome.granted, ...detail };
 }

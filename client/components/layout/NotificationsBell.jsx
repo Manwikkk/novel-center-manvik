@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/ui/Icon';
-import { api } from '@/lib/api';
+import { profileApi } from '@/lib/profileApi';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
@@ -11,27 +11,39 @@ const TYPE_ICON = {
   follow: { icon: 'person_add', cls: 'bg-rose-500/15 text-rose-600 dark:text-rose-300' },
   chapter: { icon: 'menu_book', cls: 'bg-sky-500/15 text-sky-700 dark:text-sky-300' },
   badge: { icon: 'military_tech', cls: 'bg-gold/20 text-gold-dim dark:text-gold' },
+  achievement: { icon: 'military_tech', cls: 'bg-gold/20 text-gold-dim dark:text-gold' },
   reward: { icon: 'redeem', cls: 'bg-violet-500/15 text-violet-700 dark:text-violet-300' },
   checkin: { icon: 'local_fire_department', cls: 'bg-orange-500/15 text-orange-600 dark:text-orange-300' },
+  task: { icon: 'task_alt', cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
+  event: { icon: 'celebration', cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
   system: { icon: 'info', cls: 'bg-neutral-200 text-ink-700 dark:bg-neutral-800 dark:text-neutral-300' },
 };
+
+const CATEGORIES = [
+  { key: 'all', label: 'All' },
+  { key: 'tasks', label: 'Tasks' },
+  { key: 'rewards', label: 'Rewards' },
+  { key: 'achievements', label: 'Achievements' },
+  { key: 'events', label: 'Events' },
+];
 
 const POLL_MS = 60_000;
 
 /**
- * Header bell: unread badge, dropdown with the latest notifications, mark-as-read.
- * Polls quietly so new followers / chapters show up without a refresh.
+ * Header bell: categorized notification center with unread badge.
+ * Level-1/2 surfaces are handled by EngagementHost; this is Level 3.
  */
 export default function NotificationsBell({ userId, className, onNavigate }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [category, setCategory] = useState('all');
   const ref = useRef(null);
 
   const refreshCount = useCallback(async () => {
     try {
-      const d = await api.get('/profiles/me/notifications', { query: { pageSize: 1 } });
+      const d = await profileApi.notifications({ pageSize: 1, category: 'all' });
       setUnread(Number(d.unread || 0));
     } catch (_e) { /* ignore */ }
   }, []);
@@ -50,13 +62,10 @@ export default function NotificationsBell({ userId, className, onNavigate }) {
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  async function toggle() {
-    const next = !open;
-    setOpen(next);
-    if (!next) return;
+  async function loadCategory(cat) {
     setLoading(true);
     try {
-      const d = await api.get('/profiles/me/notifications', { query: { pageSize: 8 } });
+      const d = await profileApi.notifications({ pageSize: 24, category: cat });
       setItems(d.items || []);
       setUnread(Number(d.unread || 0));
     } catch (_e) {
@@ -66,9 +75,21 @@ export default function NotificationsBell({ userId, className, onNavigate }) {
     }
   }
 
+  async function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (!next) return;
+    await loadCategory(category);
+  }
+
+  async function selectCategory(cat) {
+    setCategory(cat);
+    await loadCategory(cat);
+  }
+
   async function markAll() {
     try {
-      await api.post('/profiles/me/notifications/read', { all: true });
+      await profileApi.markNotificationsRead({ all: true });
       setUnread(0);
       setItems((list) => (list || []).map((n) => ({ ...n, isRead: true })));
     } catch (_e) { /* ignore */ }
@@ -76,8 +97,9 @@ export default function NotificationsBell({ userId, className, onNavigate }) {
 
   async function openItem(n) {
     if (!n.isRead) {
-      api.post('/profiles/me/notifications/read', { ids: [n.id] }).catch(() => {});
+      profileApi.markNotificationsRead({ ids: [n.id] }).catch(() => {});
       setUnread((u) => Math.max(0, u - 1));
+      setItems((list) => (list || []).map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
     }
     setOpen(false);
     onNavigate?.();
@@ -103,7 +125,7 @@ export default function NotificationsBell({ userId, className, onNavigate }) {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-editorial-modal dark:border-neutral-800 dark:bg-neutral-950"
+          className="absolute right-0 top-full z-50 mt-2 w-[400px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-editorial-modal dark:border-neutral-800 dark:bg-neutral-950"
         >
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
             <p className="text-[13px] font-semibold text-ink-900 dark:text-neutral-100">Notifications</p>
@@ -113,6 +135,27 @@ export default function NotificationsBell({ userId, className, onNavigate }) {
               </button>
             ) : null}
           </div>
+
+          <div className="flex gap-1 overflow-x-auto border-b border-neutral-200 px-2 py-2 dark:border-neutral-800" role="tablist" aria-label="Notification categories">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                role="tab"
+                aria-selected={category === c.key}
+                onClick={() => selectCategory(c.key)}
+                className={cn(
+                  'shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest transition-colors',
+                  category === c.key
+                    ? 'bg-ink-900 text-white dark:bg-white dark:text-black'
+                    : 'text-ink-500 hover:bg-ink-900/5 dark:text-neutral-400 dark:hover:bg-white/10',
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
           <div className="max-h-[420px] overflow-y-auto">
             {loading && !items ? (
               <p className="px-4 py-8 text-center text-[13px] text-ink-500 dark:text-neutral-500">Loading…</p>
@@ -142,7 +185,9 @@ export default function NotificationsBell({ userId, className, onNavigate }) {
             ) : (
               <div className="px-4 py-10 text-center">
                 <Icon name="notifications_off" size={28} className="text-ink-300 dark:text-neutral-600" />
-                <p className="mt-2 text-[13px] text-ink-500 dark:text-neutral-500">You’re all caught up.</p>
+                <p className="mt-2 text-[13px] text-ink-500 dark:text-neutral-500">
+                  {category === 'all' ? 'You’re all caught up.' : `No ${category} notifications yet.`}
+                </p>
               </div>
             )}
           </div>

@@ -465,7 +465,7 @@ async function persistAll(userId, items) {
   return awarded;
 }
 
-async function ingest(userId, { reconcile = false } = {}) {
+async function ingest(userId, { reconcile = false, notify = true } = {}) {
   if (!userId) return [];
   if (reconcile) await reconcileCompletions(userId);
   const zone = await platformZone();
@@ -491,16 +491,38 @@ async function ingest(userId, { reconcile = false } = {}) {
   } catch (err) {
     console.error('[events] sync', err && err.message ? err.message : err);
   }
-  for (const item of awarded) {
-    // eslint-disable-next-line no-await-in-loop
-    await notifications.notify(userId, {
-      type: 'task',
-      title: `${item.title} complete`,
-      body: item.exp > 0 ? `+${item.exp} EXP added to your reader level.` : 'Marked complete.',
-      linkUrl: '/tasks',
-    });
+  if (notify) {
+    for (const item of awarded) {
+      const def = items.find((i) => i.def.id === item.taskId)?.def;
+      const frequency = def?.frequency || 'daily';
+      const isMilestoneTask = frequency === 'weekly' || frequency === 'monthly';
+      // eslint-disable-next-line no-await-in-loop
+      await notifications.notifyEngagement(userId, {
+        type: 'task',
+        category: 'tasks',
+        level: isMilestoneTask ? 'celebration' : 'toast',
+        eventType: isMilestoneTask ? `${frequency}_task_complete` : 'task_complete',
+        dedupeKey: `task:${item.taskId}:${item.periodKey}`,
+        title: `${item.title} complete`,
+        body: item.exp > 0 ? `+${item.exp} EXP added to your reader level.` : 'Marked complete.',
+        linkUrl: '/tasks',
+        metadata: {
+          taskId: item.taskId,
+          code: item.code,
+          exp: item.exp,
+          frequency,
+          periodKey: item.periodKey,
+        },
+      });
+    }
   }
-  return awarded;
+  return awarded.map((item) => {
+    const def = items.find((i) => i.def.id === item.taskId)?.def;
+    return {
+      ...item,
+      frequency: def?.frequency || null,
+    };
+  });
 }
 
 async function safeIngest(userId, options) {

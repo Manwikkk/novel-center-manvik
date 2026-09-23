@@ -9,6 +9,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import GoogleAuthProvider from '@/components/auth/GoogleAuthProvider';
 import SessionGuard from '@/components/layout/SessionGuard';
 import EventPromo from '@/components/events/EventPromo';
+import EngagementHost from '@/components/engagement/EngagementHost';
 
 export default function AppProviders({ children }) {
   const hydrate = useAuthStore((s) => s.hydrate);
@@ -26,6 +27,7 @@ export default function AppProviders({ children }) {
         {children}
         <AuthModal />
         <EventPromo />
+        <EngagementHost />
         <ToastViewport />
       </GoogleAuthProvider>
     </SiteThemeProvider>

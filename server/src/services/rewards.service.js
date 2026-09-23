@@ -338,7 +338,34 @@ async function activatePass(userId, rewardId, { bookId = null } = {}) {
       [book ? book.id : null, minutes, row.id],
     );
     return serialize(await getRow(conn, row.id, userId));
+  }).then(async (reward) => {
+    try {
+      const notifications = require('./notifications.service');
+      const hoursLeft = Math.max(1, Math.round((Number(reward.durationMinutes) || minutesFromReward(reward)) / 60));
+      await notifications.notifyEngagement(userId, {
+        type: 'reward',
+        category: 'rewards',
+        level: 'toast',
+        eventType: 'pass_activated',
+        dedupeKey: `pass:activate:${reward.id}`,
+        title: `${reward.title} activated`,
+        body: reward.book
+          ? `Reading ${reward.book.title} free — about ${hoursLeft}h remaining.`
+          : `Eligible locked chapters are free — about ${hoursLeft}h remaining.`,
+        linkUrl: '/check-in',
+        metadata: { rewardId: reward.id, hours: hoursLeft, bookId: reward.book?.id || null },
+      });
+    } catch (_e) { /* best-effort */ }
+    return reward;
   });
+}
+
+function minutesFromReward(reward) {
+  if (reward.expiresAt && reward.activatedAt) {
+    const ms = new Date(reward.expiresAt).getTime() - new Date(reward.activatedAt).getTime();
+    if (Number.isFinite(ms) && ms > 0) return Math.round(ms / 60000);
+  }
+  return 720;
 }
 
 /** Housekeeping: persist lazily-computed expiries so inventories stay tidy. */

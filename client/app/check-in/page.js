@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import SiteHeader from '@/components/layout/SiteHeader';
 import SiteFooter from '@/components/layout/SiteFooter';
 import AuthGuard from '@/components/layout/AuthGuard';
@@ -13,13 +14,13 @@ import MilestoneModal from '@/components/checkin/MilestoneModal';
 import ActivatePassModal from '@/components/checkin/ActivatePassModal';
 import RewardInventory from '@/components/checkin/RewardInventory';
 import CheckInCalendar from '@/components/checkin/CheckInCalendar';
-import BadgeUnlockedModal from '@/components/badges/BadgeUnlockedModal';
 import { RewardIcon } from '@/components/checkin/RewardOptionCard';
 import { checkinApi } from '@/lib/checkinApi';
 import { useUiStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { refreshEngagementSurface } from '@/components/engagement/EngagementHost';
 
 function PageSkeleton() {
   return (
@@ -70,6 +71,7 @@ function OptionList({ options }) {
 function CheckInInner() {
   const pushToast = useUiStore((s) => s.pushToast);
   const refreshWallet = useWalletStore((s) => s.refresh);
+  const searchParams = useSearchParams();
 
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
@@ -79,7 +81,6 @@ function CheckInInner() {
   const [historyKey, setHistoryKey] = useState(0);
   const [infoDay, setInfoDay] = useState(null);
   const [fullInventory, setFullInventory] = useState(null);
-  const [unlocked, setUnlocked] = useState([]);
 
   const load = useCallback(async () => {
     try {
@@ -93,6 +94,13 @@ function CheckInInner() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Deep-link from combined celebration "Choose reward".
+  useEffect(() => {
+    if (!status || searchParams?.get('milestone') !== '1') return;
+    const pending = status.pendingMilestones?.[0];
+    if (pending) setMilestone(pending);
+  }, [status, searchParams]);
+
   async function claim() {
     if (claiming) return;
     setClaiming(true);
@@ -101,20 +109,10 @@ function CheckInInner() {
       setStatus(res.status);
       setHistoryKey((k) => k + 1);
       const c = res.claim;
-      const bits = [`+${c.exp} EXP`];
-      if (c.levelBonusCoins) bits.push(`+${c.levelBonusCoins} bonus coins`);
-      if (c.campaignCoins) bits.push(`+${c.campaignCoins} event coins`);
-      pushToast({ type: 'success', title: `Day ${c.displayDay} claimed · ${c.streak}-day streak`, message: bits.join(' · ') });
       if (c.campaignCoins) refreshWallet();
-      if (c.lucky) {
-        pushToast({ type: 'success', title: 'Lucky drop!', message: `You found a ${c.lucky.title}. It is waiting in your rewards.`, ttl: 8000 });
-      }
-      const pending = res.status?.pendingMilestones?.[0];
-      if (c.milestone && pending) setMilestone(pending);
-      if (c.achievementDetails?.length) setUnlocked(c.achievementDetails);
-      else if (c.achievements?.length) {
-        pushToast({ type: 'info', title: 'Achievement unlocked', message: c.achievements.join(', ').replace(/_/g, ' ') });
-      }
+      // Milestone choice is opened from the celebration CTA (?milestone=1) or
+      // StreakHero — do not stack MilestoneModal under the celebration popup.
+      refreshEngagementSurface();
     } catch (err) {
       if (err.status === 409) {
         pushToast({ type: 'info', title: 'Already claimed today' });
@@ -136,7 +134,7 @@ function CheckInInner() {
   function onActivated(res) {
     setActivating(null);
     setFullInventory(res.inventory.items);
-    pushToast({ type: 'success', title: `${res.reward.title} activated`, message: res.reward.book ? `Reading ${res.reward.book.title} free until it ends.` : 'Eligible locked chapters are free until it ends.' });
+    refreshEngagementSurface();
     checkinApi.status().then(setStatus).catch(() => {});
   }
 
@@ -306,7 +304,6 @@ function CheckInInner() {
         onClose={() => setActivating(null)}
         onActivated={onActivated}
       />
-      <BadgeUnlockedModal badges={unlocked} open={unlocked.length > 0} onClose={() => setUnlocked([])} />
 
       <SiteFooter />
     </div>
@@ -316,7 +313,9 @@ function CheckInInner() {
 export default function CheckInPage() {
   return (
     <AuthGuard>
-      <CheckInInner />
+      <Suspense fallback={null}>
+        <CheckInInner />
+      </Suspense>
     </AuthGuard>
   );
 }

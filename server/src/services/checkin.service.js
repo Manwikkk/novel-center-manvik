@@ -375,6 +375,7 @@ async function claim(userId) {
   });
 
   // Achievements are idempotent grants; keep them out of the claim transaction.
+  // Silent so multi-outcome check-ins can emit one combined celebration.
   const grant = profileService().tryGrantAchievement;
   const streak = outcome.streak;
   const achievementCodes = [];
@@ -387,37 +388,165 @@ async function claim(userId) {
   const earned = [];
   for (const code of achievementCodes) {
     // eslint-disable-next-line no-await-in-loop
-    const got = await grant(userId, code).catch(() => null);
+    const got = await grant(userId, code, { silent: true }).catch(() => null);
     if (got) earned.push(got);
   }
+
+  let taskAwards = [];
   try {
     const tasks = require('./tasks.service');
-    await tasks.safeIngest(userId);
+    taskAwards = await tasks.safeIngest(userId, { notify: false });
   } catch (err) {
     console.error('[tasks] check-in hook', err && err.message ? err.message : err);
   }
 
+  const achievementDetails = await profileService().achievementsByCodes(userId, earned);
+  const groupKey = `checkin:${outcome.checkinId}`;
+  const centerItems = [
+    {
+      type: 'checkin',
+      category: 'rewards',
+      eventType: 'checkin_claimed',
+      dedupeKey: `checkin:claim:${outcome.checkinId}`,
+      title: `Day ${outcome.displayDay} check-in claimed`,
+      body: `+${outcome.exp} EXP · ${outcome.streak}-day streak`,
+      linkUrl: '/check-in',
+      metadata: {
+        checkinId: outcome.checkinId,
+        displayDay: outcome.displayDay,
+        streak: outcome.streak,
+        exp: outcome.exp,
+      },
+    },
+  ];
+
+  for (const t of taskAwards) {
+    centerItems.push({
+      type: 'task',
+      category: 'tasks',
+      eventType: 'task_complete',
+      dedupeKey: `task:${t.taskId}:${t.periodKey}`,
+      title: `${t.title} complete`,
+      body: t.exp > 0 ? `+${t.exp} EXP added to your reader level.` : 'Marked complete.',
+      linkUrl: '/tasks',
+      metadata: { taskId: t.taskId, code: t.code, exp: t.exp, frequency: t.frequency, periodKey: t.periodKey },
+    });
+  }
+  for (const a of achievementDetails) {
+    centerItems.push({
+      type: 'badge',
+      category: 'achievements',
+      eventType: 'achievement_unlocked',
+      dedupeKey: `achievement:${a.code}`,
+      title: `Achievement unlocked: ${a.title}`,
+      body: a.xpReward > 0 ? `+${a.xpReward} EXP added to your reader level.` : null,
+      linkUrl: '/account?tab=achievements',
+      metadata: { code: a.code, title: a.title, exp: a.xpReward || 0 },
+    });
+  }
   if (outcome.milestone) {
-    await notifications.notify(userId, {
+    centerItems.push({
       type: 'reward',
+      category: 'rewards',
+      eventType: outcome.milestone === 'day14' ? 'milestone_day14' : 'milestone_day7',
+      dedupeKey: `checkin:milestone:${outcome.checkinId}`,
       title: outcome.milestone === 'day14' ? 'Day 14 major milestone reached' : 'Day 7 milestone reached',
       body: 'Choose your milestone reward on the check-in page.',
       linkUrl: '/check-in',
+      metadata: { milestone: outcome.milestone, checkinId: outcome.checkinId, displayDay: outcome.displayDay },
     });
   }
   if (outcome.lucky) {
-    await notifications.notify(userId, {
+    centerItems.push({
       type: 'reward',
+      category: 'rewards',
+      eventType: 'lucky_platform_pass',
+      dedupeKey: `checkin:lucky:${outcome.checkinId}`,
       title: `Lucky drop: ${outcome.lucky.title}`,
       body: 'It is waiting in your rewards — activate it whenever you like.',
       linkUrl: '/check-in',
+      metadata: { rewardId: outcome.lucky.id, title: outcome.lucky.title, hours: outcome.lucky.hours || 72 },
     });
   }
 
-  const [status, achievementDetails] = await Promise.all([
-    getStatus(userId),
-    profileService().achievementsByCodes(userId, earned),
-  ]);
+  const wantsCelebration = !!(
+    outcome.milestone
+    || outcome.lucky
+    || achievementDetails.length
+    || taskAwards.some((t) => t.frequency === 'weekly' || t.frequency === 'monthly')
+  );
+
+  const celebrationOutcomes = [];
+  if (outcome.exp) celebrationOutcomes.push({ kind: 'exp', label: `+${outcome.exp} EXP` });
+  for (const t of taskAwards) {
+    celebrationOutcomes.push({ kind: 'task', label: t.title, exp: t.exp });
+  }
+  for (const a of achievementDetails) {
+    celebrationOutcomes.push({ kind: 'achievement', label: a.title, code: a.code });
+  }
+  if (outcome.milestone) {
+    celebrationOutcomes.push({
+      kind: 'milestone',
+      label: outcome.milestone === 'day14' ? '14 DAY STREAK' : '7 DAY STREAK',
+      milestone: outcome.milestone,
+      displayDay: outcome.displayDay,
+    });
+  }
+  if (outcome.lucky) {
+    celebrationOutcomes.push({ kind: 'lucky', label: outcome.lucky.title });
+  }
+
+  await notifications.notifyBundle(userId, {
+    groupKey,
+    centerItems,
+    celebration: wantsCelebration
+      ? {
+        type: 'checkin',
+        category: 'rewards',
+        eventType: 'checkin_celebration',
+        dedupeKey: `checkin:celebration:${outcome.checkinId}`,
+        title: outcome.milestone === 'day14'
+          ? '14 DAY STREAK'
+          : outcome.milestone === 'day7'
+            ? '7 DAY STREAK'
+            : outcome.lucky
+              ? 'Lucky platform pass'
+              : 'Streak milestone',
+        body: [
+          `Check-in claimed · +${outcome.exp} EXP`,
+          achievementDetails.length ? `${achievementDetails.length} achievement${achievementDetails.length === 1 ? '' : 's'}` : null,
+          outcome.lucky ? outcome.lucky.title : null,
+        ].filter(Boolean).join(' · '),
+        linkUrl: '/check-in',
+        metadata: {
+          checkinId: outcome.checkinId,
+          displayDay: outcome.displayDay,
+          streak: outcome.streak,
+          exp: outcome.exp,
+          milestone: outcome.milestone,
+          openMilestoneChoice: !!outcome.milestone,
+          lucky: outcome.lucky ? { id: outcome.lucky.id, title: outcome.lucky.title } : null,
+          achievements: achievementDetails.map((a) => ({ code: a.code, title: a.title })),
+          tasks: taskAwards.map((t) => ({ code: t.code, title: t.title, exp: t.exp, frequency: t.frequency })),
+          outcomes: celebrationOutcomes,
+        },
+      }
+      : null,
+    toast: !wantsCelebration
+      ? {
+        type: 'checkin',
+        category: 'rewards',
+        eventType: 'checkin_claimed',
+        dedupeKey: `checkin:toast:${outcome.checkinId}`,
+        title: `Day ${outcome.displayDay} claimed · ${outcome.streak}-day streak`,
+        body: `+${outcome.exp} EXP`,
+        linkUrl: '/check-in',
+        metadata: { checkinId: outcome.checkinId, exp: outcome.exp, streak: outcome.streak },
+      }
+      : null,
+  });
+
+  const status = await getStatus(userId);
   return {
     // Legacy shape (header quick check-in, profile dashboard).
     checkedIn: true,
@@ -438,6 +567,7 @@ async function claim(userId) {
       lucky: outcome.lucky,
       achievements: earned,
       achievementDetails,
+      tasks: taskAwards,
     },
     status,
   };
