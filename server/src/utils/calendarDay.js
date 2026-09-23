@@ -74,12 +74,28 @@ function offsetMinutes(timeZone, date) {
 /** The instant at which the next calendar day begins in `timeZone`. */
 function nextMidnight(timeZone, date = new Date()) {
   const tomorrow = shiftDateStr(calendarDate(timeZone, date), 1);
-  const [y, m, d] = tomorrow.split('-').map(Number);
-  // First guess with the current offset, then correct if a DST change moves midnight.
-  let guess = new Date(Date.UTC(y, m - 1, d) - offsetMinutes(timeZone, date) * 60000);
-  const drift = offsetMinutes(timeZone, guess) - offsetMinutes(timeZone, date);
+  return startOfCalendarDate(timeZone, tomorrow, date);
+}
+
+/**
+ * UTC instant when the calendar date `YYYY-MM-DD` begins in `timeZone`.
+ * `probe` is an instant near that civil day, used to read the UTC offset.
+ */
+function startOfCalendarDate(timeZone, dateStr, probe = new Date()) {
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  const near = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const basis = Number.isNaN(near.getTime()) ? probe : near;
+  let guess = new Date(Date.UTC(y, m - 1, d) - offsetMinutes(timeZone, basis) * 60000);
+  const drift = offsetMinutes(timeZone, guess) - offsetMinutes(timeZone, basis);
   if (drift !== 0) guess = new Date(guess.getTime() - drift * 60000);
   return guess;
 }
 
-module.exports = { isValidTimeZone, calendarDate, shiftDateStr, daysBetween, nextMidnight };
+module.exports = {
+  isValidTimeZone,
+  calendarDate,
+  shiftDateStr,
+  daysBetween,
+  nextMidnight,
+  startOfCalendarDate,
+};

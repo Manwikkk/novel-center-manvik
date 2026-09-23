@@ -36,6 +36,8 @@
     "db:migrate:user-experience": "node src/db/runSql.js src/db/migrations/026_user_experience.sql",
     "db:migrate:daily-checkin": "node src/db/runSql.js src/db/migrations/027_daily_checkin_rewards.sql",
     "db:migrate:badge-showcase": "node src/db/runSql.js src/db/migrations/028_badge_showcase.sql",
+    "db:migrate:tasks": "node src/db/runSql.js src/db/migrations/029_tasks_and_events.sql",
+    "test": "node --test test/",
     "db:backfill:finance": "node scripts/backfill-finance-orders.js",
     "db:backfill:chapter-prices": "node scripts/backfill-chapter-prices.js",
     "db:seed:pricing-demo": "node scripts/seed-pricing-demo.js",
