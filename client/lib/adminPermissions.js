@@ -2,6 +2,8 @@ export const ADMIN_PAGE_DEFS = [
   { key: 'dashboard', label: 'Dashboard', href: '/admin', icon: 'dashboard', exact: true },
   { key: 'page_configuration', label: 'Page Configuration', href: '/admin/page-configuration', icon: 'tune' },
   { key: 'check_in', label: 'Daily Check-In', href: '/admin/check-in', icon: 'local_fire_department' },
+  { key: 'tasks', label: 'Tasks', href: '/admin/tasks', icon: 'task_alt' },
+  { key: 'events', label: 'Events', href: '/admin/events', icon: 'celebration' },
   { key: 'catalog', label: 'Catalog', href: '/admin/catalog', icon: 'label' },
   { key: 'users', label: 'User Management', href: '/admin/users', icon: 'group' },
   { key: 'comments', label: 'Moderation', href: '/admin/comments', icon: 'gavel' },

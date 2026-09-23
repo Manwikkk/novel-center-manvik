@@ -324,6 +324,8 @@ export default function SiteHeader({ variant = 'translucent' }) {
                     <div className="grid grid-cols-3 gap-1 border-b border-neutral-200 px-2 py-2 dark:border-neutral-800">
                       {[
                         { href: '/check-in', icon: 'local_fire_department', label: 'Check-in' },
+                        { href: '/tasks', icon: 'task_alt', label: 'Tasks' },
+                        { href: '/events', icon: 'celebration', label: 'Events' },
                         { href: '/wallet', icon: 'toll', label: `${formatTokens(balance)} coins` },
                         { href: '/account?tab=achievements', icon: 'military_tech', label: 'Badges' },
                       ].map((q) => (
@@ -457,6 +459,8 @@ export default function SiteHeader({ variant = 'translucent' }) {
                   </Link>
                   {[
                     { href: '/check-in', icon: 'local_fire_department', label: 'Daily check-in' },
+                    { href: '/tasks', icon: 'task_alt', label: 'Tasks' },
+                    { href: '/events', icon: 'celebration', label: 'Events' },
                     { href: '/wallet', icon: 'toll', label: `Wallet · ${formatTokens(balance)} coins` },
                     { href: '/account?tab=achievements', icon: 'military_tech', label: 'Badges' },
                     ...(creator ? STUDIO_LINKS : user.role === 'user' ? [{ href: '/author/books/new', icon: 'edit_note', label: 'Start writing' }] : []),

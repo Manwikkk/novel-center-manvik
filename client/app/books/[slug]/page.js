@@ -7,6 +7,7 @@ import Avatar from '@/components/ui/Avatar';
 import BookDetailClient from './BookDetailClient';
 import BookTabsClient from './BookTabsClient';
 import BookActionsMenu from '@/components/book/BookActionsMenu';
+import NovelRating from '@/components/book/NovelRating';
 import YouMayAlsoLikeSection from '@/components/book/YouMayAlsoLikeSection';
 import { genreLabel } from '@/lib/bookFormOptions';
 import { cn } from '@/lib/cn';
@@ -174,6 +175,7 @@ export default async function BookDetailPage({ params }) {
                 <StarRating rating={rating} reviews={reviews} />
               </div>
             ) : null}
+            <NovelRating bookId={book.id} />
 
             <div className="mt-6">
               <BookDetailClient book={book} initialChapters={initialChapters} mode="cta" />

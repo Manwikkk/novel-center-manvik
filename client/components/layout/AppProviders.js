@@ -8,6 +8,7 @@ import ToastViewport from '@/components/ui/ToastViewport';
 import AuthModal from '@/components/auth/AuthModal';
 import GoogleAuthProvider from '@/components/auth/GoogleAuthProvider';
 import SessionGuard from '@/components/layout/SessionGuard';
+import EventPromo from '@/components/events/EventPromo';
 
 export default function AppProviders({ children }) {
   const hydrate = useAuthStore((s) => s.hydrate);
@@ -24,6 +25,7 @@ export default function AppProviders({ children }) {
         <SessionGuard />
         {children}
         <AuthModal />
+        <EventPromo />
         <ToastViewport />
       </GoogleAuthProvider>
     </SiteThemeProvider>

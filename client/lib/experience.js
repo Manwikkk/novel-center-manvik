@@ -70,6 +70,7 @@ export function primaryNavFor(user) {
       { href: '/author/books', label: 'My novels' },
       { href: '/author/books/new', label: 'Create' },
       { href: '/author/earnings', label: 'Income' },
+      { href: '/tasks', label: 'Tasks' },
       { href: '/discover', label: 'Browse' },
     ];
   }
@@ -77,6 +78,7 @@ export function primaryNavFor(user) {
     return [
       { href: '/discover', label: 'Browse' },
       { href: '/library', label: 'Library' },
+      { href: '/tasks', label: 'Tasks' },
       { href: '/ranking', label: 'Ranking' },
       { label: 'Studio', menu: STUDIO_LINKS, activePrefix: '/author' },
     ];
@@ -84,6 +86,7 @@ export function primaryNavFor(user) {
   return [
     { href: '/discover', label: 'Browse' },
     { href: '/library', label: 'Library' },
+    { href: '/tasks', label: 'Tasks' },
     { href: '/ranking', label: 'Ranking' },
     { href: '/author/books/new', label: 'Create' },
   ];

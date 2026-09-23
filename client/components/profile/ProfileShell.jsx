@@ -687,6 +687,18 @@ export default function ProfileShell({ mode = 'me', userId = null }) {
                   </span>
                 ) : null}
               </div>
+              {profile.profileTitle || profile.profileCosmetic ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {profile.profileTitle ? (
+                    <span className="text-[13px] font-medium text-gold-dim dark:text-gold">{profile.profileTitle}</span>
+                  ) : null}
+                  {profile.profileCosmetic ? (
+                    <span className="inline-flex items-center rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-gold-dim dark:text-gold">
+                      {profile.profileCosmetic}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
 
               {profile.bio ? (
                 <p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-ink-600 dark:text-neutral-400">

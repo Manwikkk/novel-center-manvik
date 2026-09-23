@@ -283,6 +283,20 @@ export default function ReadingInterfacePage() {
     };
   }, [userId, activeId]);
 
+  // Reading-time heartbeats. The server measures the gap; this only proves the
+  // chapter stayed open. Hidden tabs do not tick, so background time is ignored.
+  useEffect(() => {
+    if (!userId || !activeId) return undefined;
+    const id = activeId;
+    const beat = () => {
+      if (document.visibilityState !== 'visible') return;
+      readingApi.heartbeat(id).catch(() => {});
+    };
+    beat();
+    const timer = window.setInterval(beat, 20_000);
+    return () => window.clearInterval(timer);
+  }, [userId, activeId]);
+
   const freeReader = isStaffFreeReader(user);
   const readingRestricted = hasReadingRestriction(user);
 
